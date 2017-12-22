@@ -1,0 +1,32 @@
+average distance to nearest; nearest n
+average distance to furthest; furthest n
+average distance
+
+find words where nearest are each other (these are nodes),
+    then recursively find all words whose nearest are one of these, and so on.
+    This should find peaks, or local concentrations; turn these into clusters.
+    problem: may end up with nearly num_words/2 clusters
+    print percent of words that are part of a node
+find words whose farthest are each other.
+    Find out for how many these are also furthest; make anti-clusters?
+find average distance between words in "clusters".
+    Some nodes will be closer than this, and to more than one cluster.
+    But if we add all, may end up with one giant cluster.
+    May label those further than this as outliers?
+    Use avg dist between words in node-pairs as cutoff for outliers instead of avg dist of that cluster?
+    Make new entity called "core" of all within that distance; primary dispersion measurement on this? Or would this simply be like the same as avg node width?
+make function to print primary components of cluster; nodes/those closest.
+
+make function to take in word/vec list and make a cluster based on it,
+    then find all other words likely to belong to this cluster.
+    This is useful since certain types of clusters will frequently overlap and words will belong to multiple classes.
+    Then can measure purity of cluster based on user feed-back of what words didn't belong.
+    Could use this feedback to analyze important dimensional components of cluster; where to extend and where to stop;
+    can also measure extremity of cluster before and after this, representing misshapenness.
+
+embedysis
+encodysis
+wordalysis
+embedology
+vectorology
+vectoralysis
