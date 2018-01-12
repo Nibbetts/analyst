@@ -5,7 +5,7 @@ average distance
 find words where nearest are each other (these are nodes),
     then recursively find all words whose nearest are one of these, and so on.
     This should find peaks, or local concentrations; turn these into clusters.
-    problem: may end up with nearly num_words/2 clusters
+    note: may end up with nearly num_words/2 clusters
     print percent of words that are part of a node
 find words whose farthest are each other.
     Find out for how many these are also furthest; make anti-clusters?
@@ -23,6 +23,16 @@ make function to take in word/vec list and make a cluster based on it,
     Then can measure purity of cluster based on user feed-back of what words didn't belong.
     Could use this feedback to analyze important dimensional components of cluster; where to extend and where to stop;
     can also measure extremity of cluster before and after this, representing misshapenness.
+
+Hierarchicality:
+    nodal factor/shattered factor: num words that are part of a node divided by num not
+    hierarchical facter (burst factor is 1-this or 1/this?):
+        num nodes that are part of supernodes versus num not
+
+Have each node store a vector representation of the line from a to b,
+    normalize them, then compute an average abs(dot product) of these,
+    as a measure of alignment of nodes.
+    Get some sort of distribution graph of node lengths, like we did with word distances.
 
 embedysis
 encodysis
