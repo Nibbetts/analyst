@@ -5,12 +5,15 @@ import matplotlib.pyplot as plt
 class Analyst:
     """
     Description:
-        Interface for toolset for analyzing embedding spaces.
+        A toolset for embedding space analytics.
 
 
     Use:
-        Generally you would initialize one Analyst instance per embedding space,
-        and perform analyses and access tools in the toolset through it.
+        Generally you would initialize one Analyst instance per one
+        embedding space, and perform analyses and access tools in the toolset
+        through that analyst. The exception is in experimentation with
+        differing metrics; here you would use multiple analysts initialized
+        with the same embeddings.
 
 
     Definitions:
@@ -54,11 +57,14 @@ class Analyst:
     Tools:
         NOTE: Those in parentheses cannot be used as measures of the properties
             of the embedding space since they depend directly on the number of
-            embeddings or some similar property.
+            embeddings, dimensionality, or some similar property.
             These could be seen as specific information.
-        NOTE: Those properties with an * are of most import in measuring a space.
+        NOTE: Those properties with a * are of most import in measuring a space.
 
         Spatial:
+            * centroid
+            medoid
+
             * dispersion
 
             * density -- avg dist. to nearest --> graph of distr. of dist. to nearest
@@ -70,7 +76,7 @@ class Analyst:
             * max, min extremity length  ---->  graph of distr. of extremity lengths
             avg extr. length  ------------/
             extr. length range  _________/
-            NOTE: all extremity measurements may be estimates from sampling
+            NOTE: all extremity measurements may be estimates from sampling.
 
         Clustering:
             NOTE: For each property of a cluster type, the following stats are available:
@@ -140,42 +146,60 @@ class Analyst:
         Specifics / Inspection:
             rank_outliers() -- by number of obj. for which this one is furthest neighbor.
                 Resulting list contains exactly all objects which are members of an extremity.
-            rank_clusters() -- by size; lists the indeces of the clusters
-            rank_hubs() -- by number of obj. for which this one is nearest neighbor
+            rank_clusters() -- by size; lists the indeces of the clusters.
+            rank_hubs() -- by number of obj. for which this one is nearest neighbor.
             * clusters -- accessible variable; a list of the clusters. Further info in each.
-            * strong clusters
-            nodes
-            supernodes
-            nuclei
-            chains
-            extremities
+            * strong clusters -- ''
+            nodes -- ''
+            supernodes -- ''
+            nuclei -- ''
+            chains -- ''
+            extremities -- ''
             anti-clusters -- dictionary keyed to outlier objects, containing anti-clusters
 
+        Simulation:
+            simulate_space() -- Generates an entire fake embedding space with specified properties,
+                and returns it wrapped in a new analyst object.
+                NOTE: Includes cluster generation. No need to add to it.
+            simulate_cluster() -- Generates generic test clusters to compare with,
+                or to examine properties. Types listed in function comments.
+
         Analogical:
-            IMPORTANT!!! FILL IN!
-        
+            run_analogies() !!!CANT--UNKNOWN OUTPUT??!!!
+            member_of(object) -- displays cluster this object is a member of.
+            cluster([list of objects]) -- a new cluster composed solely of the given objects.
+            seeded_cluster([list of objects]) -- a new cluster composed of all nearby objects
+                likely to be clustered with these, if these were treated as being together.
+            inspect_clustering([list of objects]) -- analysis on given objects, returns:
+                - number of unique clusters these words are found across
+                - average ward dissimilarity of involved clusters
+                - list of tuples containing: (object, cluster_index)
+            circular_walk_graph(obj1, obj2) -- most useful in a normalized space, like word2vec.
     """
 
-    def __init__(self, embeddings, metric="cosine_similarity", encoder=None, decoder=None):
+    def __init__(self, embeddings, metric="cosine_similarity",
+        encoder=None, decoder=None, auto_print=True):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
-                Must have static indeces.
+                Must have static indeces. (ie: not a dict or set)
             metric -- the distance metric used throughout,
                 "l2" or "euclidean", "l1", "cosine_similarity",
                 or a function object. Defaults to "cosine_similarity".
             encoder -- a callable to convert strings to vectors.
             decoder -- a callable to convert vectors to strings.
+            auto -- whether to run analyses and print automatically.
         """
         self.space = embeddings
         if callable(metric): self.metric = metric
-        elif metric == "l2" or metric == "euclidean": self.metric = sp.distance.euclidean
+        elif metric == "l2" or metric == "euclidean":
+            self.metric = sp.distance.euclidean
         elif metric == "cosine_similarity": self.metric = sp.distance.cosine
         elif metric == "l1": self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
 
         # Encoder/Decoder Initializations:
-        #   While initializing these should theoretically be unnecessary,
+        #   While initializing these should, in theory, be unnecessary,
         #   failing to do so will limit all inputs to findable types.
         self.encode = encoder # string to vector
         self.decode = decoder # vector to string
@@ -186,41 +210,48 @@ class Analyst:
             for ix, s in enumerate(self.ix_to_s):
                 self.s_to_ix[s] = ix
         except: pass
-        
+
         # Run Analyses:
-        self.spatial_analysis()
-        self.cluster_analysis()
-        self.print_report()
+        self._spatial_analysis()
+        self._cluster_analysis()
+        if auto_print: self.print_report()
 
 
     # Generic type converters for inputs and outputs:
-    def index(self, obj):
+    def as_index(self, obj):
         if isinstance(obj, basestring): return self.s_to_ix[obj]
         try: return self.s_to_ix[self.decode(obj)]
         except: return int(obj)
 
-    def vector(self, obj):
+    def as_vector(self, obj):
         if isinstance(obj, basestring): return self.encode(obj)
         try: return self.space[obj]
         except: return obj
 
-    def string(self, obj):
+    def as_string(self, obj):
         if isinstance(obj, basestring): return obj
         try: return self.ix_to_s[obj]
         except: return self.decode(obj)
 
 
     # General Analyses:
-    def spatial_analysis(self):
-        pass
+    def _spatial_analysis(self):
+        self.centroid = np.mean(self.space, axis=0)
+        self.medoid = self.as_string(np.argmin([
+            self.metric(self.centroid, v) for v in self.space])]
+        self.dispersion = np.mean([self.metric(self.centroid, v)
+            for v in self.space], axis=0)
+        #NEAREST AND FURTHEST HERE!
+        self.density = ........
 
-    def cluster_analysis(self):
+    def _cluster_analysis(self):
         pass
 
     def print_report(self):
         pass
 
 
+    """
     # Specific Functions:
     def rescale(self, theta, alpha=15, power=0.5):
         ''' Rescales based on observed distribution of angles between words
@@ -228,7 +259,6 @@ class Analyst:
             Accepts theta in radians.'''
         return (0.5 + (math.atan((theta*180/np.pi - 90)/alpha)
                          / (2*math.atan(90/alpha))))**power
-
 
     def test_angles(self, n, alpha=15, power=0.5):
         dist = [self.rescale(self.s.angle(
@@ -242,3 +272,102 @@ class Analyst:
     #def scale_bimodal(self, theta):
     #    deg = theta*180/np.pi
     #    return 0.5 + (self.cbrt((deg-90)) / (2*self.cbrt(90)))
+    """
+
+
+    # Simulation:
+    @classmethod
+    def simulate_space(cls, parameters):
+        '''
+        parameters:
+            A list of lists, each of which follows the format:
+                ["space_type", "cluster_type", num_clusters, space_radius, space_dims
+                    (cluster_min_pop, cluster_max_pop),
+                    (cluster_min_radius, cluster_max_radius),
+                    cluster_occupied_dims, cluster_total_dims, randomize_dims,
+                    noise, normalize]
+
+                Types: (used for both cluster and space)
+                    "shell" (circle if occupied_dims==2)
+                    "ball"
+                    "radial" (like ball only random dir, radius instead of x,y,z,...
+                        concentrated in center)
+                    "cube" (random x,y,z,... but in plane or hypercube instead of ball)
+                    "even" (attempts amorphous semi-uniformity of distances btw. points)
+                    "grid" (attempts a gridlike uniformity)
+                    "pairs" (generates points in pairs of close proximity -- forces
+                        excessive node generation)
+                    "line" (generates points in lines)
+                    "snake" (generate points in curvy lines)
+                    "oval" (like radial, but randomly varies size of each axis within
+                        allowed radius sizes)
+                    "hierarchy" (attempts to recursively make closer and closer
+                        pairs of groupings.)
+
+            NOTE: Multiple lists in the parameters can be used to fill the space
+                    with varied types of data.
+                occupied dimensions must be <= total dimensions.
+                min_num <= max_num.
+                randomize_dims: boolean.
+                    If false, will use same set of dims for each cluster.
+                noise: a float; how much to randomly vary locations.
+                normalize: boolean. If true will afterward scale all vectors
+                    to unit length of 1, creating a hypersphere.
+
+        returns:
+            A new analyst object, and
+            A list of the clusters used to create the space before clustering was
+                recalculated, for comparison. This will be different if
+                clusters overlapped.
+        '''
+        pass
+        #note, need to make it create a generic identity function for encode/decode.
+        #   or use indeces.
+
+    @staticmethod
+    def simulate_cluster(type, population, radius, occupied_dims,
+        total_dims, randomize_dims=True, noise=0, normalize=False):
+        # Same usage as the cluster parameters in simulate_space().
+        # NOTE: when this function is called by simulate_space(), normalize
+        #   is never True here. That would be done after the fact,
+        #   on the whole simulated space, not on any one cluster.
+        pass
+
+
+    """
+    def cluster_analogy(self, A, B, C, AC_clustername, B_clustername,
+                        num_words=1, exclude=True):
+        ''' Follows form: A:B::C:D.
+            Assumes that we know which cluster each word comes from.'''
+        dist = self.s.get_angle(A, B)
+        A_tighter = (self.clusters[AC_clustername][1]
+                     <= self.clusters[B_clustername][1]
+        C_vec = self.s.get_vector(C)
+        dir_vec = self.clusters[AC_clustername][0] - C_vec
+        if A_tighter: dir_vec = -dir_vec
+        D_vec = self.s.yarax(C_vec, dir_vec, dist)
+        D_vec /= np.linalg.norm(D_vec)
+
+        if exclude:
+            if self.s.slim == True: # This branch other part of patch:
+                results = self.s.wordify(
+                    self.s.model.get_closest_words(D_vec, num_words+3))
+                trimmed = ([word for word in results[0]
+                            if word not in [A, B, C]],
+                           [results[1][i] for i in range(len(results[1]))
+                            if results[0][i] not in [A, B, C]])
+                return (np.array(trimmed[0][:num_words:]),
+                        np.array(trimmed[1][:num_words:]))
+            else: # This branch is the original return:
+                return self.s.wordify(self.s.model.get_closest_words_excluding(
+                    D_vec, [self.s.get_vector(A), self.s.get_vector(B), C_vec],
+                    num_words))
+        else: # The real original return...
+            return self.s.wordify(
+                self.s.model.get_closest_words(D_vec, num_words))
+
+    def divergence_analogy(self, A, B, C):
+        ''' Automatically tries to find clusters around A and B,
+            and then does a cluster analogy.'''
+        raise NotImplementedError("Function not implemented.")
+    """
