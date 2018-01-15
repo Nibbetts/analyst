@@ -95,7 +95,7 @@ class Cluster:
         #    for i, v in self.vectors]) / len(self.objects)
         if self.nearest != None: self.density = np.mean([self.metric(
             v, self.encoder(self.nearest(self.objects[i])))
-            for i, v in self.vectors], axis=0)
+            for i, v in enumerate(self.vectors)], axis=0)
         else: self.density = None
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
@@ -119,4 +119,3 @@ class Cluster:
 
     #def get_dispersion(self, cluster_name):
     #    return self.dispersion
-    

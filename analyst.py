@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
+import tqdm
 
 class Analyst:
     """
@@ -42,7 +43,7 @@ class Analyst:
             (those we started with only) and whose nearest is in the cluster.
         strong cluster: Same as cluster, but builds nuclei and clusters requiring
             objects to have both first and second nearest belonging to the same
-            grouping in order for them to be added.  
+            grouping in order for them to be added.
         center: average location of all objects in a cluster.
         string factor: average cluster span divided by space dispersion
         regularity: find average cluster pop, then find average difference btw.
@@ -76,7 +77,6 @@ class Analyst:
             * max, min extremity length  ---->  graph of distr. of extremity lengths
             avg extr. length  ------------/
             extr. length range  _________/
-            NOTE: all extremity measurements may be estimates from sampling.
 
         Clustering:
             NOTE: For each property of a cluster type, the following stats are available:
@@ -137,7 +137,7 @@ class Analyst:
 
             Strong Clusters:
                 Same info as for clusters.
-            
+
             Anti-clusters:
                 More or less the same information as for clusters,
                 but it WILL not mean the same things. Note that these clusters
@@ -190,26 +190,42 @@ class Analyst:
             decoder -- a callable to convert vectors to strings.
             auto -- whether to run analyses and print automatically.
         """
+
+        self._print("Stretching the Fabric of Space and Time")
+        self._print("Enumerating the Dimensions")
         self.space = embeddings
+        self._print("Laying the Laws of Physics")
         if callable(metric): self.metric = metric
         elif metric == "l2" or metric == "euclidean":
             self.metric = sp.distance.euclidean
         elif metric == "cosine_similarity": self.metric = sp.distance.cosine
         elif metric == "l1": self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
+        self.auto_print = auto_print
 
         # Encoder/Decoder Initializations:
         #   While initializing these should, in theory, be unnecessary,
         #   failing to do so will limit all inputs to findable types.
+        self._print("Filling the Void")
         self.encode = encoder # string to vector
         self.decode = decoder # vector to string
         self.s_to_ix = {}
         self.ix_to_s = []
         try:
-            self.ix_to_s = [self.decode(vec) for vec in self.space]
-            for ix, s in enumerate(self.ix_to_s):
+            self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
+                desc="Naming Stars and Drawing a Star Map",
+                disable=(not self.auto_print))]
+            for ix, s in enumerate(tqdm(self.ix_to_s, desc="Indexing Planets",
+                disable=(not self.auto_print))):
                 self.s_to_ix[s] = ix
         except: pass
+
+        self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
+            # Indeces correspond to indeces of vectors in the space. For each:
+            #   [index of nearest, index of second-nearest, index of furthest]
+            #   These are filled in in the _spatial_analysis.
+        self.neighbors_dist = np.zeros((len(self.space),3), dtype=np.float32)
+            # Same format as above, except distances to those indexed above.
 
         # Run Analyses:
         self._spatial_analysis()
@@ -234,18 +250,92 @@ class Analyst:
         except: return self.decode(obj)
 
 
+    # Nearest, 2nd-nearest, and futhest getters:
+    #   Each attempts to return the same type given
+    def nearest(self, obj):
+        i = self.neighbors[self.as_index(obj)][0]
+        if isinstance(obj, basestring): return self.ix_to_s[i]
+        try:
+            int(obj)
+            return i
+        except: return self.space[i]
+
+    def second_nearest(self, obj):
+        i = self.neighbors[self.as_index(obj)][1]
+        if isinstance(obj, basestring): return self.ix_to_s[i]
+        try:
+            int(obj)
+            return i
+        except: return self.space[i]
+
+    def furthest(self, obj):
+        i = self.neighbors[self.as_index(obj)][2]
+        if isinstance(obj, basestring): return self.ix_to_s[i]
+        try:
+            int(obj)
+            return i
+        except: return self.space[i]
+
+
     # General Analyses:
     def _spatial_analysis(self):
+
+        # Nearest and Futhest:
+        self._print("Ousting the Flatlanders")
+        if len(self.space) < 3:
+            self.neighbors = None
+        for i, vec in enumerate(tqdm(self.space), disable=(not self.auto_print),
+                                desc="Acquainting the Species"):
+            nearest_i = (0 if i != 0 else 1)
+            nearest_2i = (1 if i != 1 else 2)
+            nearest_dist = self.metric(vec, self.space(nearest_i))
+            nearest_2dist = self.metric(vec, self.space(nearest_2i))
+            if nearest_2dist < nearest_dist:
+                temp_i = nearest_i
+                temp_dist = nearest_dist
+                nearest_i = nearest_2i
+                nearest_2i = temp_i
+                nearest_dist = nearest_2dist
+                nearest_2dist = temp_dist
+            for j, other in enumerate(self.space):
+                if j != i:
+                    dist = self.metric(vec, other)
+                    if dist < nearest_dist:
+                        nearest_2dist = nearest_dist
+                        nearest_2i = nearest_i
+                        nearest_dist = dist
+                        nearest_i = j
+                    if dist > furthest_dist:
+                        furthest_dist = dist
+                        furthest_i = j
+            self.neighbors[i][0] = nearest_i
+            self.neighbors[i][1] = nearest_2i
+            self.neighbors[i][2] = furthest_i
+            self.neighbors_dist[i][0] = nearest_dist
+            self.neighbors_dist[i][1] = nearest_2dist
+            self.neighbors_dist[i][2] = furthest_dist
+
+        # Measurements:
+        self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
         self.medoid = self.as_string(np.argmin([
-            self.metric(self.centroid, v) for v in self.space])]
+            self.metric(self.centroid, v) for v in tqdm(self.space,
+                desc="Electing a Ruler", disable=(not self.auto_print))])]
         self.dispersion = np.mean([self.metric(self.centroid, v)
-            for v in self.space], axis=0)
-        #NEAREST AND FURTHEST HERE!
-        self.density = ........
+            for v in tqdm(self.space, desc="Measuring the Reaches",
+                disable=(not self.auto_print))], axis=0)
+        #self.density = np.mean(
+        #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
+        #     for i, v in self.vectors])
+        self._print("Building Trade Routes")
+        self.density = np.mean(self.neighbors_dist[:,0])
 
     def _cluster_analysis(self):
         pass
+
+
+    def _print(self, string):
+        if self.auto_print: print(string)
 
     def print_report(self):
         pass

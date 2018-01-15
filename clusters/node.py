@@ -22,9 +22,9 @@ class Node:
     def __str__(self):
         return "Node(" + str(self.a) + ", " + str(self.b) + ")"
 
-    # This function exists to allow the creation of nodes of nodes;
+    # This function exists to allow the creation of nodes of nodes - supernodes;
     #   Where get_centroid becomes the encoder passed in.
-    #   i.e: supernode_1 = Node(node_1, node_2, Node.get_centroid, node_1.metric)
+    #   ie: supernode_1 = Node(node_1, node_2, Node.get_centroid, node_1.metric)
     @staticmethod
     def get_centroid(node):
         return node.centroid
