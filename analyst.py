@@ -191,6 +191,7 @@ class Analyst:
             auto -- whether to run analyses and print automatically.
         """
 
+        self._print()
         self._print("Stretching the Fabric of Space and Time")
         self._print("Enumerating the Dimensions")
         self.space = embeddings
@@ -334,14 +335,13 @@ class Analyst:
         pass
 
 
-    def _print(self, string):
+    def _print(self, string=""):
         if self.auto_print: print(string)
 
     def print_report(self):
         pass
 
 
-    """
     # Specific Functions:
     def rescale(self, theta, alpha=15, power=0.5):
         ''' Rescales based on observed distribution of angles between words

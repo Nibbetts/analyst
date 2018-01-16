@@ -40,3 +40,15 @@ wordalysis
 embedology
 vectorology
 vectoralysis
+
+
+
+def shift(string, k=1):
+    # Usefuls start at 32 and end at 126. So mod by 127-32=95.
+    s = ""
+    for c in string:
+        n = ord(c)
+        if n >= 32 and n <= 126:
+            s += chr((n-32 + k) % 95 + 32)
+        else: s += c
+    return s
