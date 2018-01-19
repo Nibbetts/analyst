@@ -4,7 +4,8 @@ class Node:
         """
         Parameters:
             a, b -- anything encodable.
-            encoder -- callable with return of a numpy array (or will break at centroid calculation)
+            encoder -- callable with return of a numpy array
+                (else will break at centroid calculation)
             metric -- callable with return of a scalar
         """
         self.a = a
@@ -13,6 +14,10 @@ class Node:
         vec_b = encoder(b)
         self.distance = metric(vec_a, vec_b)
         self.centroid = (vec_a + vec_b) / 2.0
+
+    def __eq__(self, r_node):
+        return ((self.a == r_node.a and self.b == r_node.b) or
+                (self.b == r_node.a and self.a == r_node.b))
 
     def __getitem__(self, index):
         if index == 0: return self.a

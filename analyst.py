@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
-import tqdm
+from tqdm import tqdm
 
 class Analyst:
     """
@@ -18,38 +18,41 @@ class Analyst:
 
 
     Definitions:
-        node: a pair of objects in the space whose nearest neighbors are each other.
+        node: a pair of obj in the space whose nearest neighbors are each other.
         supernode: a pair of nodes whose nearest neighbor-nodes are each other.
-        extremity: a pair of objects in the space whose furthest neighbors are each other.
-            (implemented with the same Node class as nodes are.)
+        extremity: a pair of objects in the space whose furthest neighbors are
+            each other. (implemented with the same Node class as nodes are.)
         outlier: an object which is a member of an extremity.
         loner: an object which has been rejected when forming clusters,
             making it a cluster unto itself, of sorts.
-        hub: an object that is the nearest neigbor of three or more other objects.
+        hub: an obj that is the nearest neigbor of three or more other objects.
         nodal factor: ratio of words belonging to nodes;
             a measure of the scale or impact of relationships in the space
         hierarchical factor: ratio of nodes belonging to supernodes;
             a further measure of relationships in the space.
         island factor: ratio of objects belonging to supernodes;
             another measure of relationships in the space.
-        nucleus: grouping of relatively nearby objects. Starting with nodes and all
-            objects whose nearest are one of those, then finding average distance
-            to center, then combining all clusters whose central nodes are closer than
-            one of their averages.
-        chain: different clustering where each cluster has a sole node and recursively
-            finds all whose nearest's nearest's etc. nearest is a member of that node.
+        nucleus: grouping of relatively nearby objects. Starting with nodes and
+            all obj whose nearest are one of those, then finding average dist
+            to center, then combining all clusters whose central nodes are
+            closer than one of their averages.
+        chain: different clustering where each cluster has a sole node and
+            recursively finds all whose nearest's nearest's etc. nearest is a
+            member of that node.
         cluster: Find nuclei, then add chainable objects whose nearest is closer
-            than the average distance of those whose nearest are in one of the nodes,
+            than the avg dist of those whose nearest are in one of the nodes,
             (those we started with only) and whose nearest is in the cluster.
-        strong cluster: Same as cluster, but builds nuclei and clusters requiring
-            objects to have both first and second nearest belonging to the same
-            grouping in order for them to be added.
+        strong cluster: Same as cluster, but builds nuclei and clusters
+            requiring objects to have both first and second nearest belonging to
+            the same grouping in order for them to be added.
         center: average location of all objects in a cluster.
         string factor: average cluster span divided by space dispersion
         regularity: find average cluster pop, then find average difference btw.
             cluster pop and average cluster pop. Regularity is 1/(1+this)
-        density: average distance of nodes to their nearest neighbor.
-        dispersion: average distance of nodes to the center of their distribution
+        density: as used here, avg distance of nodes to their nearest neighbor.
+            This is not a measure of spatial or volumentric density at all,
+            but is rather a metric for relationships between encoded objects.
+        dispersion: avg distance of nodes to the center of their distribution
         focus: averaged location of nodes in a cluster; concentration center.
         skew: distance from focus to center.
         anti-cluster: list of objects whose furthest are all the same outlier.
@@ -68,18 +71,20 @@ class Analyst:
 
             * dispersion
 
-            * density -- avg dist. to nearest --> graph of distr. of dist. to nearest
-            min, max dist. to nearest  -------/
-            range of distances to nearest  __/
+            * density -- avg dist to nearest-->graph of distr of dist to nearest
+            min, max dist. to nearest  -----/
+            range of distances to nearest _/
 
-            * (num extremities -- probably depends strongly on dimensionality,
-                but shows the spherical-ness of the distribution in the space)
-            * max, min extremity length  ---->  graph of distr. of extremity lengths
-            avg extr. length  ------------/
-            extr. length range  _________/
+            Extremities:
+                * (num extremities -- probably depends strongly on
+                    dimensionality, but shows the spherical-ness of the
+                    distribution in the space)
+                * max, min extremity length --->graph of distr of extr lengths
+                avg extr. length  ----------/
+                extr. length range  _______/
 
         Clustering:
-            NOTE: For each property of a cluster type, the following stats are available:
+            NOTE: For each property of a cluster type, available stats are:
                 avg, min, max, range, distribution graph of.
 
             Nodes:
@@ -130,7 +135,7 @@ class Analyst:
                 * cluster dispersion factor -- avg. cluster disp. / space disp,
                     (cluster dispersion stats)
                 * avg num nodes per cluster, node count stats
-                * cluster density factor -- avg. cluster density / space density,
+                * cluster density factor -- avg cluster density / space density,
                     (cluster density stats)
                 * cluster skew factor -- avg. cluster skew / space dispersion,
                     (cluster skew stats)
@@ -144,37 +149,52 @@ class Analyst:
                 DO NOT include the word that is their farthest neighbor.
 
         Specifics / Inspection:
-            rank_outliers() -- by number of obj. for which this one is furthest neighbor.
-                Resulting list contains exactly all objects which are members of an extremity.
+            rank_outliers() -- by number of obj. for which this one is furthest
+                neighbor. Resulting list contains exactly all objects which are
+                members of an extremity.
             rank_clusters() -- by size; lists the indeces of the clusters.
-            rank_hubs() -- by number of obj. for which this one is nearest neighbor.
-            * clusters -- accessible variable; a list of the clusters. Further info in each.
+            rank_hubs() -- by num of obj for which this one is nearest neighbor.
+            * clusters -- accessible variable; a list of the clusters.
+                Further info is available in the internal vars of each cluster.
             * strong clusters -- ''
             nodes -- ''
             supernodes -- ''
             nuclei -- ''
             chains -- ''
             extremities -- ''
-            anti-clusters -- dictionary keyed to outlier objects, containing anti-clusters
+            anti-clusters -- dictionary keyed to outlier objects,
+                containing anti-clusters.
 
         Simulation:
-            simulate_space() -- Generates an entire fake embedding space with specified properties,
-                and returns it wrapped in a new analyst object.
+            Analyst.simulate_space() -- @staticmethod which generates an entire
+                fake embedding space with the specified properties,
+                and returns it wrapped in a new analyst.
                 NOTE: Includes cluster generation. No need to add to it.
-            simulate_cluster() -- Generates generic test clusters to compare with,
-                or to examine properties. Types listed in function comments.
+            Analyst.simulate_cluster() -- @staticmethod which generates generic
+                test clusters to compare with, or to examine properties.
+                Available cluster types listed in function comments.
 
         Analogical:
             run_analogies() !!!CANT--UNKNOWN OUTPUT??!!!
             member_of(object) -- displays cluster this object is a member of.
-            cluster([list of objects]) -- a new cluster composed solely of the given objects.
-            seeded_cluster([list of objects]) -- a new cluster composed of all nearby objects
-                likely to be clustered with these, if these were treated as being together.
-            inspect_clustering([list of objects]) -- analysis on given objects, returns:
+            cluster([list of objects]) -- a new cluster composed solely of the
+                given objects.
+            seeded_cluster([list of objects]) -- a new cluster composed of all
+                nearby objects likely to be clustered with these, if these were
+                treated as being together.
+            inspect_clustering([list of objects]) -- analysis on given objects,
+                Returns:
                 - number of unique clusters these words are found across
                 - average ward dissimilarity of involved clusters
                 - list of tuples containing: (object, cluster_index)
-            circular_walk_graph(obj1, obj2) -- most useful in a normalized space, like word2vec.
+            circular_walk_graph(obj1, obj2) -- most useful in a normalized
+                space, like word2vec.
+
+        Comparative:
+            compare_with(analyst2) -- prints a full report with three numbers
+                for each property instead of one - val_for_A, val_for_B, val_A-B
+            Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
+                side by side the values for each analyst in the list.
     """
 
     def __init__(self, embeddings, metric="cosine_similarity",
@@ -188,7 +208,7 @@ class Analyst:
                 or a function object. Defaults to "cosine_similarity".
             encoder -- a callable to convert strings to vectors.
             decoder -- a callable to convert vectors to strings.
-            auto -- whether to run analyses and print automatically.
+            auto_print -- whether to print reports automatically after analyses.
         """
 
         self._print()
@@ -289,15 +309,19 @@ class Analyst:
                                 desc="Acquainting the Species"):
             nearest_i = (0 if i != 0 else 1)
             nearest_2i = (1 if i != 1 else 2)
+            furthest_i = (1 if i != 1 else 2)
             nearest_dist = self.metric(vec, self.space(nearest_i))
             nearest_2dist = self.metric(vec, self.space(nearest_2i))
+            furthest_dist = self.metric(vec, self.space(furthest_i))
             if nearest_2dist < nearest_dist:
                 temp_i = nearest_i
                 temp_dist = nearest_dist
                 nearest_i = nearest_2i
                 nearest_2i = temp_i
+                furthest_i = temp_i
                 nearest_dist = nearest_2dist
                 nearest_2dist = temp_dist
+                furthest_dist = temp_dist
             for j, other in enumerate(self.space):
                 if j != i:
                     dist = self.metric(vec, other)
@@ -321,27 +345,70 @@ class Analyst:
         self.centroid = np.mean(self.space, axis=0)
         self.medoid = self.as_string(np.argmin([
             self.metric(self.centroid, v) for v in tqdm(self.space,
-                desc="Electing a Ruler", disable=(not self.auto_print))])]
+                desc="Electing a Ruler", disable=(not self.auto_print))]))
         self.dispersion = np.mean([self.metric(self.centroid, v)
-            for v in tqdm(self.space, desc="Measuring the Reaches",
+            for v in tqdm(self.space, desc="Counting the Lightyears",
                 disable=(not self.auto_print))], axis=0)
         #self.density = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
         self._print("Building Trade Routes")
         self.density = np.mean(self.neighbors_dist[:,0])
+        self._print("Practicing Diplomacy")
+        self.nearest_max = np.max(self.neighbors_dist[:,0])
+        self.nearest_min = np.min(self.neighbors_dist[:,0])
+        self.nearest_range = self.nearest_max - self.nearest_min
 
+        # Extremities:
+        self.extremities = [
+            Node(self.as_string(i), self.as_string(self.neighbors[i][2])
+            for i in tqdm(range(len(self.space)),
+                desc="Measuring the Reaches",
+                disable=(not self.auto_print))
+            if (i == self.neighbors[self.neighbors[i][2]][2]
+                and i < self.neighbors[i][2])]
+        self.extremity_lengths = [len(e) for e in tqdm(self.extremities,
+            desc="Setting the scopes",
+            disable=(not self.auto_print))]
+        self._print("Puzzling Over the Star Charts")
+        self.extremity_max = np.max(self.extremity_lengths)
+        self.extremity_min = np.min(self.extremity_lengths)
+        self.extremity_avg = np.mean(self.extremity_lengths)
+        self.extremity_range = self.extremity_max - self.extremity_min
+        
+        # Nodes:
+        self.nodes = [
+            Node(self.as_string(i), self.as_string(self.neighbors[i][0])
+            for i in tqdm(range(len(self.space)),
+                desc="Watching the Galaxies Coelesce",
+                disable=(not self.auto_print))
+            if (i == self.neighbors[self.neighbors[i][0]][0]
+                and i < self.neighbors[i][0])]
+        self.node_lengths = [len(n) for n in tqdm(self.nodes,
+            desc="Delineating the Quasars",
+            disable=(not self.auto_print))]
+        self._print("Comparing the Cosmos")
+        self.node_max = np.max(self.node_lengths)
+        self.node_min = np.min(self.node_lengths)
+        self.node_avg = np.mean(self.node_lengths)
+        self.node_range = self.node_max - self.node_min
+        
+        
     def _cluster_analysis(self):
         pass
 
+
+    def _add_info(self, var, description, category):
+        
 
     def _print(self, string=""):
         if self.auto_print: print(string)
 
     def print_report(self):
-        pass
+        self._print("Revealing the Grand Plan")
 
 
+    """
     # Specific Functions:
     def rescale(self, theta, alpha=15, power=0.5):
         ''' Rescales based on observed distribution of angles between words
@@ -371,8 +438,8 @@ class Analyst:
         '''
         parameters:
             A list of lists, each of which follows the format:
-                ["space_type", "cluster_type", num_clusters, space_radius, space_dims
-                    (cluster_min_pop, cluster_max_pop),
+                ["space_type", "cluster_type", num_clusters, space_radius,
+                    space_dims (cluster_min_pop, cluster_max_pop),
                     (cluster_min_radius, cluster_max_radius),
                     cluster_occupied_dims, cluster_total_dims, randomize_dims,
                     noise, normalize]
@@ -380,17 +447,19 @@ class Analyst:
                 Types: (used for both cluster and space)
                     "shell" (circle if occupied_dims==2)
                     "ball"
-                    "radial" (like ball only random dir, radius instead of x,y,z,...
-                        concentrated in center)
-                    "cube" (random x,y,z,... but in plane or hypercube instead of ball)
-                    "even" (attempts amorphous semi-uniformity of distances btw. points)
+                    "radial" (like ball only random direction and radius instead
+                        of x,y,z,... Ends up concentrated in center.)
+                    "cube" (random x,y,z,... but in plane or hypercube instead
+                        of ball)
+                    "even" (attempts amorphous semi-uniformity of distances btw.
+                        points)
                     "grid" (attempts a gridlike uniformity)
-                    "pairs" (generates points in pairs of close proximity -- forces
-                        excessive node generation)
+                    "pairs" (generates points in pairs of close proximity --
+                        forces excessive node generation)
                     "line" (generates points in lines)
                     "snake" (generate points in curvy lines)
-                    "oval" (like radial, but randomly varies size of each axis within
-                        allowed radius sizes)
+                    "oval" (like radial, but randomly varies size of each axis
+                        within allowed radius sizes)
                     "hierarchy" (attempts to recursively make closer and closer
                         pairs of groupings.)
 
@@ -406,13 +475,13 @@ class Analyst:
 
         returns:
             A new analyst object, and
-            A list of the clusters used to create the space before clustering was
-                recalculated, for comparison. This will be different if
+            A list of the clusters used to create the space before clustering
+                was recalculated, for comparison. This will be different if
                 clusters overlapped.
         '''
         pass
-        #note, need to make it create a generic identity function for encode/decode.
-        #   or use indeces.
+        #note, need to make it create a generic identity function for
+        #   encode/decode. or use indeces.
 
     @staticmethod
     def simulate_cluster(type, population, radius, occupied_dims,

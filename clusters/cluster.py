@@ -9,13 +9,16 @@ class Cluster:
         Parameters:
             encoder: callable; gets one vector from one object at a time.
             metric:  callable; distance metric between multidimensional vectors.
-            nearest: callable; takes object and returns its nearest neighbor object.
-                If unavailable, the only difference is density will be unavailable
+            nearest: callable; takes obj and returns its nearest neighbor obj.
+                If unavailable, only difference is density will be unavailable.
             objects: a list of unencoded objects in an embedding space,
                 including those which are members of the given nodes.
-            nodes: a list of Nodes, which each contain a pair of objects and have a centroid.
-            auto: if true, calculates automatically after creation and after each addition.
-            id: only for convenience in identifying clusters when printed or grouped externally.
+            nodes: a list of Nodes, which each contains a pair of objects and
+                has a centroid.
+            auto: if true, calculates automatically after creation and after
+                each addition.
+            id: only for convenience in identifying clusters when printed or
+                grouped externally.
         """
         self.ID = ID
         self.objects = objects
