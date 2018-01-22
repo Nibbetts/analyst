@@ -2,6 +2,9 @@ import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import pickle
+import os
+
 
 class Analyst:
     """
@@ -65,23 +68,31 @@ class Analyst:
             These could be seen as specific information.
         NOTE: Those properties with a * are of most import in measuring a space.
 
+        General:
+            NOTE: These are all static methods.
+            Analyst.save(obj, path) -- Returns True if successful.
+                General use case is for an already-processed analyst object,
+                but should work on most objects in most cases.
+                Will overwrite files with the same name.
+                Detects/automatically adds .pickle extensions.
+            Analyst.load(path) -- returns unpickled object, or None if failed.
+            Analyst.unsave(path) -- deletes a saved file. Rtrns True if success.
+
         Spatial:
             * centroid
             medoid
 
             * dispersion
 
-            * density -- avg dist to nearest-->graph of distr of dist to nearest
-            min, max dist. to nearest  -----/
-            range of distances to nearest _/
+            * density -- avg dist to nearest
+            dist. to nearest min, max, range, graph of distribution of.
 
             Extremities:
                 * (num extremities -- probably depends strongly on
                     dimensionality, but shows the spherical-ness of the
                     distribution in the space)
-                * max, min extremity length --->graph of distr of extr lengths
-                avg extr. length  ----------/
-                extr. length range  _______/
+                * max, min extremity length
+                extremity length avg, range, graph of distr.
 
         Clustering:
             NOTE: For each property of a cluster type, available stats are:
@@ -198,7 +209,7 @@ class Analyst:
     """
 
     def __init__(self, embeddings, metric="cosine_similarity",
-        encoder=None, decoder=None, auto_print=True):
+        encoder=None, decoder=None, auto_print=True, desc=None):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -209,6 +220,7 @@ class Analyst:
             encoder -- a callable to convert strings to vectors.
             decoder -- a callable to convert vectors to strings.
             auto_print -- whether to print reports automatically after analyses.
+            desc -- optional short description/title for this analyst instance.
         """
 
         self._print()
@@ -223,6 +235,7 @@ class Analyst:
         elif metric == "l1": self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
         self.auto_print = auto_print
+        self.description = desc 
 
         # Encoder/Decoder Initializations:
         #   While initializing these should, in theory, be unnecessary,
@@ -249,6 +262,8 @@ class Analyst:
             # Same format as above, except distances to those indexed above.
 
         # Run Analyses:
+        self.categories = []
+        self.category_lists = []
         self._spatial_analysis()
         self._cluster_analysis()
         if auto_print: self.print_report()
@@ -397,15 +412,27 @@ class Analyst:
     def _cluster_analysis(self):
         pass
 
-
     def _add_info(self, var, description, category):
-        
+        # Description and category must be strings.
+        try:
+            i = self.categories.index(category)
+        except:
+            i = len(self.categories)
+            self.categories.append(category)
+            self.category_lists.append([])
+        self.category_lists[i].append((description, var))
 
     def _print(self, string=""):
         if self.auto_print: print(string)
 
     def print_report(self):
         self._print("Revealing the Grand Plan")
+        if self.description != None: print(self.description.upper())
+        for i, category in enumerate(self.categories):
+            print(category + ": ")
+            for j in self.category_lists[i]:
+                print("\t" + self.category_lists[i][j][1] +
+                    "\t" + self.category_lists[i][j][0])
 
 
     """
@@ -491,6 +518,38 @@ class Analyst:
         #   is never True here. That would be done after the fact,
         #   on the whole simulated space, not on any one cluster.
         pass
+
+
+    # General:
+    @staticmethod
+    def _file_extension(f_name):
+        return f_name if f_name[-7:] == ".pickle" else f_name + ".pickle"
+
+    @staticmethod
+    def save(obj, f_name):
+        try:
+            with open(Analyst._file_extension(f_name), 'wb') as file:
+                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
+            return True
+        except:
+            return False
+
+    @staticmethod
+    def load(f_name):
+        try:
+            with open(Analyst._file_extension(f_name), 'rb') as file:
+                return pickle.load(file)
+        except:
+            return None
+
+    @staticmethod
+    def unsave(f_name):
+        try:
+            os.remove(Analyst._file_extension(f_name))
+            return True
+        except:
+            return False
+
 
 
     """
