@@ -28,7 +28,7 @@ class Analyst:
         outlier: an object which is a member of an extremity.
         loner: an object which has been rejected when forming clusters,
             making it a cluster unto itself, of sorts.
-        hub: an obj that is the nearest neigbor of three or more other objects.
+        hub: an obj that is the nearest neigbor of three or more other objects. //DO SOMETHING!!
         nodal factor: ratio of words belonging to nodes;
             a measure of the scale or impact of relationships in the space
         hierarchical factor: ratio of nodes belonging to supernodes;
@@ -48,17 +48,25 @@ class Analyst:
         strong cluster: Same as cluster, but builds nuclei and clusters
             requiring objects to have both first and second nearest belonging to
             the same grouping in order for them to be added.
+        unpartitioned clusters: strong clusters, except we find all contingent
+            clusters, and add all objects from those that are closer than own
+            dispersion (avg obj dist from centroid). //MAY CHANGE - USE A DROPOFF DISTANCE DEPENDING ON MAX DIST OF OBJECTS IN NUCLEUS?
         center: average location of all objects in a cluster.
         string factor: average cluster span divided by space dispersion
         regularity: find average cluster pop, then find average difference btw.
             cluster pop and average cluster pop. Regularity is 1/(1+this)
-        density: as used here, avg distance of nodes to their nearest neighbor.
-            This is not a measure of spatial or volumentric density at all,
-            but is rather a metric for relationships between encoded objects.
+        proximity: as used here, 1 / avg distance of nodes to their nearest
+            neighbors. This is not a measure of spatial or volumentric density,
+            but is a metric for relationships between encoded objects,
+            and thus could potentially be used as a density metric.
         dispersion: avg distance of nodes to the center of their distribution
         focus: averaged location of nodes in a cluster; concentration center.
         skew: distance from focus to center.
         anti-cluster: list of objects whose furthest are all the same outlier.
+        contingent cluster: other clusters whose centroid is closer than own //ADD STUFF!!
+            dispersion, to which self is closer than other's dispersion.
+        contingency: distance from a cluster to its nearest neighbor // ADD STUFF!
+            cluster, minus its own dispersion
 
 
     Tools:
@@ -84,25 +92,24 @@ class Analyst:
 
             * dispersion
 
-            * density -- avg dist to nearest
-            dist. to nearest min, max, range, graph of distribution of.
+            * proximity -- 1 / avg dist to nearest
+            dist. to nearest avg, min, max, range, graph of distribution of.
 
             Extremities:
                 * (num extremities -- probably depends strongly on
                     dimensionality, but shows the spherical-ness of the
                     distribution in the space)
-                * max, min extremity length
-                extremity length avg, range, graph of distr.
-
-        Clustering:
-            NOTE: For each property of a cluster type, available stats are:
-                avg, min, max, range, distribution graph of.
+                extremity length avg, * min, * max, range, graph of distr.
 
             Nodes:
                 (num nodes)
                 * nodal factor
-                node length stats
+                node length avg, min, max, range, graph of distr.
                 * alignment factor
+
+        Clustering:
+            NOTE: For each property of a cluster type, available stats are:
+                avg, min, max, range, distribution graph of.
 
             Supernodes:
                 (num supernodes)
@@ -120,8 +127,9 @@ class Analyst:
                 nucleus dispersion factor -- avg. nucleus disp. / space disp,
                     (nucleus dispersion stats)
                 node count stats
-                nucleus density factor -- avg. nucleus density / space density,
-                    (nucleus density stats)
+                nucleus proximity factor -- avg. nucleus proximity divided by
+                    overall space proximity,
+                    (nucleus proximity stats)
                 nucleus skew factor, (nucleus skew stats)
 
             Chains:
@@ -130,8 +138,8 @@ class Analyst:
                     (chain span stats)
                 chain dispersion factor -- avg. chain disp. / space disp,
                     (chain dispersion stats)
-                chain density factor -- avg. chain density / space density,
-                    (chain density stats)
+                chain proximity factor -- avg. chain proximity / overall space
+                    proximity, (chain proximity stats)
                 chain skew factor, (chain skew stats)
                 NOTE: num chains is equal to num nodes
                 NOTE: all objects in the space belong to a chain
@@ -146,8 +154,8 @@ class Analyst:
                 * cluster dispersion factor -- avg. cluster disp. / space disp,
                     (cluster dispersion stats)
                 * avg num nodes per cluster, node count stats
-                * cluster density factor -- avg cluster density / space density,
-                    (cluster density stats)
+                * cluster proximity factor -- avg cluster proximity / overall
+                    space proximity, (cluster proximity stats)
                 * cluster skew factor -- avg. cluster skew / space dispersion,
                     (cluster skew stats)
 
@@ -165,6 +173,7 @@ class Analyst:
                 members of an extremity.
             rank_clusters() -- by size; lists the indeces of the clusters.
             rank_hubs() -- by num of obj for which this one is nearest neighbor.
+            centroid -- accessible vector; can be used externally.
             * clusters -- accessible variable; a list of the clusters.
                 Further info is available in the internal vars of each cluster.
             * strong clusters -- ''
@@ -315,11 +324,11 @@ class Analyst:
 
     # General Analyses:
     def _spatial_analysis(self):
-
+        
         # Nearest and Futhest:
-        self._print("Ousting the Flatlanders")
+        self._print("Ousting Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 3:
-            self.neighbors = None
+            return
         for i, vec in enumerate(tqdm(self.space), disable=(not self.auto_print),
                                 desc="Acquainting the Species"):
             nearest_i = (0 if i != 0 else 1)
@@ -358,25 +367,40 @@ class Analyst:
         # Measurements:
         self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
-        self.medoid = self.as_string(np.argmin([
+        #self._add_info(self.centroid,
+        #    "Spatial", "Centroid - Coordinate Avg")
+        self._add_info(self.as_string(np.argmin([
             self.metric(self.centroid, v) for v in tqdm(self.space,
-                desc="Electing a Ruler", disable=(not self.auto_print))]))
-        self.dispersion = np.mean([self.metric(self.centroid, v)
+                desc="Electing a Ruler", disable=(not self.auto_print))])),
+            "Spatial", "Medoid - Obj Nearest to Centroid")
+        self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
-                disable=(not self.auto_print))], axis=0)
-        #self.density = np.mean(
+                disable=(not self.auto_print))]
+        self._add_info(np.mean(self.centroid_dist, axis=0),
+            "Spatial", "Dispersion - Centroid Dist Avg")
+        centr_min = np.min(self.centroid_dist, axis=0)
+        centr_max = np.max(self.centroid_dist, axis=0)
+        self._add_info(centr_min, "Spatial", "             Centroid Dist Min")
+        self._add_info(centr_max, "Spatial", "             Centroid Dist Max")
+        self._add_info(centr_max - centr_min,
+            "Spatial", "             Centroid Dist Range")
+        #self.proximity = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
         self._print("Building Trade Routes")
-        self.density = np.mean(self.neighbors_dist[:,0])
+        nearest_avg = np.mean(self.neighbors_dist[:,0])
+        self._add_info(1.0 / nearest_avg, "Spatial", "Proximity")
+        self._add_info(nearest_avg, "Spatial", "Nearest Dist Avg")
         self._print("Practicing Diplomacy")
-        self.nearest_max = np.max(self.neighbors_dist[:,0])
-        self.nearest_min = np.min(self.neighbors_dist[:,0])
-        self.nearest_range = self.nearest_max - self.nearest_min
+        nearest_min = np.min(self.neighbors_dist[:,0])
+        nearest_max = np.max(self.neighbors_dist[:,0])
+        self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
+        self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
+        self._add_info(nearest_max-nearest_min, "Spatial", "Nearest Dist Range")
 
         # Extremities:
         self.extremities = [
-            Node(self.as_string(i), self.as_string(self.neighbors[i][2])
+            Node(self.as_string(i), self.as_string(self.neighbors[i][2]))
             for i in tqdm(range(len(self.space)),
                 desc="Measuring the Reaches",
                 disable=(not self.auto_print))
@@ -386,14 +410,18 @@ class Analyst:
             desc="Setting the scopes",
             disable=(not self.auto_print))]
         self._print("Puzzling Over the Star Charts")
-        self.extremity_max = np.max(self.extremity_lengths)
-        self.extremity_min = np.min(self.extremity_lengths)
-        self.extremity_avg = np.mean(self.extremity_lengths)
-        self.extremity_range = self.extremity_max - self.extremity_min
+        self._add_info(len(self.extremities), "Spatial", "Extremity Count")
+        extr_min = np.min(self.extremity_lenghts)
+        extr_max = np.max(self.extremity_lengths)
+        self._add_info(np.mean(self.extremity_lengths),
+        self._add_info(extr_min, "Spatial", "Extremity Span Min")
+        self._add_info(extr_max, "Spatial", "Extremity Span Max")
+            "Spatial", "Extremity Span Avg")
+        self._add_info(extr_max - extr_min, "Spatial", "Extremity Span Range")
         
         # Nodes:
         self.nodes = [
-            Node(self.as_string(i), self.as_string(self.neighbors[i][0])
+            Node(self.as_string(i), self.as_string(self.neighbors[i][0]))
             for i in tqdm(range(len(self.space)),
                 desc="Watching the Galaxies Coelesce",
                 disable=(not self.auto_print))
@@ -403,16 +431,23 @@ class Analyst:
             desc="Delineating the Quasars",
             disable=(not self.auto_print))]
         self._print("Comparing the Cosmos")
-        self.node_max = np.max(self.node_lengths)
-        self.node_min = np.min(self.node_lengths)
-        self.node_avg = np.mean(self.node_lengths)
-        self.node_range = self.node_max - self.node_min
+        self._add_info(len(self.nodes), "Spatial", "Node Count")
+        node_min = np.min(self.node_lengths)
+        node_max = np.max(self.node_lengths)
+        self._add_info(np.mean(self.node_lengths), "Spatial", "Node Span Avg")
+        self._add_info(node_min, "Spatial", "Node Span Min")
+        self._add_info(node_max, "Spatial", "Node Span Max")
+        self._add_info(node_max - node_min, "Spatial", "Node Span Range")
+        self._add_info(len(self.nodes)*2.0/float(len(self.space)),
+            "Spatial", "Nodal Factor")
+        self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
+        ???HUBS???
         
         
     def _cluster_analysis(self):
         pass
 
-    def _add_info(self, var, description, category):
+    def _add_info(self, var, category, description):
         # Description and category must be strings.
         try:
             i = self.categories.index(category)
