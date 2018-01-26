@@ -32,6 +32,8 @@ class Node:
         elif index == 1: return self.b
         else: raise ValueError("Index out of bounds of Node")
 
+    # __len__ not defined so as not to confuse, because cannot return float.
+
     def __str__(self):
         return "Node(" + str(self.a) + ", " + str(self.b) + ")"
 

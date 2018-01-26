@@ -5,6 +5,8 @@ from tqdm import tqdm
 import pickle
 import os
 
+import clusters
+
 
 class Analyst:
     """
@@ -236,6 +238,7 @@ class Analyst:
             desc -- optional short description/title for this analyst instance.
         """
 
+        self.auto_print = auto_print
         self._print()
         self._print("Stretching the Fabric of Space and Time")
         self._print("Enumerating the Dimensions")
@@ -247,7 +250,6 @@ class Analyst:
         elif metric == "cosine_similarity": self.metric = sp.distance.cosine
         elif metric == "l1": self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
-        self.auto_print = auto_print
         self.description = desc 
 
         # Encoder/Decoder Initializations:
@@ -334,14 +336,14 @@ class Analyst:
         self._print("Ousting Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 3:
             return
-        for i, vec in enumerate(tqdm(self.space), disable=(not self.auto_print),
-                                desc="Acquainting the Species"):
+        for i, vec in enumerate(tqdm(self.space, disable=(not self.auto_print),
+                                desc="Acquainting the Species")):
             nearest_i = (0 if i != 0 else 1)
             nearest_2i = (1 if i != 1 else 2)
             furthest_i = (1 if i != 1 else 2)
-            nearest_dist = self.metric(vec, self.space(nearest_i))
-            nearest_2dist = self.metric(vec, self.space(nearest_2i))
-            furthest_dist = self.metric(vec, self.space(furthest_i))
+            nearest_dist = self.metric(vec, self.space[nearest_i])
+            nearest_2dist = self.metric(vec, self.space[nearest_2i])
+            furthest_dist = self.metric(vec, self.space[furthest_i])
             if nearest_2dist < nearest_dist:
                 temp_i = nearest_i
                 temp_dist = nearest_dist
@@ -405,18 +407,20 @@ class Analyst:
 
         # Extremities:
         self.extremities = [
-            Node(self.as_string(i), self.as_string(self.neighbors[i][2]))
+            clusters.Node(self.as_string(i),
+                self.as_string(self.neighbors[i][2]),
+                self.encode, self.metric)
             for i in tqdm(range(len(self.space)),
                 desc="Measuring the Reaches",
                 disable=(not self.auto_print))
             if (i == self.neighbors[self.neighbors[i][2]][2]
                 and i < self.neighbors[i][2])]
-        self.extremity_lengths = [len(e) for e in tqdm(self.extremities,
+        self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
             desc="Setting the scopes",
             disable=(not self.auto_print))]
         self._print("Puzzling Over the Star Charts")
         self._add_info(len(self.extremities), "Spatial", "Extremity Count")
-        extr_min = np.min(self.extremity_lenghts)
+        extr_min = np.min(self.extremity_lengths)
         extr_max = np.max(self.extremity_lengths)
         self._add_info(np.mean(self.extremity_lengths),
             "Spatial", "Extremity Span Avg")
@@ -426,13 +430,15 @@ class Analyst:
         
         # Nodes:
         self.nodes = [
-            Node(self.as_string(i), self.as_string(self.neighbors[i][0]))
+            clusters.Node(self.as_string(i),
+                self.as_string(self.neighbors[i][0]),
+                self.encode, self.metric)
             for i in tqdm(range(len(self.space)),
                 desc="Watching the Galaxies Coelesce",
                 disable=(not self.auto_print))
             if (i == self.neighbors[self.neighbors[i][0]][0]
                 and i < self.neighbors[i][0])]
-        self.node_lengths = [len(n) for n in tqdm(self.nodes,
+        self.node_lengths = [n.distance for n in tqdm(self.nodes,
             desc="Delineating the Quasars",
             disable=(not self.auto_print))]
         self._print("Comparing the Cosmos")
@@ -471,9 +477,10 @@ class Analyst:
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
             print(category + ": ")
-            for j in self.category_lists[i]:
-                print("\t" + self.category_lists[i][j][1] +
-                    "\t" + self.category_lists[i][j][0])
+            for cat in self.category_lists[i]:
+                #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
+                #print(cat[0],cat[1],sep="\t") #python3
+                print("    {}\t{}".format(cat[1],cat[0]))
 
 
     """
