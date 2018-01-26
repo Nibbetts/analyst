@@ -111,6 +111,10 @@ class Analyst:
             NOTE: For each property of a cluster type, available stats are:
                 avg, min, max, range, distribution graph of.
 
+            Hubs:
+                (num hubs)
+                hub num stats
+
             Supernodes:
                 (num supernodes)
                 * hierarchical factor, burst factor
@@ -323,6 +327,7 @@ class Analyst:
 
 
     # General Analyses:
+
     def _spatial_analysis(self):
         
         # Nearest and Futhest:
@@ -414,9 +419,9 @@ class Analyst:
         extr_min = np.min(self.extremity_lenghts)
         extr_max = np.max(self.extremity_lengths)
         self._add_info(np.mean(self.extremity_lengths),
+            "Spatial", "Extremity Span Avg")
         self._add_info(extr_min, "Spatial", "Extremity Span Min")
         self._add_info(extr_max, "Spatial", "Extremity Span Max")
-            "Spatial", "Extremity Span Avg")
         self._add_info(extr_max - extr_min, "Spatial", "Extremity Span Range")
         
         # Nodes:
@@ -440,12 +445,13 @@ class Analyst:
         self._add_info(node_max - node_min, "Spatial", "Node Span Range")
         self._add_info(len(self.nodes)*2.0/float(len(self.space)),
             "Spatial", "Nodal Factor")
-        self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
-        ???HUBS???
+        ###self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
+        ###???HUBS???
         
         
     def _cluster_analysis(self):
         pass
+
 
     def _add_info(self, var, category, description):
         # Description and category must be strings.

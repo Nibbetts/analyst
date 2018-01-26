@@ -1,3 +1,6 @@
+import numpy as np
+import scipy.spatial as sp
+
 class Node:
 
     def __init__(self, a, b, encoder, metric):
@@ -14,6 +17,11 @@ class Node:
         vec_b = encoder(b)
         self.distance = metric(vec_a, vec_b)
         self.centroid = (vec_a + vec_b) / 2.0
+        self.alignment = vec_b - vec_a
+        if metric == sp.distance.euclidean:
+            self.alignment /= self.distance
+        else:
+            self.alignment /= np.linalg.norm(self.alignment)
 
     def __eq__(self, r_node):
         return ((self.a == r_node.a and self.b == r_node.b) or
