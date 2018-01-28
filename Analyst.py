@@ -330,6 +330,7 @@ class Analyst:
                     self.categories.append("Hubs")
                     self.categories.append("Supernodes")
                     self.categories.append("Nuclei")
+                    self.categories.append("Chains")
                     self.categories.append("NNNCC")
                     self.categories.append("LNNNCC")
                     self.categories.append("Anti-clusters")
@@ -493,9 +494,10 @@ class Analyst:
         # Nodes:
         print_node_info = "Nodes" in self.categories
         if (print_node_info or "Hubs" in self.categories or "Supernodes" in
-                self.categories or "Nuclei" in self.categories or "NNNCC" in
-                self.categories or "LNNNCC" in self.categories or
-                "Anti-clusters" in self.categories): # All dependent on Nodes.
+                self.categories or "Nuclei" in self.categories or "Chains" in
+                self.categories or "NNNCC" in self.categories or "LNNNCC" in
+                self.categories or "Anti-clusters" in self.categories):
+                # ...all dependent on Nodes. #WAIT! ARE HUBS DEPENDENT ON NODES????????
             self.nodes = [
                 clusters.Node(self.as_string(i),
                     self.as_string(self.neighbors[i][0]),
@@ -528,6 +530,9 @@ class Analyst:
         pass
 
         # Nuclei:
+        pass
+
+        # Chains:
         pass
 
         # NNNCC:
