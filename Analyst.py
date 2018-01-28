@@ -15,11 +15,20 @@ class Analyst:
 
 
     Use:
-        Generally you would initialize one Analyst instance per one
+            Generally you would initialize one Analyst instance per one
         embedding space, and perform analyses and access tools in the toolset
         through that analyst. The exception is in experimentation with
         differing metrics; here you would use multiple analysts initialized
         with the same embeddings.
+            The Analyst is designed to be abstract; it requires you to tell it
+        what metric to use or to define your own. Likewise it requires a list of
+        cluster types to compute - either callables or recognized tags - and
+        it will iterate through and compute all of them. The built-in,
+        experimental clustering algorithms will save each other compute time
+        where possible by using already-processed parts from others, but custom
+        input clustering functions will be processed entirely individually.
+        Thereafter, the Analyst will run its same analyses on each of those
+        cluster types no matter the source.
 
 
     Definitions:
@@ -97,33 +106,33 @@ class Analyst:
             * proximity -- 1 / avg dist to nearest
             dist. to nearest avg, min, max, range, graph of distribution of.
 
-            Extremities:
+        Clustering:
+            NOTE: For each property of a cluster type, these stats are always
+                available: avg, min, max, range, distribution graph of.
+
+            Extremities: (Mutual Furthest-Neighbor Pairs)
                 * (num extremities -- probably depends strongly on
                     dimensionality, but shows the spherical-ness of the
                     distribution in the space)
                 extremity length avg, * min, * max, range, graph of distr.
 
-            Nodes:
+            Nodes: (Mutual Nearest-Neighbor Pairs)
                 (num nodes)
                 * nodal factor
                 node length avg, min, max, range, graph of distr.
                 * alignment factor
 
-        Clustering:
-            NOTE: For each property of a cluster type, available stats are:
-                avg, min, max, range, distribution graph of.
-
-            Hubs:
+            Hubs: (Nodal Proximity Groups)
                 (num hubs)
                 hub num stats
 
-            Supernodes:
+            Supernodes: (Hierarchical Node Pairs)
                 (num supernodes)
                 * hierarchical factor, burst factor
                 * island factor
                 supernode length stats
 
-            Nuclei:
+            Nuclei: (Multi-Nodal Proximity Groups)
                 (num nuclei)
                 * nucleus factor (num nuclei divided by num objects)
                 ratio in nuclei versus not
@@ -138,7 +147,7 @@ class Analyst:
                     (nucleus proximity stats)
                 nucleus skew factor, (nucleus skew stats)
 
-            Chains:
+            Chains: (Nearest-Neighbor-Path Partitioning Groups)
                 chain population stats
                 chain string factor -- avg. chain span / space dispersion,
                     (chain span stats)
@@ -150,7 +159,7 @@ class Analyst:
                 NOTE: num chains is equal to num nodes
                 NOTE: all objects in the space belong to a chain
 
-            Clusters:
+            Clusters: (Nearest-Neighbor NODAL Conglomerate CLUSTERS)
                 (num clusters)
                 * cluster factor -- num clusters divided by num objects
                 * string factor -- avg. cluster span / space dispersion
@@ -165,10 +174,11 @@ class Analyst:
                 * cluster skew factor -- avg. cluster skew / space dispersion,
                     (cluster skew stats)
 
-            Strong Clusters:
+            Strong Clusters: (Dispersion and Dual LIMITED Nearest-Neighbor NODAL
+                Conglomerate CLUSTERS)
                 Same info as for clusters.
 
-            Anti-clusters:
+            Anti-clusters: (Common Futhest-Neighbor Groups)
                 More or less the same information as for clusters,
                 but it WILL not mean the same things. Note that these clusters
                 DO NOT include the word that is their farthest neighbor.
@@ -224,7 +234,8 @@ class Analyst:
     """
 
     def __init__(self, embeddings, metric="cosine_similarity",
-        encoder=None, decoder=None, auto_print=True, desc=None):
+        encoder=None, decoder=None, cluster_algorithms=[(None, "All")],
+        auto_print=True, desc=None):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -234,6 +245,29 @@ class Analyst:
                 or a function object. Defaults to "cosine_similarity".
             encoder -- a callable to convert strings to vectors.
             decoder -- a callable to convert vectors to strings.
+            cluster_algorithms -- list of tuples (callable, "Description").
+                Each callable must take an array-like list of vectors and return
+                a list of array-like lists of vectors, each representing a
+                cluster. They do not have to partition or even cover the space;
+                ie, the can contain duplicates and do not have to contain all.
+                If the left entry is None or is not callable, will expect a
+                recognized tag in the right instead of a label, indicating to
+                use a built-in function.
+                Recognized tags:
+                    "Spatial" -- basic analysis of the space - must occur even
+                        if not included, but not including it will cause it not
+                        to display results.
+                    "Extremities" -- also generally include.
+                    "Nodes" -- also generally include. Many built-in clustering
+                        algorithms will cause these to be computed anyway.
+                    "Hubs"
+                    "Supernodes"
+                    "Nuclei"
+                    "Chains"
+                    "NNNCC" -- basic built-in experimental clustering algorithm
+                    "LNNNCC" -- advanced, or strong version of the above
+                    "Anti-clusters"
+                    "All" -- will automatically include all of the above.
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
         """
@@ -250,7 +284,7 @@ class Analyst:
         elif metric == "cosine_similarity": self.metric = sp.distance.cosine
         elif metric == "l1": self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
-        self.description = desc 
+        self.description = desc
 
         # Encoder/Decoder Initializations:
         #   While initializing these should, in theory, be unnecessary,
@@ -278,8 +312,31 @@ class Analyst:
 
         # Run Analyses:
         self.categories = []
+        self.cluster_algorithms = []
+        report_spatial = False
+        for t in cluster_algorithms:
+            if callable(t[0]):
+                self.cluster_algorithms.append(t)
+            else:
+                tag = t[1].lower()
+                if tag == "spatial":
+                    report_spatial = True
+                    self.categories.append(t[1])
+                elif tag == "all":
+                    report_spatial = True
+                    self.categories.append("Spatial")
+                    self.categories.append("Extremities")
+                    self.categories.append("Nodes")
+                    self.categories.append("Hubs")
+                    self.categories.append("Supernodes")
+                    self.categories.append("Nuclei")
+                    self.categories.append("NNNCC")
+                    self.categories.append("LNNNCC")
+                    self.categories.append("Anti-clusters")
+                else:
+                    self.categories.append(t[1])
         self.category_lists = []
-        self._spatial_analysis()
+        self._spatial_analysis(report_spatial)
         self._cluster_analysis()
         if auto_print: self.print_report()
 
@@ -330,8 +387,8 @@ class Analyst:
 
     # General Analyses:
 
-    def _spatial_analysis(self):
-        
+    def _spatial_analysis(self, print_report=True):
+
         # Nearest and Futhest:
         self._print("Ousting Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 3:
@@ -383,7 +440,8 @@ class Analyst:
         self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
                 disable=(not self.auto_print))]
-        self._add_info(np.mean(self.centroid_dist, axis=0),
+        self.dispersion = np.mean(self.centroid_dist, axis=0)
+        self._add_info(self.dispersion,
             "Spatial", "Dispersion - Centroid Dist Avg")
         centr_min = np.min(self.centroid_dist, axis=0)
         centr_max = np.max(self.centroid_dist, axis=0)
@@ -395,9 +453,9 @@ class Analyst:
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
         self._print("Building Trade Routes")
-        nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._add_info(1.0 / nearest_avg, "Spatial", "Proximity")
-        self._add_info(nearest_avg, "Spatial", "Nearest Dist Avg")
+        self.nearest_avg = np.mean(self.neighbors_dist[:,0])
+        self._add_info(1.0 / self.nearest_avg, "Spatial", "Proximity")
+        self._add_info(self.nearest_avg, "Spatial", "Nearest Dist Avg")
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
@@ -405,57 +463,91 @@ class Analyst:
         self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
         self._add_info(nearest_max-nearest_min, "Spatial", "Nearest Dist Range")
 
-        # Extremities:
-        self.extremities = [
-            clusters.Node(self.as_string(i),
-                self.as_string(self.neighbors[i][2]),
-                self.encode, self.metric)
-            for i in tqdm(range(len(self.space)),
-                desc="Measuring the Reaches",
-                disable=(not self.auto_print))
-            if (i == self.neighbors[self.neighbors[i][2]][2]
-                and i < self.neighbors[i][2])]
-        self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
-            desc="Setting the scopes",
-            disable=(not self.auto_print))]
-        self._print("Puzzling Over the Star Charts")
-        self._add_info(len(self.extremities), "Spatial", "Extremity Count")
-        extr_min = np.min(self.extremity_lengths)
-        extr_max = np.max(self.extremity_lengths)
-        self._add_info(np.mean(self.extremity_lengths),
-            "Spatial", "Extremity Span Avg")
-        self._add_info(extr_min, "Spatial", "Extremity Span Min")
-        self._add_info(extr_max, "Spatial", "Extremity Span Max")
-        self._add_info(extr_max - extr_min, "Spatial", "Extremity Span Range")
-        
-        # Nodes:
-        self.nodes = [
-            clusters.Node(self.as_string(i),
-                self.as_string(self.neighbors[i][0]),
-                self.encode, self.metric)
-            for i in tqdm(range(len(self.space)),
-                desc="Watching the Galaxies Coelesce",
-                disable=(not self.auto_print))
-            if (i == self.neighbors[self.neighbors[i][0]][0]
-                and i < self.neighbors[i][0])]
-        self.node_lengths = [n.distance for n in tqdm(self.nodes,
-            desc="Delineating the Quasars",
-            disable=(not self.auto_print))]
-        self._print("Comparing the Cosmos")
-        self._add_info(len(self.nodes), "Spatial", "Node Count")
-        node_min = np.min(self.node_lengths)
-        node_max = np.max(self.node_lengths)
-        self._add_info(np.mean(self.node_lengths), "Spatial", "Node Span Avg")
-        self._add_info(node_min, "Spatial", "Node Span Min")
-        self._add_info(node_max, "Spatial", "Node Span Max")
-        self._add_info(node_max - node_min, "Spatial", "Node Span Range")
-        self._add_info(len(self.nodes)*2.0/float(len(self.space)),
-            "Spatial", "Nodal Factor")
-        ###self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
-        ###???HUBS???
-        
-        
+
     def _cluster_analysis(self):
+
+        # Extremities:
+        if "Extremities" in self.categories:
+            self.extremities = [
+                clusters.Node(self.as_string(i),
+                    self.as_string(self.neighbors[i][2]),
+                    self.encode, self.metric)
+                for i in tqdm(range(len(self.space)),
+                    desc="Measuring the Reaches",
+                    disable=(not self.auto_print))
+                if (i == self.neighbors[self.neighbors[i][2]][2]
+                    and i < self.neighbors[i][2])]
+            self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
+                desc="Setting the scopes",
+                disable=(not self.auto_print))]
+            self._print("Puzzling Over the Star Charts")
+            self._add_info(len(self.extremities), "Extremities", "Count")
+            extr_min = np.min(self.extremity_lengths)
+            extr_max = np.max(self.extremity_lengths)
+            self._add_info(np.mean(self.extremity_lengths),
+                "Extremities", "Span Avg")
+            self._add_info(extr_min, "Extremities", "Span Min")
+            self._add_info(extr_max, "Extremities", "Span Max")
+            self._add_info(extr_max - extr_min, "Extremities", "Span Range")
+
+        # Nodes:
+        print_node_info = "Nodes" in self.categories
+        if (print_node_info or "Hubs" in self.categories or "Supernodes" in
+                self.categories or "Nuclei" in self.categories or "NNNCC" in
+                self.categories or "LNNNCC" in self.categories or
+                "Anti-clusters" in self.categories): # All dependent on Nodes.
+            self.nodes = [
+                clusters.Node(self.as_string(i),
+                    self.as_string(self.neighbors[i][0]),
+                    self.encode, self.metric)
+                for i in tqdm(range(len(self.space)),
+                    desc="Watching the Galaxies Coelesce",
+                    disable=(not self.auto_print))
+                if (i == self.neighbors[self.neighbors[i][0]][0]
+                    and i < self.neighbors[i][0])]
+            self.node_lengths = [n.distance for n in tqdm(self.nodes,
+                desc="Delineating the Quasars",
+                disable=(not self.auto_print))]
+            self._print("Comparing the Cosmos")
+            node_min = np.min(self.node_lengths)
+            node_max = np.max(self.node_lengths)
+            if print_node_info:
+                self._add_info(len(self.nodes), "Nodes", "Count")
+                self._add_info(np.mean(self.node_lengths), "Nodes", "Span Avg")
+                self._add_info(node_min, "Nodes", "Span Min")
+                self._add_info(node_max, "Nodes", "Span Max")
+                self._add_info(node_max - node_min, "Nodes", "Span Range")
+                self._add_info(len(self.nodes)*2.0/float(len(self.space)),
+                    "Nodes", "Nodal Factor")
+                ###self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
+
+        # Hubs:
+        pass
+
+        # Supernodes:
+        pass
+
+        # Nuclei:
+        pass
+
+        # NNNCC:
+        pass
+
+        # LNNNCC:
+        pass
+
+        # Anti-clusters:
+        pass
+
+        # Other Callables:
+        pass
+        #for algorithm in self.cluster_algorithms:
+        #    clusters = []
+        #    clusterings = algorithm[0](self.space)
+        #    for c in clusterings:
+        #        clusters.append(clusters.Cluster(c))
+
+        # Invalid non-callables:
         pass
 
 
