@@ -39,9 +39,11 @@ class Analyst:
         outlier: an object which is a member of an extremity.
         loner: an object which has been rejected when forming clusters,
             making it a cluster unto itself, of sorts.
-        hub: an obj that is the nearest neigbor of three or more other objects. //DO SOMETHING!!
+        hub: an obj that is the nearest neigbor of three or more other objects.
         nodal factor: ratio of words belonging to nodes;
             a measure of the scale or impact of relationships in the space
+        alignment factor: normalize mean of vectors from a to b in nodes, then
+            measure average absolute value of cosine similarity of each to that.
         hierarchical factor: ratio of nodes belonging to supernodes;
             a further measure of relationships in the space.
         island factor: ratio of objects belonging to supernodes;
@@ -99,12 +101,14 @@ class Analyst:
 
         Spatial:
             * centroid
+            dist. to centroid avg, min, max, range, graph of distribution of.
             medoid
 
             * dispersion
 
             * proximity -- 1 / avg dist to nearest
             dist. to nearest avg, min, max, range, graph of distribution of.
+            dist. to furthest avg, min, max, range, graph of distr.
 
         Clustering:
             NOTE: For each property of a cluster type, these stats are always
@@ -189,6 +193,7 @@ class Analyst:
                 members of an extremity.
             rank_clusters() -- by size; lists the indeces of the clusters.
             rank_hubs() -- by num of obj for which this one is nearest neighbor.
+            graph(graph_key, bins) -- produce graph given key printed in report.
             centroid -- accessible vector; can be used externally.
             * clusters -- accessible variable; a list of the clusters.
                 Further info is available in the internal vars of each cluster.
@@ -209,6 +214,9 @@ class Analyst:
             Analyst.simulate_cluster() -- @staticmethod which generates generic
                 test clusters to compare with, or to examine properties.
                 Available cluster types listed in function comments.
+            TestSet2d -- a class which can be treated like a small 2D embedding
+                space and fed into an analyst for testing. Has encoder and
+                decoder functions to be fed in also.
 
         Analogical:
             run_analogies() !!!CANT--UNKNOWN OUTPUT??!!!
@@ -311,6 +319,7 @@ class Analyst:
             # Same format as above, except distances to those indexed above.
 
         # Run Analyses:
+        self.graph_info = []
         self.categories = []
         self.cluster_algorithms = []
         report_spatial = False
@@ -390,7 +399,7 @@ class Analyst:
 
     def _spatial_analysis(self, print_report=True):
 
-        # Nearest and Futhest:
+        # Nearest and Futhest Computation:
         self._print("Ousting Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 3:
             return
@@ -429,7 +438,9 @@ class Analyst:
             self.neighbors_dist[i][1] = nearest_2dist
             self.neighbors_dist[i][2] = furthest_dist
 
-        # Measurements:
+        # MEASUREMENTS:
+
+        # Centroid, Dispersion, Proximity:
         self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
         #self._add_info(self.centroid,
@@ -450,9 +461,13 @@ class Analyst:
         self._add_info(centr_max, "Spatial", "             Centroid Dist Max")
         self._add_info(centr_max - centr_min,
             "Spatial", "             Centroid Dist Range")
+        self._add_info(self.centroid_dist,
+            "Spatial", "             Centroid Dist Histogram Key")
         #self.proximity = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
+
+        # Nearest Neighbor Info:
         self._print("Building Trade Routes")
         self.nearest_avg = np.mean(self.neighbors_dist[:,0])
         self._add_info(1.0 / self.nearest_avg, "Spatial", "Proximity")
@@ -463,6 +478,23 @@ class Analyst:
         self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
         self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
         self._add_info(nearest_max-nearest_min, "Spatial", "Nearest Dist Range")
+        self._add_info(self.neighbors_dist[:,0],
+            "Spatial", "Nearest Dist Histogram Key")
+
+        #Furthest Neighbor Info:
+        self._print("Making Enemies")
+        self.furthest_avg = np.mean(self.neighbors_dist[:,2])
+        self._add_info(1.0 / self.furthest_avg, "Spatial", "Proximity")
+        self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
+        self._print("Claiming Frontiers")
+        furthest_min = np.min(self.neighbors_dist[:,2])
+        furthest_max = np.max(self.neighbors_dist[:,2])
+        self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
+        self._add_info(furthest_max, "Spatial", "Furthest Dist Max")
+        self._add_info(furthest_max - furthest_min,
+            "Spatial", "Furthest Dist Range")
+        self._add_info(self.neighbors_dist[:,2],
+            "Spatial", "Furthest Dist Histogram Key")
 
 
     def _cluster_analysis(self):
@@ -490,6 +522,8 @@ class Analyst:
             self._add_info(extr_min, "Extremities", "Span Min")
             self._add_info(extr_max, "Extremities", "Span Max")
             self._add_info(extr_max - extr_min, "Extremities", "Span Range")
+            self._add_info(self.extremity_lengths,
+                "Extremities", "Span Histogram Key")
 
         # Nodes:
         print_node_info = "Nodes" in self.categories
@@ -497,7 +531,7 @@ class Analyst:
                 self.categories or "Nuclei" in self.categories or "Chains" in
                 self.categories or "NNNCC" in self.categories or "LNNNCC" in
                 self.categories or "Anti-clusters" in self.categories):
-                # ...all dependent on Nodes. #WAIT! ARE HUBS DEPENDENT ON NODES????????
+                # ...all dependent on Nodes.
             self.nodes = [
                 clusters.Node(self.as_string(i),
                     self.as_string(self.neighbors[i][0]),
@@ -511,9 +545,9 @@ class Analyst:
                 desc="Delineating the Quasars",
                 disable=(not self.auto_print))]
             self._print("Comparing the Cosmos")
-            node_min = np.min(self.node_lengths)
-            node_max = np.max(self.node_lengths)
             if print_node_info:
+                node_min = np.min(self.node_lengths)
+                node_max = np.max(self.node_lengths)
                 self._add_info(len(self.nodes), "Nodes", "Count")
                 self._add_info(np.mean(self.node_lengths), "Nodes", "Span Avg")
                 self._add_info(node_min, "Nodes", "Span Min")
@@ -521,10 +555,47 @@ class Analyst:
                 self._add_info(node_max - node_min, "Nodes", "Span Range")
                 self._add_info(len(self.nodes)*2.0/float(len(self.space)),
                     "Nodes", "Nodal Factor")
-                ###self._add_info(???, "Spatial", "Node Alignment Factor") //HOW??
+                avg_align = np.mean([n.alignment for n in self.nodes], axis=0)
+                avg_align /= np.linalg.norm(avg_align)
+                self._add_info(
+                    np.mean([
+                        np.abs(np.distance.cosine_similarity(
+                            avg_align, n.alignment))
+                        for n in self.nodes]),
+                    "Nodes", "Alignment Factor")
+                self._add_info(self.node_lengths, "Nodes", "Span Histogram Key")
 
         # Hubs:
-        pass
+        if "Hubs" in self.categories:
+            self.hubs = []
+            with [] as temp_hubs:
+                for i in tqdm(range(len(self.space)),
+                        desc="Finding Galactic Hubs",
+                        disable=(not self.auto_print)):
+                    temp_hubs.append(Cluster(
+                        self.encoder, self.metric, nearest=self.nearest,
+                        objects=[self.as_string(i)], nodes=[], auto=False))
+                    for index, neighbor in enumerate(self.neighbors[:,0]):
+                        if neighbor == i:
+                            temp_hubs[i].add_objects([self.as_string(index)])
+                j = 0
+                for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
+                        disable=(not self.auto_print)):
+                    if len(h) >= 3:
+                        self.hubs.append(h)
+                        self.hubs[j].ID = j
+                        self.hubs[j].calculate()
+                        j += 1
+            self._add_info(len(self.hubs), "Hubs", "Count")
+            hub_sizes = [len(h) for h in self.hubs]
+            hub_min = np.min(hub_sizes)
+            hub_max = np.max(hub_sizes)
+            self._add_info(np.mean(hub_sizes), "Population Avg")
+            self._add_info(hub_min, "Hubs", "Population Min")
+            self._add_info(hub_max, "Hubs", "Population Max")
+            self._add_info(hub_max-hub_min, "Hubs", "Population Range")
+            self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
+
 
         # Supernodes:
         pass
@@ -558,13 +629,17 @@ class Analyst:
 
     def _add_info(self, var, category, description):
         # Description and category must be strings.
+        if "Histogram" in description:
+            variable = len(self.graph_info)
+            self.graph_info.append(var)
+        else: variable = var
         try:
             i = self.categories.index(category)
         except:
             i = len(self.categories)
             self.categories.append(category)
             self.category_lists.append([])
-        self.category_lists[i].append((description, var))
+        self.category_lists[i].append((description, variable))
 
     def _print(self, string=""):
         if self.auto_print: print(string)
