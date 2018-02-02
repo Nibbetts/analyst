@@ -31,7 +31,7 @@ class Cluster:
         # self.vectors = []
         # self.centroid = []
         # self.dispersion = 0
-        # self.density = 0
+        # self.proximity = 0
         # self.focus = []
         # self.skew = 0
         # self.medoid = None
@@ -60,7 +60,7 @@ class Cluster:
             + ", medoid: " + str(self.medoid) \
             + ", cardinality: " + len(self.objects) \
             + ", dispersion: " + str(self.dispersion) \
-            + ", density: " + str(self.density) \
+            + ", proximity: " + str(self.proximity) \
             + ", skew: " + str(self.skew) \
             + ", " + str(self.nodes) + " | "
         if len(self.objects) > 0:
@@ -92,14 +92,15 @@ class Cluster:
         self.dispersion = np.mean([self.metric(self.centroid, vec)
             for vec in self.vectors], axis=0)
 
-        # Calculate Density:
-        #if self.nearest != None: self.density = sum([self.metric(
+        # Calculate Proximity:
+        #if self.nearest != None: self.proximity = sum([self.metric(
         #    v, self.encoder(self.nearest(self.objects[i])))
         #    for i, v in self.vectors]) / len(self.objects)
-        if self.nearest != None: self.density = np.mean([self.metric(
-            v, self.encoder(self.nearest(self.objects[i])))
-            for i, v in enumerate(self.vectors)], axis=0)
-        else: self.density = None
+        if self.nearest != None:
+            self.proximity = 1.0 / np.mean([self.metric(
+                v, self.encoder(self.nearest(self.objects[i])))
+                for i, v in enumerate(self.vectors)], axis=0)
+        else: self.proximity = None
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
 

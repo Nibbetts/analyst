@@ -214,7 +214,7 @@ class Analyst:
             Analyst.simulate_cluster() -- @staticmethod which generates generic
                 test clusters to compare with, or to examine properties.
                 Available cluster types listed in function comments.
-            TestSet2d -- a class which can be treated like a small 2D embedding
+            TestSet2D -- a class which can be treated like a small 2D embedding
                 space and fed into an analyst for testing. Has encoder and
                 decoder functions to be fed in also.
 
@@ -307,9 +307,9 @@ class Analyst:
                 desc="Naming Stars and Drawing a Star Map",
                 disable=(not self.auto_print))]
             for ix, s in enumerate(tqdm(self.ix_to_s, desc="Indexing Planets",
-                disable=(not self.auto_print))):
+                    disable=(not self.auto_print))):
                 self.s_to_ix[s] = ix
-        except: pass
+        except: print("You gone done broke it...")
 
         self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
             # Indeces correspond to indeces of vectors in the space. For each:
@@ -345,7 +345,7 @@ class Analyst:
                     self.categories.append("Anti-clusters")
                 else:
                     self.categories.append(t[1])
-        self.category_lists = []
+        self.category_lists = np.empty(shape=(len(self.categories),0)).tolist()
         self._spatial_analysis(report_spatial)
         self._cluster_analysis()
         if auto_print: self.print_report()
@@ -400,26 +400,27 @@ class Analyst:
     def _spatial_analysis(self, print_report=True):
 
         # Nearest and Futhest Computation:
-        self._print("Ousting Empty Universes") #"Ousting the Flatlanders"
-        if len(self.space) < 3:
+        self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
+        if len(self.space) < 4:
             return
         for i, vec in enumerate(tqdm(self.space, disable=(not self.auto_print),
                                 desc="Acquainting the Species")):
-            nearest_i = (0 if i != 0 else 1)
-            nearest_2i = (1 if i != 1 else 2)
-            furthest_i = (1 if i != 1 else 2)
+            nearest_i = (0 if i != 0 else 1) # Can't start off on self!
+            nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
+            furthest_i = i # Start off closest possible - self.
             nearest_dist = self.metric(vec, self.space[nearest_i])
             nearest_2dist = self.metric(vec, self.space[nearest_2i])
             furthest_dist = self.metric(vec, self.space[furthest_i])
+            # In case we started them off switched:
             if nearest_2dist < nearest_dist:
                 temp_i = nearest_i
                 temp_dist = nearest_dist
                 nearest_i = nearest_2i
                 nearest_2i = temp_i
-                furthest_i = temp_i
+                #furthest_i = temp_i
                 nearest_dist = nearest_2dist
                 nearest_2dist = temp_dist
-                furthest_dist = temp_dist
+                #furthest_dist = temp_dist
             for j, other in enumerate(self.space):
                 if j != i:
                     dist = self.metric(vec, other)
@@ -428,6 +429,9 @@ class Analyst:
                         nearest_2i = nearest_i
                         nearest_dist = dist
                         nearest_i = j
+                    elif dist < nearest_2dist and j != nearest_i:
+                        nearest_2dist = dist
+                        nearest_2i = j
                     if dist > furthest_dist:
                         furthest_dist = dist
                         furthest_i = j
@@ -445,9 +449,9 @@ class Analyst:
         self.centroid = np.mean(self.space, axis=0)
         #self._add_info(self.centroid,
         #    "Spatial", "Centroid - Coordinate Avg")
-        self._add_info(self.as_string(np.argmin([
+        self._add_info(self.ix_to_s[np.argmin([
             self.metric(self.centroid, v) for v in tqdm(self.space,
-                desc="Electing a Ruler", disable=(not self.auto_print))])),
+                desc="Electing a Ruler", disable=(not self.auto_print))])],
             "Spatial", "Medoid - Obj Nearest to Centroid")
         self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
@@ -502,8 +506,8 @@ class Analyst:
         # Extremities:
         if "Extremities" in self.categories:
             self.extremities = [
-                clusters.Node(self.as_string(i),
-                    self.as_string(self.neighbors[i][2]),
+                clusters.Node(self.ix_to_s[i],
+                    self.ix_to_s[self.neighbors[i][2]],
                     self.encode, self.metric)
                 for i in tqdm(range(len(self.space)),
                     desc="Measuring the Reaches",
@@ -533,8 +537,8 @@ class Analyst:
                 self.categories or "Anti-clusters" in self.categories):
                 # ...all dependent on Nodes.
             self.nodes = [
-                clusters.Node(self.as_string(i),
-                    self.as_string(self.neighbors[i][0]),
+                clusters.Node(self.ix_to_s[i],
+                    self.ix_to_s[self.neighbors[i][0]],
                     self.encode, self.metric)
                 for i in tqdm(range(len(self.space)),
                     desc="Watching the Galaxies Coelesce",
@@ -559,8 +563,7 @@ class Analyst:
                 avg_align /= np.linalg.norm(avg_align)
                 self._add_info(
                     np.mean([
-                        np.abs(np.distance.cosine_similarity(
-                            avg_align, n.alignment))
+                        np.abs(sp.distance.cosine(avg_align, n.alignment))
                         for n in self.nodes]),
                     "Nodes", "Alignment Factor")
                 self._add_info(self.node_lengths, "Nodes", "Span Histogram Key")
@@ -568,24 +571,25 @@ class Analyst:
         # Hubs:
         if "Hubs" in self.categories:
             self.hubs = []
-            with [] as temp_hubs:
-                for i in tqdm(range(len(self.space)),
-                        desc="Finding Galactic Hubs",
-                        disable=(not self.auto_print)):
-                    temp_hubs.append(Cluster(
-                        self.encoder, self.metric, nearest=self.nearest,
-                        objects=[self.as_string(i)], nodes=[], auto=False))
-                    for index, neighbor in enumerate(self.neighbors[:,0]):
-                        if neighbor == i:
-                            temp_hubs[i].add_objects([self.as_string(index)])
-                j = 0
-                for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
-                        disable=(not self.auto_print)):
-                    if len(h) >= 3:
-                        self.hubs.append(h)
-                        self.hubs[j].ID = j
-                        self.hubs[j].calculate()
-                        j += 1
+            temp_hubs = []
+            for i in tqdm(range(len(self.space)),
+                    desc="Finding Galactic Hubs",
+                    disable=(not self.auto_print)):
+                temp_hubs.append(clusters.Cluster(
+                    self.encode, self.metric, nearest=self.nearest,
+                    objects=[self.ix_to_s[i]], nodes=[], auto=False))
+                for index, neighbor in enumerate(self.neighbors[:,0]):
+                    if neighbor == i:
+                        temp_hubs[i].add_objects([self.ix_to_s[index]])
+            j = 0
+            for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
+                    disable=(not self.auto_print)):
+                if len(h) >= 3:
+                    self.hubs.append(h)
+                    self.hubs[j].ID = j
+                    self.hubs[j].calculate()
+                    j += 1
+            del(temp_hubs) # Save on memory.
             self._add_info(len(self.hubs), "Hubs", "Count")
             hub_sizes = [len(h) for h in self.hubs]
             hub_min = np.min(hub_sizes)
@@ -629,6 +633,8 @@ class Analyst:
 
     def _add_info(self, var, category, description):
         # Description and category must be strings.
+        #variable = None
+        #i = None
         if "Histogram" in description:
             variable = len(self.graph_info)
             self.graph_info.append(var)
@@ -809,3 +815,13 @@ class Analyst:
             and then does a cluster analogy.'''
         raise NotImplementedError("Function not implemented.")
     """
+
+
+
+# Brief script-like behavior for development debugging and testing purposes.
+if __name__ == "__main__":
+
+    import TestSet2D
+
+    t = TestSet2D.TestSet2D()
+    a = Analyst(t, "euclidean", t.encode, t.decode, desc="2D Test Set")

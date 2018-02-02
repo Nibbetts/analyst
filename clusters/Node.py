@@ -11,8 +11,10 @@ class Node:
                 (else will break at centroid calculation)
             metric -- callable with return of a scalar
         """
+        assert a != b # Objects in a node must be different.
         self.a = a
         self.b = b
+        print str(self) ####################################################
         vec_a = encoder(a)
         vec_b = encoder(b)
         self.distance = metric(vec_a, vec_b)

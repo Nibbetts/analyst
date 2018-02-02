@@ -1,6 +1,6 @@
 import numpy as np
 
-class TestSet2d:
+class TestSet2D:
     """
     A 2D test set containing 32 pre-set points with some apparent clustering.
     To use in Analyst, just pass an instance of this object, or its data,
@@ -25,8 +25,9 @@ class TestSet2d:
     def __len__(self):
         return len(self.data)
 
-    def encode(self, obj):
-        return obj
+    def encode(self, string):
+        return self.data[int(string)]
 
-    def decode(self, obj):
-        return obj
+    def decode(self, vector):
+        return str(np.nonzero(self.data==vector)[0][0])
+        # return str(self.data.index(vector)) #works if use list instead
