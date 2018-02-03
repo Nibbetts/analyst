@@ -26,8 +26,16 @@ class TestSet2D:
         return len(self.data)
 
     def encode(self, string):
+        # return np.array(self.data[int(string)]) # in case array doesn't work
         return self.data[int(string)]
 
     def decode(self, vector):
-        return str(np.nonzero(self.data==vector)[0][0])
-        # return str(self.data.index(vector)) #works if use list instead
+        # return str(np.nonzero(self.data==vector)[0][0]) # doesn't work right...
+        #    but was an attempt for numpy arrays
+        # return str(self.data.index(vector)) # for list instead of np arrays
+
+        #v = None
+        for i, v in enumerate(self.data):
+            if np.array_equal(v, vector):
+                return str(i)
+        return None

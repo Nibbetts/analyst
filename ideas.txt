@@ -43,6 +43,10 @@ vectoralysis
 
 
 
+try projecting each word vector onto its major axis and see how they are related. (Darian's Idea)
+
+
+
 def shift(string, k=1):
     # Usefuls start at 32 and end at 126. So mod by 127-32=95.
     s = ""

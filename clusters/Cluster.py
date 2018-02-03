@@ -83,8 +83,12 @@ class Cluster:
         #self.centroid = sum(self.vectors) / len(self.vectors)
         self.centroid = np.mean(self.vectors, axis=0)
         #self.focus = sum([n.centroid for n in self.nodes]) / len(self.nodes)
-        self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
-        self.skew = self.metric(self.centroid, self.focus)
+        if len(self.nodes) != 0:
+            self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
+            self.skew = self.metric(self.centroid, self.focus)
+        else:
+            self.focus = None
+            self.skew = None
 
         # Calculate Dispersion:
         #self.dispersion = sum([self.metric(self.centroid, vec)

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pickle
 import os
+import sys
 
 import clusters
 
@@ -29,6 +30,8 @@ class Analyst:
         input clustering functions will be processed entirely individually.
         Thereafter, the Analyst will run its same analyses on each of those
         cluster types no matter the source.
+            The objects encoded in the space must be some sort of strings, or
+        the internal conversion functions will not work.
 
 
     Definitions:
@@ -100,9 +103,9 @@ class Analyst:
             Analyst.unsave(path) -- deletes a saved file. Rtrns True if success.
 
         Spatial:
-            * centroid
+            centroid
             dist. to centroid avg, min, max, range, graph of distribution of.
-            medoid
+            * medoid
 
             * dispersion
 
@@ -205,6 +208,9 @@ class Analyst:
             extremities -- ''
             anti-clusters -- dictionary keyed to outlier objects,
                 containing anti-clusters.
+            as_string(obj) -- generic type converters for individual objects
+            as_index(obj)
+            as_vector(obj)
 
         Simulation:
             Analyst.simulate_space() -- @staticmethod which generates an entire
@@ -281,7 +287,8 @@ class Analyst:
         """
 
         self.auto_print = auto_print
-        self._print()
+        print
+        self._print("Asking the Grand Question")
         self._print("Stretching the Fabric of Space and Time")
         self._print("Enumerating the Dimensions")
         self.space = embeddings
@@ -399,7 +406,7 @@ class Analyst:
 
     def _spatial_analysis(self, print_report=True):
 
-        # Nearest and Futhest Computation:
+        # Nearest, 2nd Nearest, and Futhest Computation:
         self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 4:
             return
@@ -452,21 +459,21 @@ class Analyst:
         self._add_info(self.ix_to_s[np.argmin([
             self.metric(self.centroid, v) for v in tqdm(self.space,
                 desc="Electing a Ruler", disable=(not self.auto_print))])],
-            "Spatial", "Medoid - Obj Nearest to Centroid")
+            "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
         self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
                 disable=(not self.auto_print))]
         self.dispersion = np.mean(self.centroid_dist, axis=0)
         self._add_info(self.dispersion,
-            "Spatial", "Dispersion - Centroid Dist Avg")
+            "Spatial", "Dispersion - Centroid Dist Avg", star=True)
         centr_min = np.min(self.centroid_dist, axis=0)
         centr_max = np.max(self.centroid_dist, axis=0)
-        self._add_info(centr_min, "Spatial", "             Centroid Dist Min")
-        self._add_info(centr_max, "Spatial", "             Centroid Dist Max")
+        self._add_info(centr_min, "Spatial", "Centroid Dist Min")
+        self._add_info(centr_max, "Spatial", "Centroid Dist Max")
         self._add_info(centr_max - centr_min,
-            "Spatial", "             Centroid Dist Range")
+            "Spatial", "Centroid Dist Range")
         self._add_info(self.centroid_dist,
-            "Spatial", "             Centroid Dist Histogram Key")
+            "Spatial", "Centroid Dist Histogram Key")
         #self.proximity = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
@@ -474,7 +481,8 @@ class Analyst:
         # Nearest Neighbor Info:
         self._print("Building Trade Routes")
         self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._add_info(1.0 / self.nearest_avg, "Spatial", "Proximity")
+        self._add_info(1.0 / self.nearest_avg,
+            "Spatial", "Proximity", star=True)
         self._add_info(self.nearest_avg, "Spatial", "Nearest Dist Avg")
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
@@ -518,13 +526,14 @@ class Analyst:
                 desc="Setting the scopes",
                 disable=(not self.auto_print))]
             self._print("Puzzling Over the Star Charts")
-            self._add_info(len(self.extremities), "Extremities", "Count")
+            self._add_info(len(self.extremities),
+                "Extremities", "Count", star=True)
             extr_min = np.min(self.extremity_lengths)
             extr_max = np.max(self.extremity_lengths)
             self._add_info(np.mean(self.extremity_lengths),
                 "Extremities", "Span Avg")
-            self._add_info(extr_min, "Extremities", "Span Min")
-            self._add_info(extr_max, "Extremities", "Span Max")
+            self._add_info(extr_min, "Extremities", "Span Min", star=True)
+            self._add_info(extr_max, "Extremities", "Span Max", star=True)
             self._add_info(extr_max - extr_min, "Extremities", "Span Range")
             self._add_info(self.extremity_lengths,
                 "Extremities", "Span Histogram Key")
@@ -558,14 +567,14 @@ class Analyst:
                 self._add_info(node_max, "Nodes", "Span Max")
                 self._add_info(node_max - node_min, "Nodes", "Span Range")
                 self._add_info(len(self.nodes)*2.0/float(len(self.space)),
-                    "Nodes", "Nodal Factor")
+                    "Nodes", "Nodal Factor", star=True)
                 avg_align = np.mean([n.alignment for n in self.nodes], axis=0)
                 avg_align /= np.linalg.norm(avg_align)
                 self._add_info(
                     np.mean([
                         np.abs(sp.distance.cosine(avg_align, n.alignment))
                         for n in self.nodes]),
-                    "Nodes", "Alignment Factor")
+                    "Nodes", "Alignment Factor", star=True)
                 self._add_info(self.node_lengths, "Nodes", "Span Histogram Key")
 
         # Hubs:
@@ -594,7 +603,7 @@ class Analyst:
             hub_sizes = [len(h) for h in self.hubs]
             hub_min = np.min(hub_sizes)
             hub_max = np.max(hub_sizes)
-            self._add_info(np.mean(hub_sizes), "Population Avg")
+            self._add_info(np.mean(hub_sizes), "Hubs", "Population Avg")
             self._add_info(hub_min, "Hubs", "Population Min")
             self._add_info(hub_max, "Hubs", "Population Max")
             self._add_info(hub_max-hub_min, "Hubs", "Population Range")
@@ -626,12 +635,14 @@ class Analyst:
         #    clusterings = algorithm[0](self.space)
         #    for c in clusterings:
         #        clusters.append(clusters.Cluster(c))
+        #
+        # or can use __name__ to get function name!
 
         # Invalid non-callables:
         pass
 
 
-    def _add_info(self, var, category, description):
+    def _add_info(self, var, category, description, star=False):
         # Description and category must be strings.
         #variable = None
         #i = None
@@ -645,20 +656,22 @@ class Analyst:
             i = len(self.categories)
             self.categories.append(category)
             self.category_lists.append([])
-        self.category_lists[i].append((description, variable))
+        self.category_lists[i].append(
+            (description, variable, "*" if star else " "))
 
     def _print(self, string=""):
-        if self.auto_print: print(string)
+        if self.auto_print: print("\r" + string + "...")
 
     def print_report(self):
         self._print("Revealing the Grand Plan")
+        print
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
             print(category + ": ")
             for cat in self.category_lists[i]:
                 #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
                 #print(cat[0],cat[1],sep="\t") #python3
-                print("    {}\t{}".format(cat[1],cat[0]))
+                print("  {} {:<16} {}{}".format(cat[2],cat[1],cat[2],cat[0]))
 
 
     """
