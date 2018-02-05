@@ -4,7 +4,7 @@ import Node
 class Cluster:
 
     def __init__(self, encoder, metric, nearest=None,
-        objects=[], nodes=[], auto=False, ID=None):
+        objects=[], nodes=[], auto=False, ID=None, name=None):
         """
         Parameters:
             encoder: callable; gets one vector from one object at a time.
@@ -17,10 +17,12 @@ class Cluster:
                 has a centroid.
             auto: if true, calculates automatically after creation and after
                 each addition.
-            id: only for convenience in identifying clusters when printed or
+            id: only for convenience in indexing clusters when printed or
                 grouped externally.
+            name: only for convenience in identifying clusters externally.
         """
         self.ID = ID
+        self.name = name
         self.objects = objects
         self.encoder = encoder
         self.metric = metric
@@ -31,7 +33,7 @@ class Cluster:
         # self.vectors = []
         # self.centroid = []
         # self.dispersion = 0
-        # self.proximity = 0
+        # self.remoteness = 0
         # self.focus = []
         # self.skew = 0
         # self.medoid = None
@@ -57,10 +59,11 @@ class Cluster:
     def __str__(self):
         # Cardinality
         result = "Cluster( ID: " + str(self.ID) \
+            + ", name: " + str(self.name) \
             + ", medoid: " + str(self.medoid) \
             + ", cardinality: " + len(self.objects) \
             + ", dispersion: " + str(self.dispersion) \
-            + ", proximity: " + str(self.proximity) \
+            + ", remoteness: " + str(self.remoteness) \
             + ", skew: " + str(self.skew) \
             + ", " + str(self.nodes) + " | "
         if len(self.objects) > 0:
@@ -96,15 +99,15 @@ class Cluster:
         self.dispersion = np.mean([self.metric(self.centroid, vec)
             for vec in self.vectors], axis=0)
 
-        # Calculate Proximity:
-        #if self.nearest != None: self.proximity = sum([self.metric(
+        # Calculate Remoteness:
+        #if self.nearest != None: self.remoteness = sum([self.metric(
         #    v, self.encoder(self.nearest(self.objects[i])))
         #    for i, v in self.vectors]) / len(self.objects)
         if self.nearest != None:
-            self.proximity = 1.0 / np.mean([self.metric(
+            self.remoteness = np.mean([self.metric(
                 v, self.encoder(self.nearest(self.objects[i])))
                 for i, v in enumerate(self.vectors)], axis=0)
-        else: self.proximity = None
+        else: self.remoteness = None
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
 

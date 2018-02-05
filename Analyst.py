@@ -47,6 +47,7 @@ class Analyst:
             a measure of the scale or impact of relationships in the space
         alignment factor: normalize mean of vectors from a to b in nodes, then
             measure average absolute value of cosine similarity of each to that.
+            Think magnetic moments - how lined-up nodes are in the space.
         hierarchical factor: ratio of nodes belonging to supernodes;
             a further measure of relationships in the space.
         island factor: ratio of objects belonging to supernodes;
@@ -71,10 +72,10 @@ class Analyst:
         string factor: average cluster span divided by space dispersion
         regularity: find average cluster pop, then find average difference btw.
             cluster pop and average cluster pop. Regularity is 1/(1+this)
-        proximity: as used here, 1 / avg distance of nodes to their nearest
-            neighbors. This is not a measure of spatial or volumentric density,
-            but is a metric for relationships between encoded objects,
-            and thus could potentially be used as a density metric.
+        remoteness: as used here, avg distance of nodes to their nearest
+            neighbors. While not a real measure of spatial or volumentric
+            density, this is a metric for relationships between encoded objects,
+            and thus could potentially be used as a density metric if inverted.
         dispersion: avg distance of nodes to the center of their distribution
         focus: averaged location of nodes in a cluster; concentration center.
         skew: distance from focus to center.
@@ -109,9 +110,10 @@ class Analyst:
 
             * dispersion
 
-            * proximity -- 1 / avg dist to nearest
-            dist. to nearest avg, min, max, range, graph of distribution of.
-            dist. to furthest avg, min, max, range, graph of distr.
+            * remoteness -- avg dist to nearest
+            dist. to nearest min, max, range, graph of distribution of.
+            * broadness -- max dist to furthest
+            dist. to furthest avg, min, range, graph of distr.
 
         Clustering:
             NOTE: For each property of a cluster type, these stats are always
@@ -149,9 +151,9 @@ class Analyst:
                 nucleus dispersion factor -- avg. nucleus disp. / space disp,
                     (nucleus dispersion stats)
                 node count stats
-                nucleus proximity factor -- avg. nucleus proximity divided by
-                    overall space proximity,
-                    (nucleus proximity stats)
+                nucleus remoteness factor -- avg. nucleus remoteness divided by
+                    overall space remoteness,
+                    (nucleus remoteness stats)
                 nucleus skew factor, (nucleus skew stats)
 
             Chains: (Nearest-Neighbor-Path Partitioning Groups)
@@ -160,8 +162,8 @@ class Analyst:
                     (chain span stats)
                 chain dispersion factor -- avg. chain disp. / space disp,
                     (chain dispersion stats)
-                chain proximity factor -- avg. chain proximity / overall space
-                    proximity, (chain proximity stats)
+                chain remoteness factor -- avg. chain remoteness / overall space
+                    remoteness, (chain remoteness stats)
                 chain skew factor, (chain skew stats)
                 NOTE: num chains is equal to num nodes
                 NOTE: all objects in the space belong to a chain
@@ -176,8 +178,8 @@ class Analyst:
                 * cluster dispersion factor -- avg. cluster disp. / space disp,
                     (cluster dispersion stats)
                 * avg num nodes per cluster, node count stats
-                * cluster proximity factor -- avg cluster proximity / overall
-                    space proximity, (cluster proximity stats)
+                * cluster remoteness factor -- avg cluster remoteness / overall
+                    space remoteness, (cluster remoteness stats)
                 * cluster skew factor -- avg. cluster skew / space dispersion,
                     (cluster skew stats)
 
@@ -189,6 +191,28 @@ class Analyst:
                 More or less the same information as for clusters,
                 but it WILL not mean the same things. Note that these clusters
                 DO NOT include the word that is their farthest neighbor.
+
+        Analogical:
+            run_analogies() !!!CANT--UNKNOWN OUTPUT??!!!
+            member_of(object) -- displays cluster this object is a member of.
+            cluster([list of objects]) -- a new cluster composed solely of the
+                given objects.
+            seeded_cluster([list of objects]) -- a new cluster composed of all
+                nearby objects likely to be clustered with these, if these were
+                treated as being together.
+            inspect_clustering([list of objects]) -- analysis on given objects,
+                Returns:
+                - number of unique clusters these words are found across
+                - average ward dissimilarity of involved clusters
+                - list of tuples containing: (object, cluster_index)
+            circular_walk_graph(obj1, obj2) -- most useful in a normalized
+                space, like word2vec.
+
+        Comparative:
+            compare_with(analyst2) -- prints a full report with three numbers
+                for each property instead of one - val_for_A, val_for_B, val_A-B
+            Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
+                side by side the values for each analyst in the list.
 
         Specifics / Inspection:
             rank_outliers() -- by number of obj. for which this one is furthest
@@ -223,28 +247,6 @@ class Analyst:
             TestSet2D -- a class which can be treated like a small 2D embedding
                 space and fed into an analyst for testing. Has encoder and
                 decoder functions to be fed in also.
-
-        Analogical:
-            run_analogies() !!!CANT--UNKNOWN OUTPUT??!!!
-            member_of(object) -- displays cluster this object is a member of.
-            cluster([list of objects]) -- a new cluster composed solely of the
-                given objects.
-            seeded_cluster([list of objects]) -- a new cluster composed of all
-                nearby objects likely to be clustered with these, if these were
-                treated as being together.
-            inspect_clustering([list of objects]) -- analysis on given objects,
-                Returns:
-                - number of unique clusters these words are found across
-                - average ward dissimilarity of involved clusters
-                - list of tuples containing: (object, cluster_index)
-            circular_walk_graph(obj1, obj2) -- most useful in a normalized
-                space, like word2vec.
-
-        Comparative:
-            compare_with(analyst2) -- prints a full report with three numbers
-                for each property instead of one - val_for_A, val_for_B, val_A-B
-            Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
-                side by side the values for each analyst in the list.
     """
 
     def __init__(self, embeddings, metric="cosine_similarity",
@@ -401,8 +403,9 @@ class Analyst:
             return i
         except: return self.space[i]
 
-
-    # General Analyses:
+    #--------------------------------------------------------------------------#
+    # General Analyses:                                                        #
+    #--------------------------------------------------------------------------#
 
     def _spatial_analysis(self, print_report=True):
 
@@ -451,7 +454,7 @@ class Analyst:
 
         # MEASUREMENTS:
 
-        # Centroid, Dispersion, Proximity:
+        # Centroid, Dispersion, Remoteness:
         self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
         #self._add_info(self.centroid,
@@ -474,16 +477,15 @@ class Analyst:
             "Spatial", "Centroid Dist Range")
         self._add_info(self.centroid_dist,
             "Spatial", "Centroid Dist Histogram Key")
-        #self.proximity = np.mean(
+        #self.remoteness = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
 
         # Nearest Neighbor Info:
         self._print("Building Trade Routes")
         self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._add_info(1.0 / self.nearest_avg,
-            "Spatial", "Proximity", star=True)
-        self._add_info(self.nearest_avg, "Spatial", "Nearest Dist Avg")
+        self._add_info(self.nearest_avg,
+            "Spatial", "Remoteness - Nearest Dist Avg", star=True)
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
@@ -496,13 +498,13 @@ class Analyst:
         #Furthest Neighbor Info:
         self._print("Making Enemies")
         self.furthest_avg = np.mean(self.neighbors_dist[:,2])
-        self._add_info(1.0 / self.furthest_avg, "Spatial", "Proximity")
         self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
         self._print("Claiming Frontiers")
         furthest_min = np.min(self.neighbors_dist[:,2])
         furthest_max = np.max(self.neighbors_dist[:,2])
         self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
-        self._add_info(furthest_max, "Spatial", "Furthest Dist Max")
+        self._add_info(furthest_max,
+            "Spatial", "Broadness - Furthest Dist Max", star=True)
         self._add_info(furthest_max - furthest_min,
             "Spatial", "Furthest Dist Range")
         self._add_info(self.neighbors_dist[:,2],
@@ -513,6 +515,8 @@ class Analyst:
 
         # Extremities:
         if "Extremities" in self.categories:
+
+            # Compute the Extremities:
             self.extremities = [
                 clusters.Node(self.ix_to_s[i],
                     self.ix_to_s[self.neighbors[i][2]],
@@ -522,6 +526,8 @@ class Analyst:
                     disable=(not self.auto_print))
                 if (i == self.neighbors[self.neighbors[i][2]][2]
                     and i < self.neighbors[i][2])]
+
+            # Extremity Lengths and other info:
             self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
                 desc="Setting the scopes",
                 disable=(not self.auto_print))]
@@ -545,6 +551,8 @@ class Analyst:
                 self.categories or "NNNCC" in self.categories or "LNNNCC" in
                 self.categories or "Anti-clusters" in self.categories):
                 # ...all dependent on Nodes.
+
+            # Compute the Nodes:
             self.nodes = [
                 clusters.Node(self.ix_to_s[i],
                     self.ix_to_s[self.neighbors[i][0]],
@@ -554,6 +562,8 @@ class Analyst:
                     disable=(not self.auto_print))
                 if (i == self.neighbors[self.neighbors[i][0]][0]
                     and i < self.neighbors[i][0])]
+
+            # Node Length and other info:
             self.node_lengths = [n.distance for n in tqdm(self.nodes,
                 desc="Delineating the Quasars",
                 disable=(not self.auto_print))]
@@ -579,6 +589,8 @@ class Analyst:
 
         # Hubs:
         if "Hubs" in self.categories:
+
+            # Compute the Hubs:
             self.hubs = []
             temp_hubs = []
             for i in tqdm(range(len(self.space)),
@@ -586,19 +598,25 @@ class Analyst:
                     disable=(not self.auto_print)):
                 temp_hubs.append(clusters.Cluster(
                     self.encode, self.metric, nearest=self.nearest,
-                    objects=[self.ix_to_s[i]], nodes=[], auto=False))
+                    objects=[self.ix_to_s[i]], nodes=[], auto=False,
+                    name=self.ix_to_s[i]))
+                    # Its name is the original object's decoded string.
                 for index, neighbor in enumerate(self.neighbors[:,0]):
                     if neighbor == i:
                         temp_hubs[i].add_objects([self.ix_to_s[index]])
+                    # The 0th index in the hub's list of objects
+                    #   is also it's original object (is included in hub).
             j = 0
             for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
                     disable=(not self.auto_print)):
-                if len(h) >= 3:
+                if len(h) >= 4: # obj plus 3 or more for whom it is nearest.
                     self.hubs.append(h)
                     self.hubs[j].ID = j
                     self.hubs[j].calculate()
                     j += 1
-            del(temp_hubs) # Save on memory.
+            del(temp_hubs) # To save on memory.
+
+            # Hub count, populations, etc:
             self._add_info(len(self.hubs), "Hubs", "Count")
             hub_sizes = [len(h) for h in self.hubs]
             hub_min = np.min(hub_sizes)
@@ -609,9 +627,31 @@ class Analyst:
             self._add_info(hub_max-hub_min, "Hubs", "Population Range")
             self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
 
-
         # Supernodes:
-        pass
+        if "Supernodes" in self.categories:
+            self.supernodes = []
+            if len(self.nodes) >= 2:
+
+                # Nearest neighbor-node computation:
+                node_centroids = [n.centroid for n in self.nodes]
+                node_neighbors = []
+                node_neighbors_dist = []
+                for i, vec in enumerate(tqdm(node_centroids,
+                        disable=(not self.auto_print),
+                        desc="Forming Coalitions")):
+                    nearest_i = (0 if i != 0 else 1) # Can't start off on self!
+                    nearest_dist = self.metric(vec, node_centroids[nearest_i])
+                    for j, other in enumerate(node_centroids):
+                        if j != i:
+                            dist = self.metric(vec, other)
+                            if dist < nearest_dist:
+                                nearest_dist = dist
+                                nearest_i = j
+                    node_neighbors.append(nearest_i)
+                    node_neighbors_dist.append(nearest_dist)
+                ?????????????
+                # Compute the Supernodes:
+
 
         # Nuclei:
         pass
@@ -641,38 +681,7 @@ class Analyst:
         # Invalid non-callables:
         pass
 
-
-    def _add_info(self, var, category, description, star=False):
-        # Description and category must be strings.
-        #variable = None
-        #i = None
-        if "Histogram" in description:
-            variable = len(self.graph_info)
-            self.graph_info.append(var)
-        else: variable = var
-        try:
-            i = self.categories.index(category)
-        except:
-            i = len(self.categories)
-            self.categories.append(category)
-            self.category_lists.append([])
-        self.category_lists[i].append(
-            (description, variable, "*" if star else " "))
-
-    def _print(self, string=""):
-        if self.auto_print: print("\r" + string + "...")
-
-    def print_report(self):
-        self._print("Revealing the Grand Plan")
-        print
-        if self.description != None: print(self.description.upper())
-        for i, category in enumerate(self.categories):
-            print(category + ": ")
-            for cat in self.category_lists[i]:
-                #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
-                #print(cat[0],cat[1],sep="\t") #python3
-                print("  {} {:<16} {}{}".format(cat[2],cat[1],cat[2],cat[0]))
-
+    # ANALOGICAL & SPECIFICS:
 
     """
     # Specific Functions:
@@ -696,100 +705,6 @@ class Analyst:
     #    deg = theta*180/np.pi
     #    return 0.5 + (self.cbrt((deg-90)) / (2*self.cbrt(90)))
     """
-
-
-    # Simulation:
-    @classmethod
-    def simulate_space(cls, parameters):
-        '''
-        parameters:
-            A list of lists, each of which follows the format:
-                ["space_type", "cluster_type", num_clusters, space_radius,
-                    space_dims (cluster_min_pop, cluster_max_pop),
-                    (cluster_min_radius, cluster_max_radius),
-                    cluster_occupied_dims, cluster_total_dims, randomize_dims,
-                    noise, normalize]
-
-                Types: (used for both cluster and space)
-                    "shell" (circle if occupied_dims==2)
-                    "ball"
-                    "radial" (like ball only random direction and radius instead
-                        of x,y,z,... Ends up concentrated in center.)
-                    "cube" (random x,y,z,... but in plane or hypercube instead
-                        of ball)
-                    "even" (attempts amorphous semi-uniformity of distances btw.
-                        points)
-                    "grid" (attempts a gridlike uniformity)
-                    "pairs" (generates points in pairs of close proximity --
-                        forces excessive node generation)
-                    "line" (generates points in lines)
-                    "snake" (generate points in curvy lines)
-                    "oval" (like radial, but randomly varies size of each axis
-                        within allowed radius sizes)
-                    "hierarchy" (attempts to recursively make closer and closer
-                        pairs of groupings.)
-
-            NOTE: Multiple lists in the parameters can be used to fill the space
-                    with varied types of data.
-                occupied dimensions must be <= total dimensions.
-                min_num <= max_num.
-                randomize_dims: boolean.
-                    If false, will use same set of dims for each cluster.
-                noise: a float; how much to randomly vary locations.
-                normalize: boolean. If true will afterward scale all vectors
-                    to unit length of 1, creating a hypersphere.
-
-        returns:
-            A new analyst object, and
-            A list of the clusters used to create the space before clustering
-                was recalculated, for comparison. This will be different if
-                clusters overlapped.
-        '''
-        pass
-        #note, need to make it create a generic identity function for
-        #   encode/decode. or use indeces.
-
-    @staticmethod
-    def simulate_cluster(type, population, radius, occupied_dims,
-        total_dims, randomize_dims=True, noise=0, normalize=False):
-        # Same usage as the cluster parameters in simulate_space().
-        # NOTE: when this function is called by simulate_space(), normalize
-        #   is never True here. That would be done after the fact,
-        #   on the whole simulated space, not on any one cluster.
-        pass
-
-
-    # General:
-    @staticmethod
-    def _file_extension(f_name):
-        return f_name if f_name[-7:] == ".pickle" else f_name + ".pickle"
-
-    @staticmethod
-    def save(obj, f_name):
-        try:
-            with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
-            return True
-        except:
-            return False
-
-    @staticmethod
-    def load(f_name):
-        try:
-            with open(Analyst._file_extension(f_name), 'rb') as file:
-                return pickle.load(file)
-        except:
-            return None
-
-    @staticmethod
-    def unsave(f_name):
-        try:
-            os.remove(Analyst._file_extension(f_name))
-            return True
-        except:
-            return False
-
-
 
     """
     def cluster_analogy(self, A, B, C, AC_clustername, B_clustername,
@@ -830,8 +745,150 @@ class Analyst:
     """
 
 
+    #--------------------------------------------------------------------------#
+    # Information Gathering and Reporting Functions                            #
+    #--------------------------------------------------------------------------#
 
-# Brief script-like behavior for development debugging and testing purposes.
+    def _add_info(self, var, category, description, star=False):
+        # Description and category must be strings.
+        #variable = None
+        #i = None
+        if "Histogram" in description:
+            variable = len(self.graph_info)
+            self.graph_info.append(var)
+        else: variable = var
+        try:
+            i = self.categories.index(category)
+        except:
+            i = len(self.categories)
+            self.categories.append(category)
+            self.category_lists.append([])
+        self.category_lists[i].append(
+            (description, variable, "*" if star else " "))
+
+    def _print(self, string=""):
+        if self.auto_print: print("\r" + string + "...")
+
+    def print_report(self):
+        self._print("Revealing the Grand Plan")
+        print
+        if self.description != None: print(self.description.upper())
+        for i, category in enumerate(self.categories):
+            print(category + ": ")
+            for cat in self.category_lists[i]:
+                #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
+                #print(cat[0],cat[1],sep="\t") #python3
+                print("  {} {:<16} {}{}".format(cat[2],cat[1],cat[2],cat[0]))
+
+
+    #--------------------------------------------------------------------------#
+    # Simulation:                                                              #
+    #--------------------------------------------------------------------------#
+
+    @staticmethod
+    def simulate_space(parameters):
+        '''
+        parameters:
+            A list of lists, each of which follows the format:
+                ["space_type", "cluster_type", num_clusters, space_radius,
+                    space_dims (cluster_min_pop, cluster_max_pop),
+                    (cluster_min_radius, cluster_max_radius),
+                    cluster_occupied_dims, cluster_total_dims, randomize_dims,
+                    noise, normalize]
+
+                Types: (used for both cluster and space)
+                    "shell" (circle if occupied_dims==2)
+                    "ball"
+                    "radial" (like ball only random direction and radius instead
+                        of x,y,z,... Ends up concentrated in center.)
+                    "cube" (random x,y,z,... but in plane or hypercube instead
+                        of ball)
+                    "even" (attempts amorphous semi-uniformity of distances btw.
+                        points)
+                    "grid" (attempts a gridlike uniformity)
+                    "pairs" (generates points in pairs of close remoteness --
+                        forces excessive node generation)
+                    "line" (generates points in lines)
+                    "snake" (generate points in curvy lines)
+                    "oval" (like radial, but randomly varies size of each axis
+                        within allowed radius sizes)
+                    "hierarchy" (attempts to recursively make closer and closer
+                        pairs of groupings.)
+
+            NOTE: Multiple lists in the parameters can be used to fill the space
+                    with varied types of data.
+                occupied dimensions must be <= total dimensions.
+                min_num <= max_num.
+                randomize_dims: boolean.
+                    If false, will use same set of dims for each cluster.
+                noise: a float; how much to randomly vary locations.
+                normalize: boolean. If true will afterward scale all vectors
+                    to unit length of 1, creating a hypersphere.
+
+        returns:
+            A new analyst object, and
+            A list of the clusters used to create the space before clustering
+                was recalculated, for comparison. This will be different if
+                clusters overlapped.
+        '''
+        pass
+        #note, need to make it create a generic identity function for
+        #   encode/decode. or use indeces.
+
+    @staticmethod
+    def simulate_cluster(type, population, radius, occupied_dims,
+        total_dims, randomize_dims=True, noise=0, normalize=False):
+        # Same usage as the cluster parameters in simulate_space().
+        # NOTE: when this function is called by simulate_space(), normalize
+        #   is never True here. That would be done after the fact,
+        #   on the whole simulated space, not on any one cluster.
+        pass
+
+
+    #--------------------------------------------------------------------------#
+    # General Functions:                                                       #
+    #--------------------------------------------------------------------------#
+
+    @staticmethod
+    def _file_extension(f_name):
+        if f_name[-7:] == ".pickle": return f_name
+        if f_name[-4:] == ".pck": return f_name
+        if f_name[-4:] == ".pcl": return f_name
+        if f_name[-3:] == ".db": return f_name
+        return f_name if f_name[-7:] == ".pkl" else f_name + ".pkl"
+
+    @staticmethod
+    def save(obj, f_name):
+        try:
+            with open(Analyst._file_extension(f_name), 'wb') as file:
+                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
+            return True
+        except:
+            return False
+
+    @staticmethod
+    def load(f_name):
+        try:
+            with open(Analyst._file_extension(f_name), 'rb') as file:
+                return pickle.load(file)
+        except:
+            return None
+
+    @staticmethod
+    def unsave(f_name):
+        try:
+            os.remove(Analyst._file_extension(f_name))
+            return True
+        except:
+            return False
+
+
+# END OF ANALYST CLASS.
+################################################################################
+
+
+
+# Brief script-like behavior for development, debugging, and testing purposes.
 if __name__ == "__main__":
 
     import TestSet2D

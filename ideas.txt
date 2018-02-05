@@ -1,3 +1,33 @@
+
+SRC
+
+abstract - high level, key points, what we learned. look up word number.
+Submit to Nancy wednesday 7th!
+
+abstract for presentation is similar to abstract for a research paper -
+look up examples.
+
+go for 3 min?
+
+
+
+
+
+run litmus test to see how much signal we are getting - pause in development.
+try to have done by next friday.
+use slim (or even slimmer) version, compare with same words with totally
+randomized normalized vectors and see if we can see numerical differences,
+or if just specific inspection is useful.
+
+
+
+
+
+
+
+
+
+
 average distance to nearest; nearest n
 average distance to furthest; furthest n
 average distance

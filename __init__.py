@@ -11,7 +11,7 @@ Analyst
 
 # Import all classes/functions in Analyst.py:
 from Analyst import *
-from TestSet2d import *
+from TestSet2D import *
 
 # Import only one class from Analyst.py:
 #from Analyst import Analyst
