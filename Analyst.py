@@ -5,6 +5,7 @@ from tqdm import tqdm
 import pickle
 import os
 import sys
+from multiprocessing import Pool
 
 import clusters
 
@@ -324,7 +325,7 @@ class Analyst:
             # Indeces correspond to indeces of vectors in the space. For each:
             #   [index of nearest, index of second-nearest, index of furthest]
             #   These are filled in in the _spatial_analysis.
-        self.neighbors_dist = np.zeros((len(self.space),3), dtype=np.float32)
+        self.neighbors_dist = np.zeros((len(self.space),3), dtype=np.float16)
             # Same format as above, except distances to those indexed above.
 
         # Run Analyses:
@@ -409,6 +410,50 @@ class Analyst:
 
     def _spatial_analysis(self, print_report=True):
 
+        def _compute_neighbors(self, i, num_complete):
+            vec = self.space[i]
+            nearest_i = (0 if i != 0 else 1) # Can't start off on self!
+            nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
+            furthest_i = i # Start off closest possible - self.
+            nearest_dist = self.metric(vec, self.space[nearest_i])
+            nearest_2dist = self.metric(vec, self.space[nearest_2i])
+            furthest_dist = self.metric(vec, self.space[furthest_i])
+            # In case we started them off switched:
+            if nearest_2dist < nearest_dist:
+                temp_i = nearest_i
+                temp_dist = nearest_dist
+                nearest_i = nearest_2i
+                nearest_2i = temp_i
+                #furthest_i = temp_i
+                nearest_dist = nearest_2dist
+                nearest_2dist = temp_dist
+                #furthest_dist = temp_dist
+            for j, other in enumerate(self.space):
+                if j != i:
+                    dist = self.metric(vec, other)
+                    if dist < nearest_dist:
+                        nearest_2dist = nearest_dist
+                        nearest_2i = nearest_i
+                        nearest_dist = dist
+                        nearest_i = j
+                    elif dist < nearest_2dist and j != nearest_i:
+                        nearest_2dist = dist
+                        nearest_2i = j
+                    if dist > furthest_dist:
+                        furthest_dist = dist
+                        furthest_i = j
+            self.neighbors[i][0] = nearest_i
+            self.neighbors[i][1] = nearest_2i
+            self.neighbors[i][2] = furthest_i
+            self.neighbors_dist[i][0] = nearest_dist
+            self.neighbors_dist[i][1] = nearest_2dist
+            self.neighbors_dist[i][2] = furthest_dist
+            num_complete += 1
+            if num_complete % 10 == 0: print(num_complete)
+
+
+
+        """
         # Nearest, 2nd Nearest, and Futhest Computation:
         self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 4:
@@ -452,6 +497,10 @@ class Analyst:
             self.neighbors_dist[i][1] = nearest_2dist
             self.neighbors_dist[i][2] = furthest_dist
 
+            #for testing only:
+            #if i > 10: break
+        """
+
         # MEASUREMENTS:
 
         # Centroid, Dispersion, Remoteness:
@@ -480,6 +529,19 @@ class Analyst:
         #self.remoteness = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
+
+
+        # Nearest, 2nd Nearest, and Futhest Computation:
+        self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
+        if len(self.space) < 4:
+            return
+        self._print("Acquainting the Species:")
+        num_complete = 0
+        try: cpus = multiprocessing.cpu_count()
+        except: cpus = 12
+        pool = Pool(cpus)
+        pool.map(_compute_neighbors, range(len(self.space)), num_complete)
+
 
         # Nearest Neighbor Info:
         self._print("Building Trade Routes")
@@ -627,6 +689,7 @@ class Analyst:
             self._add_info(hub_max-hub_min, "Hubs", "Population Range")
             self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
 
+        """
         # Supernodes:
         if "Supernodes" in self.categories:
             self.supernodes = []
@@ -651,7 +714,9 @@ class Analyst:
                     node_neighbors_dist.append(nearest_dist)
                 ?????????????
                 # Compute the Supernodes:
+        """
 
+        #MAKE ANALYST ACCEPT LIST OF WORDS INSTEAD OF ONLY AN ENCODE FUNCTION!
 
         # Nuclei:
         pass
