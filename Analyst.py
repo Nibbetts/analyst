@@ -5,7 +5,7 @@ from tqdm import tqdm
 import pickle
 import os
 import sys
-from multiprocessing import Pool
+import multiprocessing
 
 import clusters
 
@@ -210,8 +210,9 @@ class Analyst:
                 space, like word2vec.
 
         Comparative:
-            compare_with(analyst2) -- prints a full report with three numbers
-                for each property instead of one - val_for_A, val_for_B, val_A-B
+            compare_difference(analyst2) -- prints a full report with three
+                numbers for each property instead of one:
+                val_for_A, val_for_B, val_A_minus_B
             Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
                 side by side the values for each analyst in the list.
 
@@ -410,7 +411,8 @@ class Analyst:
 
     def _spatial_analysis(self, print_report=True):
 
-        def _compute_neighbors(self, i, num_complete):
+        """
+        def _compute_neighbors(i):#pbar):
             vec = self.space[i]
             nearest_i = (0 if i != 0 else 1) # Can't start off on self!
             nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
@@ -448,12 +450,12 @@ class Analyst:
             self.neighbors_dist[i][0] = nearest_dist
             self.neighbors_dist[i][1] = nearest_2dist
             self.neighbors_dist[i][2] = furthest_dist
-            num_complete += 1
-            if num_complete % 10 == 0: print(num_complete)
-
-
-
+            #pbar.update()
+            self.counter += 1
+            if self.counter % 10 == 0: print(self.counter)
         """
+
+
         # Nearest, 2nd Nearest, and Futhest Computation:
         self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 4:
@@ -499,7 +501,7 @@ class Analyst:
 
             #for testing only:
             #if i > 10: break
-        """
+
 
         # MEASUREMENTS:
 
@@ -531,16 +533,21 @@ class Analyst:
         #     for i, v in self.vectors])
 
 
+        """
         # Nearest, 2nd Nearest, and Futhest Computation:
         self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
         if len(self.space) < 4:
             return
-        self._print("Acquainting the Species:")
-        num_complete = 0
+        #self._print("Acquainting the Species:")
+        #pbar = tqdm(total=len(self.space), desc="Analyzing Stellar Adjacency",
+        #    disable=(not self.auto_print)) #USE WITH STATEMENT INSTEAD
+        self.counter = 0
         try: cpus = multiprocessing.cpu_count()
-        except: cpus = 12
-        pool = Pool(cpus)
-        pool.map(_compute_neighbors, range(len(self.space)), num_complete)
+        except: cpus = 2
+        pool = multiprocessing.Pool(cpus)
+        pool.map(_compute_neighbors, range(len(self.space)))#[pbar]*len(self.space))
+        #pbar.close()
+        """
 
 
         # Nearest Neighbor Info:
@@ -596,15 +603,16 @@ class Analyst:
             self._print("Puzzling Over the Star Charts")
             self._add_info(len(self.extremities),
                 "Extremities", "Count", star=True)
-            extr_min = np.min(self.extremity_lengths)
-            extr_max = np.max(self.extremity_lengths)
-            self._add_info(np.mean(self.extremity_lengths),
-                "Extremities", "Span Avg")
-            self._add_info(extr_min, "Extremities", "Span Min", star=True)
-            self._add_info(extr_max, "Extremities", "Span Max", star=True)
-            self._add_info(extr_max - extr_min, "Extremities", "Span Range")
-            self._add_info(self.extremity_lengths,
-                "Extremities", "Span Histogram Key")
+            if len(self.extremities) > 0:
+                extr_min = np.min(self.extremity_lengths)
+                extr_max = np.max(self.extremity_lengths)
+                self._add_info(np.mean(self.extremity_lengths),
+                    "Extremities", "Span Avg")
+                self._add_info(extr_min, "Extremities", "Span Min", star=True)
+                self._add_info(extr_max, "Extremities", "Span Max", star=True)
+                self._add_info(extr_max - extr_min, "Extremities", "Span Range")
+                self._add_info(self.extremity_lengths,
+                    "Extremities", "Span Histogram Key")
 
         # Nodes:
         print_node_info = "Nodes" in self.categories
@@ -630,10 +638,10 @@ class Analyst:
                 desc="Delineating the Quasars",
                 disable=(not self.auto_print))]
             self._print("Comparing the Cosmos")
-            if print_node_info:
+            self._add_info(len(self.nodes), "Nodes", "Count")
+            if print_node_info and len(self.nodes) > 0:
                 node_min = np.min(self.node_lengths)
                 node_max = np.max(self.node_lengths)
-                self._add_info(len(self.nodes), "Nodes", "Count")
                 self._add_info(np.mean(self.node_lengths), "Nodes", "Span Avg")
                 self._add_info(node_min, "Nodes", "Span Min")
                 self._add_info(node_max, "Nodes", "Span Max")
@@ -680,14 +688,15 @@ class Analyst:
 
             # Hub count, populations, etc:
             self._add_info(len(self.hubs), "Hubs", "Count")
-            hub_sizes = [len(h) for h in self.hubs]
-            hub_min = np.min(hub_sizes)
-            hub_max = np.max(hub_sizes)
-            self._add_info(np.mean(hub_sizes), "Hubs", "Population Avg")
-            self._add_info(hub_min, "Hubs", "Population Min")
-            self._add_info(hub_max, "Hubs", "Population Max")
-            self._add_info(hub_max-hub_min, "Hubs", "Population Range")
-            self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
+            if len(self.hubs) > 0:
+                hub_sizes = [len(h) for h in self.hubs]
+                hub_min = np.min(hub_sizes)
+                hub_max = np.max(hub_sizes)
+                self._add_info(np.mean(hub_sizes), "Hubs", "Population Avg")
+                self._add_info(hub_min, "Hubs", "Population Min")
+                self._add_info(hub_max, "Hubs", "Population Max")
+                self._add_info(hub_max-hub_min, "Hubs", "Population Range")
+                self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
 
         """
         # Supernodes:
@@ -809,6 +818,93 @@ class Analyst:
         raise NotImplementedError("Function not implemented.")
     """
 
+    # COMPARATIVE:
+
+    def compare_difference(self, analyst2):
+        # Prints a full report with three numbers for each property
+        #   instead of one - val_for_A, val_for_B, val_A_minus_B
+        self._print("Bridging Two Universes")
+        print()
+        if self.description == None: self.description = "ANALYST 1"
+        if analyst2.description == None: desc2 = "ANALYST 2"
+        else: desc2 = analyst2.description
+        print(self.description.upper() + " vs. " + desc2.upper())
+
+        # Combine and sort the Categories without losing any info:
+        all_categories = []
+        category_indeces = {}
+        for i, category in enumerate(self.categories):
+            if category not in all_categories:
+                all_categories.append(category)
+                category_indeces[category] = (i, None)
+            else:
+                t = category_indeces[category]
+                if t[0] == None: category_indeces[category] = (i, t[1])
+        for i, category in enumerate(analyst2.categories):
+            if category not in all_categories:
+                all_categories.append(category)
+                category_indeces[category] = (None, i)
+            else:
+                t = category_indeces[category]
+                if t[1] == None: category_indeces[category] = (t[0], i)        
+
+        for category in all_categories:
+            print(category + ": ")
+            info_list_1 = self.category_lists[category_indeces[category][0]]
+            info_list_2 = analyst2.category_lists[category_indeces[category][1]]
+
+            all_info = []
+            info_indeces = {}
+            for i, info in enumerate(info_list_1):
+                if info[0] not in all_info:
+                    all_info.append(info[0])
+                    info_indeces[info[0]] = (i, None)
+                else:
+                    t = info_indeces[info[0]]
+                    if t[0] == None: info_indeces[info[0]] = (i, t[1])
+            for i, info in enumerate(info_list_2):
+                if info[0] not in all_info:
+                    all_info.append(info[0])
+                    info_indeces[info[0]] = (None, i)
+                else:
+                    t = info_indeces[info[0]]
+                    if t[1] == None: info_indeces[info[0]] = (t[0], i)    
+
+            for info in all_info:
+                info1 = info_list_1[info_indeces[info]]
+                info2 = info_list_2[info_indeces[info]]
+                if "Histogram Key" in info1[0]:
+                    self.graph_info.append(("2", info1[1], info2[1]))
+                    print("  {} {:<11}  {:<23}  {:<35} {}{}".format(
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[1],
+                        info2[1],
+                        len(self.graph_info) - 1,
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[0]))
+                elif isinstance(info1[1], basestring) or info1[1] % 1.0 == 0:
+                    print("  {} {:<11}  {:<23}  {:<35} {}{}".format(
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[1],
+                        info2[1],
+                        "" if isinstance(info1[1], basestring) else (
+                            info1[1]-info2[1]),
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[0]))
+                else:
+                    print("  {} {:<11.8f}  {:<23.8f}  {:<35.8f} {}{}".format(
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[1],
+                        info2[1],
+                        info1[1]-info2[1],
+                        "*" if info1[2] or info2[2] else " ",
+                        info1[0]))
+
+    @staticmethod
+    def compare(ana_list):
+        # Lists side by side the values for each analyst in the list.
+        pass
+
 
     #--------------------------------------------------------------------------#
     # Information Gathering and Reporting Functions                            #
@@ -818,7 +914,7 @@ class Analyst:
         # Description and category must be strings.
         #variable = None
         #i = None
-        if "Histogram" in description:
+        if "Histogram Key" in description:
             variable = len(self.graph_info)
             self.graph_info.append(var)
         else: variable = var
@@ -829,21 +925,32 @@ class Analyst:
             self.categories.append(category)
             self.category_lists.append([])
         self.category_lists[i].append(
-            (description, variable, "*" if star else " "))
+            (description, variable, star))
 
     def _print(self, string=""):
         if self.auto_print: print("\r" + string + "...")
 
     def print_report(self):
         self._print("Revealing the Grand Plan")
-        print
+        print()
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
             print(category + ": ")
             for cat in self.category_lists[i]:
                 #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
                 #print(cat[0],cat[1],sep="\t") #python3
-                print("  {} {:<16} {}{}".format(cat[2],cat[1],cat[2],cat[0]))
+                if isinstance(cat[1], basestring) or cat[1] % 1.0 == 0:
+                    print("  {} {:<11} {}{}".format(
+                        "*" if cat[2] else " ",
+                        cat[1],
+                        "*" if cat[2] else " ",
+                        cat[0]))
+                else:
+                    print("  {} {:<11.8f} {}{}".format(
+                        "*" if cat[2] else " ",
+                        cat[1],
+                        "*" if cat[2] else " ",
+                        cat[0]))
 
 
     #--------------------------------------------------------------------------#
