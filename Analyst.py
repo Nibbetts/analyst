@@ -864,8 +864,13 @@ class Analyst:
 
         for category in all_categories:
             print(category + ": ")
-            info_list_1 = self.category_lists[category_indeces[category][0]]
-            info_list_2 = analyst2.category_lists[category_indeces[category][1]]
+            try:
+                info_list_1 = self.category_lists[category_indeces[category][0]]
+            except: info_list_1 = []
+            try:
+                info_list_2 = analyst2.category_lists[
+                    category_indeces[category][1]]
+            except: info_list_2 = []
 
             all_info = []
             info_indeces = {}
@@ -890,29 +895,31 @@ class Analyst:
                 info2 = (info_list_2[info_indeces[info][1]] if
                     info_indeces[info][1] != None else None)
                 if info1 == info2 == None:
-                    comb = ["???", None, None, "", False]
+                    comb = ["???", None, None, "", " "]
                 elif info1 == None:
-                    comb = [info2[0], None, info2[1], "", info2[2]]
+                    comb = [info2[0], None, info2[1], "",
+                        "*" if info2[2] else " "]
                 elif info2 == None:
-                    comb = [info1[0], info1[1], None, "", info1[2]]
+                    comb = [info1[0], info1[1], None, "",
+                        "*" if info1[2] else " "]
                 else:
                     comb = [
                         info1[0], # Description
                         info1[1], # var1
                         info2[1], # var2
                         "",       # var1-var2, or combined histogram key
-                        "*" if info1[2] or info2[2] else " "] # Star
-                if "Histogram Key" in info1[0]:
-                    self.graph_info.append(("2", info1[1], info2[1]))
-                    comb[3] = str(len(self.graph_info) - 1)
-                elif not (isinstance(comb[1], basestring) or
+                        "*" if (info1[2] or info2[2]) else " "] # Star
+                    if "Histogram Key" in comb[0]:
+                        self.graph_info.append(("2", info1[1], info2[1]))
+                        comb[3] = str(len(self.graph_info) - 1)
+                if not (isinstance(comb[1], basestring) or
                         isinstance(comb[2], basestring)):
                     if comb[1] != None and comb[2] != None:
-                        comb[3] = comb[1] - comb[2]
-                        if comb[1] % 1.0 != 0 and comb[2] % 1.0 != 0:
-                            comb[1] = "{:<11.8f}".format(comb[1])
-                            comb[2] = "{:<11.8f}".format(comb[2])
-                            comb[3] = "{:<11.8f}".format(comb[3])
+                        comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
+                    if comb[1] != None and comb[1] % 1.0 != 0:
+                        comb[1] = "{:<11.8f}".format(comb[1])
+                    if comb[2] != None and comb[2] % 1.0 != 0:
+                        comb[2] = "{:<11.8f}".format(comb[2])
                 print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
                     comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
                 '''

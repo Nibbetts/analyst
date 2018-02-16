@@ -66,7 +66,7 @@ if __name__ == "__main__":
     import Analyst
 
     t = TestSet2D()
-    r = TestSet2D(True, 19680801)
+    r = TestSet2D(random=True, seed=19680801)
     at = Analyst.Analyst(t, "euclidean", t.encode, t.decode, desc="Contrived 2D Test Set")
     ar = Analyst.Analyst(r, "euclidean", r.encode, r.decode, desc="Random 2D Test Set")
     at.compare_difference(ar)

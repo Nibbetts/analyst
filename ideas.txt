@@ -19,7 +19,7 @@ use slim (or even slimmer) version, compare with same words with totally
 randomized normalized vectors and see if we can see numerical differences,
 or if just specific inspection is useful.
 
-
+!!!!!!!DON"T PRINT THINGS WE DIDN"T ASK FOR!!
 
 
 
