@@ -818,13 +818,27 @@ class Analyst:
         raise NotImplementedError("Function not implemented.")
     """
 
+    def graph(self, hist_key, bins=16):
+        """
+            Description: creates a histogram according to key printed in report.
+            NOTE: Keys/Information from comparisons made are accessible only in
+                the analyst which was leftward when the comparison was made.
+        """
+
+        #in self.graph_info, singles are directly the list of data, while
+        #   comparison graphs are tuples:
+        #       ("2", datalist_from_self, datalist_from_other)
+        pass
+
     # COMPARATIVE:
 
     def compare_difference(self, analyst2):
         # Prints a full report with three numbers for each property
         #   instead of one - val_for_A, val_for_B, val_A_minus_B
+        # Also adds double-histogram information from the comparison in self,
+        #   but not in analyst2.
         self._print("Bridging Two Universes")
-        print()
+        print("")
         if self.description == None: self.description = "ANALYST 1"
         if analyst2.description == None: desc2 = "ANALYST 2"
         else: desc2 = analyst2.description
@@ -871,34 +885,57 @@ class Analyst:
                     if t[1] == None: info_indeces[info[0]] = (t[0], i)    
 
             for info in all_info:
-                info1 = info_list_1[info_indeces[info]]
-                info2 = info_list_2[info_indeces[info]]
+                info1 = (info_list_1[info_indeces[info][0]] if
+                    info_indeces[info][0] != None else None)
+                info2 = (info_list_2[info_indeces[info][1]] if
+                    info_indeces[info][1] != None else None)
+                if info1 == info2 == None:
+                    comb = ["???", None, None, "", False]
+                elif info1 == None:
+                    comb = [info2[0], None, info2[1], "", info2[2]]
+                elif info2 == None:
+                    comb = [info1[0], info1[1], None, "", info1[2]]
+                else:
+                    comb = [
+                        info1[0], # Description
+                        info1[1], # var1
+                        info2[1], # var2
+                        "",       # var1-var2, or combined histogram key
+                        "*" if info1[2] or info2[2] else " "] # Star
                 if "Histogram Key" in info1[0]:
                     self.graph_info.append(("2", info1[1], info2[1]))
-                    print("  {} {:<11}  {:<23}  {:<35} {}{}".format(
-                        "*" if info1[2] or info2[2] else " ",
-                        info1[1],
-                        info2[1],
-                        len(self.graph_info) - 1,
-                        "*" if info1[2] or info2[2] else " ",
-                        info1[0]))
+                    comb[3] = str(len(self.graph_info) - 1)
+                elif not (isinstance(comb[1], basestring) or
+                        isinstance(comb[2], basestring)):
+                    if comb[1] != None and comb[2] != None:
+                        comb[3] = comb[1] - comb[2]
+                        if comb[1] % 1.0 != 0 and comb[2] % 1.0 != 0:
+                            comb[1] = "{:<11.8f}".format(comb[1])
+                            comb[2] = "{:<11.8f}".format(comb[2])
+                            comb[3] = "{:<11.8f}".format(comb[3])
+                print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
+                    comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
+                '''
                 elif isinstance(info1[1], basestring) or info1[1] % 1.0 == 0:
-                    print("  {} {:<11}  {:<23}  {:<35} {}{}".format(
-                        "*" if info1[2] or info2[2] else " ",
+                    print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
+                        comb[4],
                         info1[1],
                         info2[1],
-                        "" if isinstance(info1[1], basestring) else (
-                            info1[1]-info2[1]),
-                        "*" if info1[2] or info2[2] else " ",
+                        ("" if (isinstance(info1[1], basestring)
+                                or info1[1] == None or info2[1] == None) else (
+                            info1[1]-info2[1])),???????????????
+                        comb[4],
                         info1[0]))
                 else:
-                    print("  {} {:<11.8f}  {:<23.8f}  {:<35.8f} {}{}".format(
-                        "*" if info1[2] or info2[2] else " ",
+                    print("  {} {:<11.8f}  {:<11.8f}  {:<11.8f} {}{}".format(
+                        comb[4],
                         info1[1],
                         info2[1],
-                        info1[1]-info2[1],
-                        "*" if info1[2] or info2[2] else " ",
-                        info1[0]))
+                        (info1[1]-info2[1] if (
+                                info1[1] != None and info2[1] != None)
+                            else ""),???????????????
+                        comb[4],
+                        info1[0]))'''
 
     @staticmethod
     def compare(ana_list):
@@ -932,7 +969,7 @@ class Analyst:
 
     def print_report(self):
         self._print("Revealing the Grand Plan")
-        print()
+        print("")
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
             print(category + ": ")
@@ -1060,10 +1097,8 @@ class Analyst:
 
 
 
-# Brief script-like behavior for development, debugging, and testing purposes.
+# Brief script-like behavior for development, debugging, and testing purposes:
 if __name__ == "__main__":
+    #import TestSet2D
 
-    import TestSet2D
-
-    t = TestSet2D.TestSet2D()
-    a = Analyst(t, "euclidean", t.encode, t.decode, desc="2D Test Set")
+    raise Exception("Analyst script behabior not defined.")

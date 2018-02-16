@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class TestSet2D:
     """
@@ -8,8 +9,8 @@ class TestSet2D:
     replace the encode and decode functions.
     """
 
-    def __init__(self):
-        self.data = np.array([
+    def __init__(self, random=False, seed=None):
+        if not random: self.data = np.array([
             [ 0.00, 4.00 ], [ 0.25, 4.00 ], [ 2.00, 4.00 ], [ 2.50, 4.00 ],
             [-1.50, 3.00 ], [ 2.00, 3.00 ], [ 4.00, 3.00 ], [-3.00, 2.50 ],
             [-2.00, 2.50 ], [-1.75, 2.50 ], [-1.00, 2.50 ], [-2.00, 2.00 ],
@@ -18,6 +19,9 @@ class TestSet2D:
             [ 2.00,-0.50 ], [-3.00,-1.00 ], [-1.00,-1.00 ], [ 1.25,-1.00 ],
             [-1.00,-1.50 ], [-1.50,-2.00 ], [ 1.50,-2.00 ], [ 3.00,-2.00 ],
             [-0.50,-3.00 ], [ 0.00,-3.00 ], [-2.00,-4.00 ], [ 4.00,-4.00 ] ])
+        else: self.data = np.random.random((32,2))*8 - 4
+        self.random = random
+        if seed != None: np.random.seed(seed)
     
     def __getitem__(self, index):
         return self.data[index]
@@ -39,3 +43,30 @@ class TestSet2D:
             if np.array_equal(v, vector):
                 return str(i)
         return None
+
+    def graph(self):
+        plt.figure(1, figsize=(5, 5))
+        p = plt.axes([.1, .1, .8, .8])
+        p.scatter(self.data[:,0], self.data[:,1])
+
+        p.set_xlim((-4.2,4.2))
+        p.set_ylim((-4.2,4.2))
+        #p.set_xlabel('x')
+        #p.set_ylabel('y')
+        if self.random: p.set_title('Random 2D Test Set')
+        else: p.set_title('Fixed Cluster-like 2D Test Set')
+        p.grid(True)
+        p.set_aspect('equal', 'datalim')
+
+        plt.show()
+
+
+# Brief script-like behavior for development, debugging, and testing purposes:
+if __name__ == "__main__":
+    import Analyst
+
+    t = TestSet2D()
+    r = TestSet2D(True, 19680801)
+    at = Analyst.Analyst(t, "euclidean", t.encode, t.decode, desc="Contrived 2D Test Set")
+    ar = Analyst.Analyst(r, "euclidean", r.encode, r.decode, desc="Random 2D Test Set")
+    at.compare_difference(ar)
