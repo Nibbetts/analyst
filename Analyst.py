@@ -560,7 +560,8 @@ class Analyst:
         nearest_max = np.max(self.neighbors_dist[:,0])
         self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
         self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
-        self._add_info(nearest_max-nearest_min, "Spatial", "Nearest Dist Range")
+        self._add_info(nearest_max-nearest_min,
+            "Spatial", "Nearest Dist Range", star=True)
         self._add_info(self.neighbors_dist[:,0],
             "Spatial", "Nearest Dist Histogram Key")
 
@@ -914,8 +915,16 @@ class Analyst:
                         comb[3] = str(len(self.graph_info) - 1)
                 if not (isinstance(comb[1], basestring) or
                         isinstance(comb[2], basestring)):
-                    if comb[1] != None and comb[2] != None:
-                        comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
+                    if comb[1] != None and comb[2] != None and comb:
+                        # Commented versions is just a-b. New version is scaled difference, (a-b)/avg(a,b):
+                        #if comb[1] % 1.0 != 0 and comb[2] % 1.0 != 0:
+                            #comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
+                        #elif "Histogram Key" not in comb[0]:
+                            #comb[3] = comb[1] - comb[2]
+                        if "Histogram Key" not in comb[0]:
+                            average = (abs(comb[1]) + abs(comb[2]))/2.0
+                            if average != 0: comb[3] = "{:<11.8f}".format((comb[1] - comb[2])/average)
+                            else: comb[3] = "nan"
                     if comb[1] != None and comb[1] % 1.0 != 0:
                         comb[1] = "{:<11.8f}".format(comb[1])
                     if comb[2] != None and comb[2] % 1.0 != 0:

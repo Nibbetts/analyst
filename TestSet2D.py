@@ -10,6 +10,8 @@ class TestSet2D:
     """
 
     def __init__(self, random=False, seed=None):
+        self.random = random
+        if seed != None: np.random.seed(seed)
         if not random: self.data = np.array([
             [ 0.00, 4.00 ], [ 0.25, 4.00 ], [ 2.00, 4.00 ], [ 2.50, 4.00 ],
             [-1.50, 3.00 ], [ 2.00, 3.00 ], [ 4.00, 3.00 ], [-3.00, 2.50 ],
@@ -20,8 +22,6 @@ class TestSet2D:
             [-1.00,-1.50 ], [-1.50,-2.00 ], [ 1.50,-2.00 ], [ 3.00,-2.00 ],
             [-0.50,-3.00 ], [ 0.00,-3.00 ], [-2.00,-4.00 ], [ 4.00,-4.00 ] ])
         else: self.data = np.random.random((32,2))*8 - 4
-        self.random = random
-        if seed != None: np.random.seed(seed)
     
     def __getitem__(self, index):
         return self.data[index]
