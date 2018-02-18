@@ -212,7 +212,7 @@ class Analyst:
         Comparative:
             compare_difference(analyst2) -- prints a full report with three
                 numbers for each property instead of one:
-                val_for_A, val_for_B, val_A_minus_B
+                val_for_A, val_for_B, val_A_minus_B """??????????????????????????????????"""
             Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
                 side by side the values for each analyst in the list.
 
