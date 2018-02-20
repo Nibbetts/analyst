@@ -1,30 +1,46 @@
 
 SRC
-
-abstract - high level, key points, what we learned. look up word number.
-Submit to Nancy wednesday 7th!
-
-abstract for presentation is similar to abstract for a research paper -
-look up examples.
-
-go for 3 min?
+3-5 slides, like corl, and can look at nancy's slides as example.
+1-2 slides per minute.
 
 
-
-
-
-run litmus test to see how much signal we are getting - pause in development.
-try to have done by next friday.
-use slim (or even slimmer) version, compare with same words with totally
-randomized normalized vectors and see if we can see numerical differences,
-or if just specific inspection is useful.
 
 !!!!!!!DON"T PRINT THINGS WE DIDN"T ASK FOR!!
 
+write analogical analyses to compare:
+glove vectors
+FastText
+word2vec
+
+use ward dissimilarity somehow?
 
 
-
-
+(categories:)
+spatial
+nodes
+clusters
+user_cluster_algorithm1
+user_cluster_algorithm2
+#General Stats on analogy datasets:
+#    set1
+#    set2
+#    set3
+Stats on Analogy Set1:
+    dispersion
+    medoid
+    etc
+    similarity to set2
+    similarity to set3
+Stats on Analogy set2:
+    ...
+Stats on Analogy set3:
+    ...
+Analogy Algorithm 1:
+    set1_score
+    set2_score
+    set3_score
+Reclustering stats based on analogy test sets:
+    (new general space info based on clusters)
 
 
 

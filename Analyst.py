@@ -852,7 +852,7 @@ class Analyst:
         else: desc2 = analyst2.description
         print(self.description.upper() + " vs. " + desc2.upper())
 
-        # Combine and sort the Categories without losing any info:
+        # Combine and sort the Categories without losing any of them:
         all_categories = []
         category_indeces = {}
         # From left analyst (self):
@@ -1143,11 +1143,12 @@ class Analyst:
 
     @staticmethod
     def load(f_name):
+        name = Analyst._file_extension(f_name)
         try:
-            with open(Analyst._file_extension(f_name), 'rb') as file:
+            with open(name, 'rb') as file:
                 return pickle.load(file)
         except:
-            return None
+            raise Exception("Unable to load file: \"" + name + "\"")
 
     @staticmethod
     def unsave(f_name):
