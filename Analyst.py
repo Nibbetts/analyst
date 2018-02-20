@@ -112,7 +112,7 @@ class Analyst:
             * dispersion
 
             * remoteness -- avg dist to nearest
-            dist. to nearest min, max, range, graph of distribution of.
+            dist. to nearest min, max, *range, graph of distribution of.
             * broadness -- max dist to furthest
             dist. to furthest avg, min, range, graph of distr.
 
@@ -210,9 +210,12 @@ class Analyst:
                 space, like word2vec.
 
         Comparative:
-            compare_difference(analyst2) -- prints a full report with three
-                numbers for each property instead of one:
-                val_for_A, val_for_B, val_A_minus_B """??????????????????????????????????"""
+            compare_difference(analyst2, simple_diff=False)
+                -- prints a full report with three numbers for each property:
+                val_for_A, val_for_B, A_B_compared.
+                The third number is a representation of how different A, B are,
+                    either a simple difference or weighted by their scales,
+                    depending on the value of simple_diff.
             Analyst.compare([list_of_analysts]) -- a @staticmethod which lists
                 side by side the values for each analyst in the list.
 
@@ -320,7 +323,10 @@ class Analyst:
             for ix, s in enumerate(tqdm(self.ix_to_s, desc="Indexing Planets",
                     disable=(not self.auto_print))):
                 self.s_to_ix[s] = ix
-        except: print("You gone done broke it...")
+        except Exception as e:
+            print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
+            print(e)
+            return
 
         self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
             # Indeces correspond to indeces of vectors in the space. For each:
@@ -833,9 +839,10 @@ class Analyst:
 
     # COMPARATIVE:
 
-    def compare_difference(self, analyst2):
+    def compare_difference(self, analyst2, simple_diff=False):
         # Prints a full report with three numbers for each property
-        #   instead of one - val_for_A, val_for_B, val_A_minus_B
+        #   instead of one - val_for_A, val_for_B, A_B_compared
+        #   where A_B_compared is A-B if simple_diff, else is A-B/avg(absA,absB)
         # Also adds double-histogram information from the comparison in self,
         #   but not in analyst2.
         self._print("Bridging Two Universes")
@@ -848,6 +855,7 @@ class Analyst:
         # Combine and sort the Categories without losing any info:
         all_categories = []
         category_indeces = {}
+        # From left analyst (self):
         for i, category in enumerate(self.categories):
             if category not in all_categories:
                 all_categories.append(category)
@@ -855,6 +863,7 @@ class Analyst:
             else:
                 t = category_indeces[category]
                 if t[0] == None: category_indeces[category] = (i, t[1])
+        # From right analyst (other):
         for i, category in enumerate(analyst2.categories):
             if category not in all_categories:
                 all_categories.append(category)
@@ -863,8 +872,10 @@ class Analyst:
                 t = category_indeces[category]
                 if t[1] == None: category_indeces[category] = (t[0], i)        
 
+        # Combine and sort the info in each category without losing any:
         for category in all_categories:
             print(category + ": ")
+            # Gather info from each:
             try:
                 info_list_1 = self.category_lists[category_indeces[category][0]]
             except: info_list_1 = []
@@ -875,6 +886,7 @@ class Analyst:
 
             all_info = []
             info_indeces = {}
+            # From left analyst (self):
             for i, info in enumerate(info_list_1):
                 if info[0] not in all_info:
                     all_info.append(info[0])
@@ -882,6 +894,7 @@ class Analyst:
                 else:
                     t = info_indeces[info[0]]
                     if t[0] == None: info_indeces[info[0]] = (i, t[1])
+            # From right analyst (other):
             for i, info in enumerate(info_list_2):
                 if info[0] not in all_info:
                     all_info.append(info[0])
@@ -890,7 +903,9 @@ class Analyst:
                     t = info_indeces[info[0]]
                     if t[1] == None: info_indeces[info[0]] = (t[0], i)    
 
+            # Then for the combined info from that category:
             for info in all_info:
+                # Check for empty (None) info:
                 info1 = (info_list_1[info_indeces[info][0]] if
                     info_indeces[info][0] != None else None)
                 info2 = (info_list_2[info_indeces[info][1]] if
@@ -903,32 +918,52 @@ class Analyst:
                 elif info2 == None:
                     comb = [info1[0], info1[1], None, "",
                         "*" if info1[2] else " "]
+                # Gather and format the rest:
                 else:
                     comb = [
                         info1[0], # Description
                         info1[1], # var1
                         info2[1], # var2
-                        "",       # var1-var2, or combined histogram key
+                        "",       # comparison vars 1 & 2, or combined hist key
                         "*" if (info1[2] or info2[2]) else " "] # Star
+                    # Deal with histogram keys, putting () around them:
                     if "Histogram Key" in comb[0]:
+                        # Add a new key for a combined histogram:
                         self.graph_info.append(("2", info1[1], info2[1]))
-                        comb[3] = str(len(self.graph_info) - 1)
+                        comb[1] = "(" + str(comb[1]) + ")"
+                        comb[2] = "(" + str(comb[2]) + ")"
+                        comb[3] = "(" + str(len(self.graph_info) - 1) + ")"
+                # Then if not strings, more formatting:
                 if not (isinstance(comb[1], basestring) or
                         isinstance(comb[2], basestring)):
                     if comb[1] != None and comb[2] != None and comb:
-                        # Commented versions is just a-b. New version is scaled difference, (a-b)/avg(a,b):
+                        # Commented versions is just a-b;
+                        #   New version is scaled difference, (a-b)/avg(a,b):
                         #if comb[1] % 1.0 != 0 and comb[2] % 1.0 != 0:
                             #comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
                         #elif "Histogram Key" not in comb[0]:
                             #comb[3] = comb[1] - comb[2]
+                        # For int or float pairs, not keys or strings or Nones:
                         if "Histogram Key" not in comb[0]:
-                            average = (abs(comb[1]) + abs(comb[2]))/2.0
-                            if average != 0: comb[3] = "{:<11.8f}".format((comb[1] - comb[2])/average)
-                            else: comb[3] = "nan"
+                            if simple_diff:
+                                comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
+                            else:
+                                average = (abs(comb[1]) + abs(comb[2]))/2.0
+                                if average != 0: comb[3] = "{:<11.8f}".format(
+                                    (comb[1] - comb[2])/average)
+                                else: comb[3] = "nan"
+                    # Format floats differently:
                     if comb[1] != None and comb[1] % 1.0 != 0:
                         comb[1] = "{:<11.8f}".format(comb[1])
                     if comb[2] != None and comb[2] % 1.0 != 0:
                         comb[2] = "{:<11.8f}".format(comb[2])
+                #else: # Add quotes around printed words:
+                #    if isinstance(comb[1], basestring):
+                #        comb[1] = "\"" + comb[1] + "\""
+                #    if isinstance(comb[2], basestring):
+                #        comb[2] = "\"" + comb[2] + "\""
+
+                # And finally print a line:
                 print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
                     comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
                 '''
@@ -993,17 +1028,32 @@ class Analyst:
                 #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
                 #print(cat[0],cat[1],sep="\t") #python3
                 if isinstance(cat[1], basestring) or cat[1] % 1.0 == 0:
+                    # Keep strings strings and ints ints... :
                     print("  {} {:<11} {}{}".format(
-                        "*" if cat[2] else " ",
-                        cat[1],
-                        "*" if cat[2] else " ",
+                        "*" if cat[2] else " ", # Stars
+                        ("(" + str(cat[1]) + ")" if "Histogram Key" in cat[0]
+                            #else ("\"" + cat[1] + "\"" if # Quotes around words
+                            #    isinstance(cat[1], basestring) else cat[1])),
+                            else cat[1]),
+                        "*" if cat[2] else " ", # Stars
                         cat[0]))
                 else:
+                    # ...But format floats to look uniform:
                     print("  {} {:<11.8f} {}{}".format(
-                        "*" if cat[2] else " ",
+                        "*" if cat[2] else " ", # Stars
                         cat[1],
-                        "*" if cat[2] else " ",
+                        "*" if cat[2] else " ", # Stars
                         cat[0]))
+                #cat_new = [
+                #    cat[0],
+                #    ("{:<11.8f}".format(cat[1]) if (
+                #        cat[1] % 1.0 != 0 and not isinstance(cat[1], basestring)
+                #        ) else (
+                #            "(" + str(cat[1]) + ")" if "Histogram Key" in cat[0]
+                #            else cat[1])),
+                #    "*" if cat[2] else " "]
+                #print("  {} {:<11} {}{}".format(
+                #    cat_new[2], cat_new[1], cat_new[2], cat_new[0]))
 
 
     #--------------------------------------------------------------------------#
