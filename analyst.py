@@ -2,12 +2,13 @@ import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import pickle
+import cPickle
 import os
 import sys
 import multiprocessing
 
 import clusters
+#from test_set_2d import TestSet2D
 
 
 class Analyst:
@@ -256,7 +257,8 @@ class Analyst:
 
     def __init__(self, embeddings, metric="cosine_similarity",
         encoder=None, decoder=None, cluster_algorithms=[(None, "All")],
-        auto_print=True, desc=None):
+        analogy_algorithms=[], analogy_sets=[],
+        auto_print=True, desc=None, calculate=True):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -289,8 +291,36 @@ class Analyst:
                     "LNNNCC" -- advanced, or strong version of the above
                     "Anti-clusters"
                     "All" -- will automatically include all of the above.
+                NOTE: As this variable contains functions, it will be altered
+                    to no longer contain functions when an Analyst is pickled.
+            analogy_algorithms -- list of tuples (callable, "Description").
+                Each callable must take word_A, is_to_B, as_C, and must return
+                is_to_D.
+                NOTE: As this variable contains functions, it will be altered
+                    to no longer contain functions when an Analyst is pickled.
+            analogy_sets -- list of tuples: (list_of_quadruples, "Description),
+                where each quadruple is a list of four strings, D being the
+                correct answer to compare against. Example:
+                [
+                    (
+                        [
+                            ["wordA", "wordB", "wordC", "wordD"],
+                            ["wordA", "wordB", "wordC", "wordD"]
+                        ],
+                        "Analogy Test Set 1"
+                    ),
+                    (
+                        [
+                            ["wordA", "wordB", "wordC", "wordD"],
+                            ["wordA", "wordB", "wordC", "wordD"]
+                        ],
+                        "Analogy Test Set 2"
+                    )
+                ]
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
+            calculate -- whether or not to run the analysis. Typically used only
+                by the unpickler.
         """
 
         self.auto_print = auto_print
@@ -314,58 +344,72 @@ class Analyst:
         self._print("Filling the Void")
         self.encode = encoder # string to vector
         self.decode = decoder # vector to string
-        self.s_to_ix = {}
-        self.ix_to_s = []
-        try:
-            self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
-                desc="Naming Stars and Drawing a Star Map",
-                disable=(not self.auto_print))]
-            for ix, s in enumerate(tqdm(self.ix_to_s, desc="Indexing Planets",
-                    disable=(not self.auto_print))):
-                self.s_to_ix[s] = ix
-        except Exception as e:
-            print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
-            print(e)
-            return
 
-        self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
-            # Indeces correspond to indeces of vectors in the space. For each:
-            #   [index of nearest, index of second-nearest, index of furthest]
-            #   These are filled in in the _spatial_analysis.
-        self.neighbors_dist = np.zeros((len(self.space),3), dtype=np.float16)
-            # Same format as above, except distances to those indexed above.
+        if calculate:
+            self.s_to_ix = {}
+            self.ix_to_s = []
+            try:
+                self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
+                    desc="Naming Stars and Drawing a Star Map",
+                    disable=(not self.auto_print))]
+                for ix, s in enumerate(
+                        tqdm(self.ix_to_s, desc="Indexing Planets",
+                        disable=(not self.auto_print))):
+                    self.s_to_ix[s] = ix
+            except Exception as e:
+                print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
+                print(e)
+                return
 
-        # Run Analyses:
-        self.graph_info = []
-        self.categories = []
-        self.cluster_algorithms = []
-        report_spatial = False
-        for t in cluster_algorithms:
-            if callable(t[0]):
-                self.cluster_algorithms.append(t)
-            else:
-                tag = t[1].lower()
-                if tag == "spatial":
-                    report_spatial = True
-                    self.categories.append(t[1])
-                elif tag == "all":
-                    report_spatial = True
-                    self.categories.append("Spatial")
-                    self.categories.append("Extremities")
-                    self.categories.append("Nodes")
-                    self.categories.append("Hubs")
-                    self.categories.append("Supernodes")
-                    self.categories.append("Nuclei")
-                    self.categories.append("Chains")
-                    self.categories.append("NNNCC")
-                    self.categories.append("LNNNCC")
-                    self.categories.append("Anti-clusters")
+            self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
+                # Indeces correspond to indeces of vectors in the space.
+                #   For each:
+                #   [index of nearest, index of 2nd-nearest, index of furthest]
+                #   These are filled in in the _spatial_analysis.
+            self.neighbors_dist = np.zeros(
+                (len(self.space),3), dtype=np.float16)
+                # Same format as above, except distances to those indexed above.
+
+            # Run Analyses:
+            self.graph_info = []
+            self.categories = []
+            self.cluster_algorithms = []
+            report_spatial = False
+            for t in cluster_algorithms:
+                if callable(t[0]):
+                    self.cluster_algorithms.append(t)
                 else:
-                    self.categories.append(t[1])
-        self.category_lists = np.empty(shape=(len(self.categories),0)).tolist()
-        self._spatial_analysis(report_spatial)
-        self._cluster_analysis()
-        if auto_print: self.print_report()
+                    tag = t[1].lower()
+                    if tag == "spatial":
+                        report_spatial = True
+                        self.categories.append(t[1])
+                    elif tag == "all":
+                        report_spatial = True
+                        self.categories.append("Spatial")
+                        self.categories.append("Extremities")
+                        self.categories.append("Nodes")
+                        self.categories.append("Hubs")
+                        self.categories.append("Supernodes")
+                        self.categories.append("Nuclei")
+                        self.categories.append("Chains")
+                        self.categories.append("NNNCC")
+                        self.categories.append("LNNNCC")
+                        self.categories.append("Anti-clusters")
+                    else:
+                        self.categories.append(t[1])
+            self.category_lists = np.empty(
+                shape=(len(self.categories),0)).tolist()
+
+            self.analogy_algorithms = analogy_algorithms
+            self.analogy_sets = analogy_sets
+
+            self.spatial_data = {}
+            self.cluster_data = {}
+            self.analogical_data = {}
+            self._spatial_analysis(report_spatial)
+            self._cluster_analysis()
+            self._analogical_analysis()
+            if auto_print: self.print_report()
 
 
     # Generic type converters for inputs and outputs:
@@ -764,6 +808,9 @@ class Analyst:
 
     # ANALOGICAL & SPECIFICS:
 
+    def _analogical_analysis(self):
+        pass
+
     """
     # Specific Functions:
     def rescale(self, theta, alpha=15, power=0.5):
@@ -1135,20 +1182,52 @@ class Analyst:
     @staticmethod
     def save(obj, f_name):
         try:
-            with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
-            return True
+            assert obj.__class__.__name__ == "Analyst"
+            data = {
+                "cls"   :  obj.__class__.__name__,
+                "space" :  obj.space,
+                "metric": obj.metric.__name__ if obj.metric != None else None,
+                "encode": obj.encode.__name__ if obj.encode != None else None,
+                "decode": obj.decode.__name__ if obj.decide != None else None,
+                "c_algs": [(None, pair[1]) for pair in obj.cluster_algorithms],
+                "a_algs": [(None, pair[1]) for pair in obj.analogy_algorithms],
+                "a_sets": obj.analogy_sets,
+                "print" : obj.auto_print,
+                "desc"  : obj.description,
+                "calc"  : obj.calculate,
+                "s_ix"  : obj.s_to_ix,
+                "ix_s"  : obj.ix_to_s,
+                "neigh" : obj.neighbors,
+                "n_dist": obj.neighbors_dist,
+                "g_info": obj.graph_info,
+                "cats"  : obj.categories,
+                "clists": obj.category_lists,
+                "s_data": obj.spatial_data,
+                "c_data": obj.cluster_data,
+                "a_data": obj.analogical_data
+            }
         except:
+            data = obj
+        try:
+            with open(Analyst._file_extension(f_name), 'wb') as file:
+                pickle.dumb(data, file, pickle.HIGHEST_PROTOCOL)
+            return True
+        except Exception as e:
+            print("Error; object could not be pickled:")
+            print(e)
             return False
 
     @staticmethod
-    def load(f_name):
+    def load(f_name, metric="cosine_similarity", encoder=None, decoder=None):
         name = Analyst._file_extension(f_name)
+        ?????FIX THIS BROKEN THING!???????
         try:
             with open(name, 'rb') as file:
                 return pickle.load(file)
-        except:
-            raise Exception("Unable to load file: \"" + name + "\"")
+        except Exception as e:
+            print(e)
+            raise e
+            #raise Exception("Unable to load file: \"" + name + "\"")
 
     @staticmethod
     def unsave(f_name):

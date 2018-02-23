@@ -1,5 +1,5 @@
 import numpy as np
-import Node
+#import node
 
 class Cluster:
 
@@ -124,6 +124,18 @@ class Cluster:
         #   from Ward's Method of agglomerative clustering.
         return ((self.metric(self.centroid, B.centroid)**2.0
                 / (1.0/len(self) + 1.0/len(B))))
+
+    def serialize(self): # For ability to pickle.
+        # Note: Nodes do not keep the functions passed in, so only clusters
+        #   need to be serialized.
+        self.metric = None
+        self.encoder = None
+        self.decoder = None
+
+    def deserialize(self, metric, encoder, decoder):
+        self.metric = metric
+        self.encoder = encoder
+        self.decoder = decoder
 
     #def get_centroid(self, cluster_name):
     #    return self.centroid

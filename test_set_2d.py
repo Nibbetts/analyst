@@ -63,13 +63,13 @@ class TestSet2D:
 
 # Brief script-like behavior for development, debugging, and testing purposes:
 if __name__ == "__main__":
-    import Analyst
+    from analyst import Analyst
 
     t = TestSet2D()
     r = TestSet2D(random=True, seed=19680801)
-    at = Analyst.Analyst(t, "euclidean", t.encode, t.decode, desc="Contrived 2D Test Set")
-    ar = Analyst.Analyst(r, "euclidean", r.encode, r.decode, desc="Random 2D Test Set")
+    at = Analyst(t.data, "euclidean", t.encode, t.decode, desc="Contrived 2D Test Set")
+    ar = Analyst(r.data, "euclidean", r.encode, r.decode, desc="Random 2D Test Set")
     at.compare_difference(ar)
 
-    Analyst.Analyst.save(t, "an_2d_contrived")
-    Analyst.Analyst.save(r, "an_2d_random")
+    Analyst.save(at, "an_2d_contrived")
+    Analyst.save(ar, "an_2d_random")
