@@ -2,7 +2,7 @@ import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import cPickle
+import cPickle as pickle
 import os
 import sys
 import multiprocessing
@@ -324,7 +324,7 @@ class Analyst:
         """
 
         self.auto_print = auto_print
-        print
+        print()
         self._print("Asking the Grand Question")
         self._print("Stretching the Fabric of Space and Time")
         self._print("Enumerating the Dimensions")
@@ -1201,16 +1201,16 @@ class Analyst:
                 "n_dist": obj.neighbors_dist,
                 "g_info": obj.graph_info,
                 "cats"  : obj.categories,
-                "clists": obj.category_lists,
-                "s_data": obj.spatial_data,
-                "c_data": obj.cluster_data,
-                "a_data": obj.analogical_data
+                "clists": obj.category_lists#,
+                #"s_data": obj.spatial_data,????
+                #"c_data": obj.cluster_data,????
+                #"a_data": obj.analogical_data????
             }
         except:
             data = obj
         try:
             with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dumb(data, file, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(data, file, pickle.HIGHEST_PROTOCOL)
             return True
         except Exception as e:
             print("Error; object could not be pickled:")
@@ -1220,7 +1220,7 @@ class Analyst:
     @staticmethod
     def load(f_name, metric="cosine_similarity", encoder=None, decoder=None):
         name = Analyst._file_extension(f_name)
-        ?????FIX THIS BROKEN THING!???????
+        #?????FIX THIS BROKEN THING!???????
         try:
             with open(name, 'rb') as file:
                 return pickle.load(file)

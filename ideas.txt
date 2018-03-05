@@ -1,10 +1,4 @@
 
-SRC
-3-5 slides, like corl, and can look at nancy's slides as example.
-1-2 slides per minute.
-
-
-
 !!!!!!!DON"T PRINT THINGS WE DIDN"T ASK FOR!!
 
 write analogical analyses to compare:
@@ -13,6 +7,9 @@ FastText
 word2vec
 
 use ward dissimilarity somehow?
+
+
+look into cluster extremities! (strange attractors)
 
 
 (categories:)
