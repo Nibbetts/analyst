@@ -50,7 +50,7 @@ if __name__ == "__main__":
     #for i, vec in enumerate(vectors_fake):
     #    fakev_to_word[vec] = words[i]
 
-   # def decode_real(vec):
+    # def decode_real(vec):
         #return words[vectors_real.index(vec)]
         #return realv_to_word[vec]
     decode_real = s.model.get_word
@@ -79,11 +79,32 @@ if __name__ == "__main__":
         auto_print=True, desc="fake scholar words")
     an_real.compare_difference(an_fake, simple_diff=True)
 
-    an_real.save(an_real, "an_scholar4000_real")
-    an_fake.save(an_fake, "an_scholar4000_fake")
+    worked_r = an_real.save(an_real, "an_scholar4000_real")
+    worked_f = an_fake.save(an_fake, "an_scholar4000_fake")
 
-    print(an_real.nodes)
-    print(an_fake.nodes)
+    
+    #assert an_real.serialized
+    #assert an_fake.serialized
+    """
+    print("an_real serialized: " + str(an_real.serialized))
+    print("an_fake serialized: " + str(an_fake.serialized))
+    for entry in an_real.__dict__:
+        print(entry, type(an_real.__dict__[entry]))
+    for entry in an_fake.__dict__:
+        print(entry, type(an_fake.__dict__[entry]))
+    """
+
+    assert worked_r
+    assert worked_f
+
+    an_r = an_real.load("an_scholar4000_real", metric, encode_real, decode_real)
+    an_f = an_fake.load("an_scholar4000_fake", metric, encode_fake, decode_fake)
+
+    assert an_r != None
+    assert an_f != None
+
+    print(an_r.nodes)
+    print(an_f.nodes)
 
 """
 if __package__ is None:

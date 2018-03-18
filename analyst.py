@@ -2,7 +2,8 @@ import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import cPickle as pickle
+#import cPickle as pickle
+import dill as pickle
 import os
 import sys
 import multiprocessing
@@ -319,8 +320,8 @@ class Analyst:
                 ]
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
-            calculate -- whether or not to run the analysis. Typically used only
-                by the unpickler.
+            calculate -- whether or not to run the analysis.
+                Typically always True.
         """
 
         self.auto_print = auto_print
@@ -333,8 +334,10 @@ class Analyst:
         if callable(metric): self.metric = metric
         elif metric == "l2" or metric == "euclidean":
             self.metric = sp.distance.euclidean
-        elif metric == "cosine_similarity": self.metric = sp.distance.cosine
-        elif metric == "l1": self.metric = sp.distance.cityblock
+        elif metric == "cosine_similarity":
+            self.metric = sp.distance.cosine
+        elif metric == "l1":
+            self.metric = sp.distance.cityblock
         else: raise ValueError("'metric' parameter unrecognized and uncallable")
         self.description = desc
 
@@ -344,6 +347,7 @@ class Analyst:
         self._print("Filling the Void")
         self.encode = encoder # string to vector
         self.decode = decoder # vector to string
+        self.serialized = False
 
         if calculate:
             self.s_to_ix = {}
@@ -1173,16 +1177,75 @@ class Analyst:
 
     @staticmethod
     def _file_extension(f_name):
-        if f_name[-7:] == ".pickle": return f_name
-        if f_name[-4:] == ".pck": return f_name
-        if f_name[-4:] == ".pcl": return f_name
-        if f_name[-3:] == ".db": return f_name
-        return f_name if f_name[-7:] == ".pkl" else f_name + ".pkl"
+        #if f_name[-7:] == ".pickle": return f_name
+        #if f_name[-4:] == ".pck": return f_name
+        #if f_name[-4:] == ".pcl": return f_name
+        #if f_name[-3:] == ".db": return f_name
+        #if f_name[-8:] == ".analyst": return f_name
+        #if f_name[-3:] == ".an": return f_name
+        #return f_name if f_name[-4:] == ".pkl" else f_name + ".pkl"
+
+        #return f_name if "." in f_name else f_name + ".pkl"
+        return f_name if "." in f_name else f_name + ".dill"
+
+    """
+    def _serialize(self):
+        # method to prepare an analyst instance for saving.
+        if not self.serialized:
+            self.metric = self.metric.__name__ if self.metric != None else None
+            self.encode = self.encode.__name__ if self.encode != None else None
+            self.decode = self.decode.__name__ if self.decode != None else None
+            self.cluster_algorithms = [
+                (None, pair[1]) for pair in self.cluster_algorithms]
+            self.analogy_algorithms = [
+                (None, pair[1]) for pair in self.analogy_algorithms]
+
+            # Serialize the Clusters (Nodes don't need it):
+            for key in self.cluster_data:
+                for cluster in self.cluster_data[key]:
+                    cluster._serialize()
+
+            self.serialized = True
+
+    def _deserialize(self, metric, encoder, decoder,
+                     cluster_algorithms, analogy_algorithms):
+        assert self.serialized
+        if callable(metric):
+            assert metric.__name__ == self.metric
+            self.metric = metric
+        elif metric == "l2" or metric == "euclidean":
+            self.metric = sp.distance.euclidean
+        elif metric == "cosine_similarity":
+            self.metric = sp.distance.cosine
+        elif metric == "l1":
+            self.metric = sp.distance.cityblock
+        else: raise ValueError("'metric' parameter unrecognized and uncallable")            
+            
+        if encoder != None: assert encoder.__name__ == self.encode
+        self.encode = encoder
+        if decoder != None: assert decoder.__name__ == self.decode
+        self.decode = decoder
+
+        if cluster_algorithms != None:
+            assert zip(*cluster_algorithms)[1] == zip(*self.cluster_algorithms)[1]
+        self.cluster_algorithms = cluster_algorithms
+        if analogy_algorithms != None:
+            assert zip(*analogy_algorithms)[1] == zip(*self.analogy_algorithms)[1]
+        self.analogy_algorithms = analogy_algorithms
+
+        # Deserialize the Clusters:
+        for key in self.cluster_data:
+            for cluster in self.cluster_data[key]:
+                cluster._deserialize(metric, encoder, decoder)
+
+        self.serialized = False
+    """
 
     @staticmethod
     def save(obj, f_name):
         try:
-            assert obj.__class__.__name__ == "Analyst"
+            #obj._serialize()
+            """assert obj.__class__.__name__ == "Analyst"
             data = {
                 "cls"   :  obj.__class__.__name__,
                 "space" :  obj.space,
@@ -1205,29 +1268,32 @@ class Analyst:
                 #"s_data": obj.spatial_data,????
                 #"c_data": obj.cluster_data,????
                 #"a_data": obj.analogical_data????
-            }
-        except:
-            data = obj
-        try:
+            }"""
             with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dump(data, file, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(obj, file)#, pickle.HIGHEST_PROTOCOL)
             return True
         except Exception as e:
-            print("Error; object could not be pickled:")
+            print("ERROR: Save function expected Analyst object.")
             print(e)
             return False
 
     @staticmethod
-    def load(f_name, metric="cosine_similarity", encoder=None, decoder=None):
+    def load(f_name, metric, encoder, decoder,
+             cluster_algorithms=None, analogy_algorithms=None):
+        # Requires the user to put in again at least the metric, encoder, and
+        #   decoder, as functions cannot be pickled. Only put in None for those
+        #   if that was what the original object had.
         name = Analyst._file_extension(f_name)
-        #?????FIX THIS BROKEN THING!???????
         try:
             with open(name, 'rb') as file:
-                return pickle.load(file)
+                an = pickle.load(file)
+                #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
+                return an
         except Exception as e:
+            print("ERROR: Unable to load or deserialize Analyst object from file: \"" + name + "\"")
             print(e)
-            raise e
-            #raise Exception("Unable to load file: \"" + name + "\"")
+            #raise e
+            return None
 
     @staticmethod
     def unsave(f_name):
