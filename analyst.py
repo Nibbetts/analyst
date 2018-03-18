@@ -1278,11 +1278,7 @@ class Analyst:
             return False
 
     @staticmethod
-    def load(f_name, metric, encoder, decoder,
-             cluster_algorithms=None, analogy_algorithms=None):
-        # Requires the user to put in again at least the metric, encoder, and
-        #   decoder, as functions cannot be pickled. Only put in None for those
-        #   if that was what the original object had.
+    def load(f_name):
         name = Analyst._file_extension(f_name)
         try:
             with open(name, 'rb') as file:

@@ -1,3 +1,12 @@
+nate@hatch:~/Projects/analyst$ python
+Python 2.7.12 (default, Dec  4 2017, 14:50:18) 
+[GCC 5.4.0 20160609] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import analyst
+>>> a = analyst.Analyst.load("/home/nate/Projects/an_scholar4000_real.dill")
+
+
+
 
 !!!!!!!DON"T PRINT THINGS WE DIDN"T ASK FOR!!
 

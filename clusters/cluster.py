@@ -61,7 +61,7 @@ class Cluster:
         result = "Cluster( ID: " + str(self.ID) \
             + ", name: " + str(self.name) \
             + ", medoid: " + str(self.medoid) \
-            + ", cardinality: " + len(self.objects) \
+            + ", cardinality: " + str(len(self.objects)) \
             + ", dispersion: " + str(self.dispersion) \
             + ", remoteness: " + str(self.remoteness) \
             + ", skew: " + str(self.skew) \
