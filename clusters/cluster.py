@@ -58,19 +58,21 @@ class Cluster:
 
     def __str__(self):
         # Cardinality
-        result = "Cluster( ID: " + str(self.ID) \
-            + ", name: " + str(self.name) \
-            + ", medoid: " + str(self.medoid) \
-            + ", cardinality: " + str(len(self.objects)) \
-            + ", dispersion: " + str(self.dispersion) \
-            + ", remoteness: " + str(self.remoteness) \
-            + ", skew: " + str(self.skew) \
-            + ", " + str(self.nodes) + " | "
-        if len(self.objects) > 0:
-            result += str(self.objects[0])
-            for obj in self.objects[1:]:
-                result += ", " + str(obj)
-        return result + " )"
+        return "Cluster(" \
+            +  "\n\tID:          " + str(self.ID) \
+            + ",\n\tname:        " + str(self.name) \
+            + ",\n\tmedoid:      " + str(self.medoid) \
+            + ",\n\tcardinality: " + str(len(self.objects)) \
+            + ",\n\tdispersion:  " + str(self.dispersion) \
+            + ",\n\tremoteness:  " + str(self.remoteness) \
+            + ",\n\tskew:        " + str(self.skew) \
+            + ",\n\tnodes:       " + [str(node) for node in self.nodes] \
+            + ",\n\tobjects:     " + [str(obj) for obj in self.objects] + " )"
+        #if len(self.objects) > 0:
+        #    result += str(self.objects[0])
+        #    for obj in self.objects[1:]:
+        #        result += ", " + str(obj)
+        #return result + " )"
 
     def add_objects(self, obj_list):
         self.objects += obj_list

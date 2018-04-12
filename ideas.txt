@@ -14,6 +14,8 @@ write analogical analyses to compare:
 glove vectors
 FastText
 word2vec
+conceptnet numberbatch
+
 
 use ward dissimilarity somehow?
 
@@ -108,3 +110,51 @@ def shift(string, k=1):
             s += chr((n-32 + k) % 95 + 32)
         else: s += c
     return s
+
+
+"""self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
+if len(self.space) >= 4:
+    #return
+    for i, vec in enumerate(tqdm(self.space, disable=(not self.auto_print),
+                            desc="Acquainting the Species")):
+        #nearest_i = (0 if i != 0 else 1) # Can't start off on self!
+        #nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
+        nearest_i = (i + 1) % len(self.space)
+        nearest_2i = (i + 2) % len(self.space)
+        furthest_i = i # Start off closest possible - self.
+        nearest_dist = self.metric(vec, self.space[nearest_i])
+        nearest_2dist = self.metric(vec, self.space[nearest_2i])
+        furthest_dist = 0
+        # In case we started them off switched:
+        if nearest_2dist < nearest_dist:
+            temp_i = nearest_i
+            temp_dist = nearest_dist
+            nearest_i = nearest_2i
+            nearest_2i = temp_i
+            #furthest_i = temp_i
+            nearest_dist = nearest_2dist
+            nearest_2dist = temp_dist
+            #furthest_dist = temp_dist
+        for j, other in enumerate(self.space):
+            if j != i:
+                dist = self.metric(vec, other)
+                if dist < nearest_dist:
+                    nearest_2dist = nearest_dist
+                    nearest_2i = nearest_i
+                    nearest_dist = dist
+                    nearest_i = j
+                elif dist < nearest_2dist and j != nearest_i:
+                    nearest_2dist = dist
+                    nearest_2i = j
+                if dist > furthest_dist:
+                    furthest_dist = dist
+                    furthest_i = j
+        self.neighbors[i][0] = nearest_i
+        self.neighbors[i][1] = nearest_2i
+        self.neighbors[i][2] = furthest_i
+        self.neighbors_dist[i][0] = nearest_dist
+        self.neighbors_dist[i][1] = nearest_2dist
+        self.neighbors_dist[i][2] = furthest_dist
+
+        #for testing only:
+        #if i > 10: break"""

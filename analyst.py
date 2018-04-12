@@ -256,7 +256,7 @@ class Analyst:
                 decoder functions to be fed in also.
     """
 
-    def __init__(self, embeddings, metric="cosine_similarity",
+    def __init__(self, embeddings, metric="cosine",
         encoder=None, decoder=None, cluster_algorithms=[(None, "All")],
         analogy_algorithms=[], analogy_sets=[],
         auto_print=True, desc=None, calculate=True):
@@ -265,8 +265,9 @@ class Analyst:
             embeddings -- list of vectors populating the space.
                 Must have static indeces. (ie: not a dict or set)
             metric -- the distance metric used throughout,
-                "l2" or "euclidean", "l1", "cosine_similarity",
-                or a function object. Defaults to "cosine_similarity".
+                accepts any string accepted by scipy.spatial.distance.pdist,
+                or any callable accepting vectors as the first two parameters
+                and returning a scalar. This allows for custom distance metrics.
             encoder -- a callable to convert strings to vectors.
             decoder -- a callable to convert vectors to strings.
             cluster_algorithms -- list of tuples (callable, "Description").
@@ -325,20 +326,23 @@ class Analyst:
         """
 
         self.auto_print = auto_print
-        print()
+        print("")
         self._print("Asking the Grand Question")
         self._print("Stretching the Fabric of Space and Time")
         self._print("Enumerating the Dimensions")
         self.space = embeddings
+        
+        # Find and store a callable version of the given metric:
         self._print("Laying the Laws of Physics")
         if callable(metric): self.metric = metric
-        elif metric == "l2" or metric == "euclidean":
-            self.metric = sp.distance.euclidean
-        elif metric == "cosine_similarity":
-            self.metric = sp.distance.cosine
-        elif metric == "l1":
-            self.metric = sp.distance.cityblock
-        else: raise ValueError("'metric' parameter unrecognized and uncallable")
+        else:
+            try:
+                self.metric = sp.distance._TEST_METRICS[
+                    "test_" + sp.distance._METRIC_ALIAS[metric]]
+            except e:
+                print(e)
+                raise ValueError("'metric' parameter unrecognized and uncallable")
+        
         self.description = desc
 
         # Encoder/Decoder Initializations:
@@ -365,13 +369,13 @@ class Analyst:
                 print(e)
                 return
 
-            self.neighbors = np.zeros((len(self.space),3), dtype=np.uint8)
+            self.neighbors = np.empty((len(self.space),3), dtype=np.uint64)
                 # Indeces correspond to indeces of vectors in the space.
                 #   For each:
                 #   [index of nearest, index of 2nd-nearest, index of furthest]
                 #   These are filled in in the _spatial_analysis.
-            self.neighbors_dist = np.zeros(
-                (len(self.space),3), dtype=np.float16)
+            self.neighbors_dist = np.empty(
+                (len(self.space),3))
                 # Same format as above, except distances to those indexed above.
 
             # Run Analyses:
@@ -465,96 +469,42 @@ class Analyst:
 
     def _spatial_analysis(self, print_report=True):
 
-        """
-        def _compute_neighbors(i):#pbar):
-            vec = self.space[i]
-            nearest_i = (0 if i != 0 else 1) # Can't start off on self!
-            nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
-            furthest_i = i # Start off closest possible - self.
-            nearest_dist = self.metric(vec, self.space[nearest_i])
-            nearest_2dist = self.metric(vec, self.space[nearest_2i])
-            furthest_dist = self.metric(vec, self.space[furthest_i])
-            # In case we started them off switched:
-            if nearest_2dist < nearest_dist:
-                temp_i = nearest_i
-                temp_dist = nearest_dist
-                nearest_i = nearest_2i
-                nearest_2i = temp_i
-                #furthest_i = temp_i
-                nearest_dist = nearest_2dist
-                nearest_2dist = temp_dist
-                #furthest_dist = temp_dist
-            for j, other in enumerate(self.space):
-                if j != i:
-                    dist = self.metric(vec, other)
-                    if dist < nearest_dist:
-                        nearest_2dist = nearest_dist
-                        nearest_2i = nearest_i
-                        nearest_dist = dist
-                        nearest_i = j
-                    elif dist < nearest_2dist and j != nearest_i:
-                        nearest_2dist = dist
-                        nearest_2i = j
-                    if dist > furthest_dist:
-                        furthest_dist = dist
-                        furthest_i = j
-            self.neighbors[i][0] = nearest_i
-            self.neighbors[i][1] = nearest_2i
-            self.neighbors[i][2] = furthest_i
-            self.neighbors_dist[i][0] = nearest_dist
-            self.neighbors_dist[i][1] = nearest_2dist
-            self.neighbors_dist[i][2] = furthest_dist
-            #pbar.update()
-            self.counter += 1
-            if self.counter % 10 == 0: print(self.counter)
-        """
+        # DISTANCE AND NEIGHBOR COMPUTATION:
 
-
-        # Nearest, 2nd Nearest, and Futhest Computation:
-        self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
-        if len(self.space) < 4:
-            return
-        for i, vec in enumerate(tqdm(self.space, disable=(not self.auto_print),
-                                desc="Acquainting the Species")):
-            nearest_i = (0 if i != 0 else 1) # Can't start off on self!
-            nearest_2i = (2 if i != 2 else 3) # Can't start off same as nearest!
-            furthest_i = i # Start off closest possible - self.
-            nearest_dist = self.metric(vec, self.space[nearest_i])
-            nearest_2dist = self.metric(vec, self.space[nearest_2i])
-            furthest_dist = self.metric(vec, self.space[furthest_i])
-            # In case we started them off switched:
-            if nearest_2dist < nearest_dist:
-                temp_i = nearest_i
-                temp_dist = nearest_dist
-                nearest_i = nearest_2i
-                nearest_2i = temp_i
-                #furthest_i = temp_i
-                nearest_dist = nearest_2dist
-                nearest_2dist = temp_dist
-                #furthest_dist = temp_dist
-            for j, other in enumerate(self.space):
-                if j != i:
-                    dist = self.metric(vec, other)
-                    if dist < nearest_dist:
-                        nearest_2dist = nearest_dist
-                        nearest_2i = nearest_i
-                        nearest_dist = dist
-                        nearest_i = j
-                    elif dist < nearest_2dist and j != nearest_i:
-                        nearest_2dist = dist
-                        nearest_2i = j
-                    if dist > furthest_dist:
-                        furthest_dist = dist
-                        furthest_i = j
-            self.neighbors[i][0] = nearest_i
-            self.neighbors[i][1] = nearest_2i
-            self.neighbors[i][2] = furthest_i
-            self.neighbors_dist[i][0] = nearest_dist
-            self.neighbors_dist[i][1] = nearest_2dist
-            self.neighbors_dist[i][2] = furthest_dist
-
-            #for testing only:
-            #if i > 10: break
+        # Distance Matrix Calculation
+        self._print("Acquanting the Species")
+        self.distance_matrix = sp.distance.squareform(
+            sp.distance.pdist(self.space, self.metric))
+            
+        # Finding Furthest Neighbors
+        self._print("Misconstruing Relations")
+        self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
+        self.neighbors_dist[:,2] = self.distance_matrix[
+            range(len(self.distance_matrix)),
+            self.neighbors[:,2]]
+        self.distance_matrix[
+            range(len(self.space)), range(len(self.space))] = np.inf
+        # Finding Nearest Neighbors
+        self._print("Forming Alliances")
+        self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
+        self.neighbors_dist[:,0] = self.distance_matrix[
+            range(len(self.distance_matrix)),
+            self.neighbors[:,0]]
+        self.distance_matrix[
+            range(len(self.space)), self.neighbors[:,0]] = np.inf
+        # Finding Second-Nearest Neighbors
+        self._print("Obfuscating Dynastic Ties")
+        self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
+        self.neighbors_dist[:,1] = self.distance_matrix[
+            range(len(self.distance_matrix)),
+            self.neighbors[:,1]]
+        # Put back the numbers we removed:
+        self._print("Resetting the Ship's Computer")
+        self.distance_matrix[
+            range(len(self.space)), self.neighbors[:,0]
+        ] = self.neighbors_dist[:,0]
+        self.distance_matrix[
+            range(len(self.space)), range(len(self.space))] = 0.0
 
 
         # MEASUREMENTS:
@@ -611,6 +561,7 @@ class Analyst:
             "Spatial", "Remoteness - Nearest Dist Avg", star=True)
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
+        near = np.argmin(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
         self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
         self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
@@ -619,6 +570,21 @@ class Analyst:
         self._add_info(self.neighbors_dist[:,0],
             "Spatial", "Nearest Dist Histogram Key")
 
+        # Second-Nearest Neighbor Info:
+        self._print("Setting Priorities")
+        self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
+        self._add_info(self.nearest2_avg,
+            "Spatial", "Second Nearest Dist Avg")
+        self._print("Coming up with Excuses")
+        nearest2_min = np.min(self.neighbors_dist[:,1])
+        nearest2_max = np.max(self.neighbors_dist[:,1])
+        self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
+        self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
+        self._add_info(nearest2_max-nearest2_min,
+            "Spatial", "Second Nearest Dist Range")
+        self._add_info(self.neighbors_dist[:,1],
+            "Spatial", "Second Nearest Dist Histogram Key")
+
         #Furthest Neighbor Info:
         self._print("Making Enemies")
         self.furthest_avg = np.mean(self.neighbors_dist[:,2])
@@ -626,6 +592,7 @@ class Analyst:
         self._print("Claiming Frontiers")
         furthest_min = np.min(self.neighbors_dist[:,2])
         furthest_max = np.max(self.neighbors_dist[:,2])
+        far = np.argmax(self.neighbors_dist[:,2])
         self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
         self._add_info(furthest_max,
             "Spatial", "Broadness - Furthest Dist Max", star=True)
