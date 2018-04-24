@@ -53,7 +53,11 @@ The objects encoded in the space must be some sort of strings, or the internal c
 
 ## Tools
 
-*NOTE:* Those in parentheses cannot be used as measures of the properties of the embedding space since they depend directly on the number of embeddings, dimensionality, or some similar property. These could be seen as specific information.
+Listed are various statistics the analyst can find and print in a tidy report. They are grouped by topic or type, some of which are included in the default analysis.
+
+Listed are both generic stats done on all types of clusters, and information about the specific algorithms included with the analyst.
+
+*NOTE:* Some of the properties expressed cannot be used as measures of the properties of generic embedding spaces since they depend directly on the number of embeddings, dimensionality, sphericality, or some similar property. These could be seen as specific information.
 
 ### General:
 ```python
@@ -69,32 +73,34 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 
 ### Spatial:
 
+*NOTE:* When "stats" is listed for a property, these are included: avg, min, max, range, distribution graph of.
+
 - centroid
-- dist. to centroid avg, min, max, range, graph of distribution of.
+- dist. to centroid stats
 - medoid
 - dispersion
 - remoteness -- avg dist to nearest
-- dist. to nearest min, max, \*range, graph of distribution of.
+- dist. to nearest stats
 - broadness -- max dist to furthest
-- dist. to furthest avg, min, range, graph of distr.
+- dist. to furthest stats
 
 ### Clustering:
 
-*NOTE:* For each property of a cluster type, these stats are always available: avg, min, max, range, distribution graph of.
+*NOTE:* When "stats" is listed for a property of a cluster type, these are included for that property: avg, min, max, range, distribution graph of.
 
 #### Extremities: (Mutual Furthest-Neighbor Pairs)
 
-- num extremities -- probably depends strongly on dimensionality, but shows the spherical-ness of the distribution in the space.
-- extremity length avg, * min, * max, range, graph of distr.
+- num extremities -- probably depends strongly on dimensionality, but is related to the sphericality of the distribution in the space.
+- extremity length stats
 
 #### Nodes: (Mutual Nearest-Neighbor Pairs)
 
 - num nodes
 - nodal factor
-- node length avg, min, max, range, graph of distr.
+- node length stats
 - alignment factor
 
-#### Hubs: (Nodal Proximity Groups)
+#### Hubs: (Nodal Common Nearest-Neighbor Groups)
 
 - num hubs
 - hub num stats
@@ -109,47 +115,47 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 #### Nuclei: (Multi-Nodal Proximity Groups)
 
 - num nuclei
-- nucleus factor (num nuclei divided by num objects)
+- nucleus factor -- num nuclei / num objects in space
 - ratio in nuclei versus not
 - nucleus population stats
 - nuclei string factor, nucleus span stats
 - nucleus regularity
-- nucleus dispersion factor -- avg. nucleus disp. / space disp, (nucleus dispersion stats)
+- nucleus dispersion factor -- avg. nucleus disp. / space disp, nucleus dispersion stats
 - node count stats
-- nucleus remoteness factor -- avg. nucleus remoteness divided by overall space remoteness, (nucleus remoteness stats)
-- nucleus skew factor, (nucleus skew stats)
+- nucleus remoteness factor -- avg. nucleus remoteness divided by overall space remoteness, nucleus remoteness stats
+- nucleus skew factor, nucleus skew stats
 
-#### Chains: (Nearest-Neighbor-Path Partitioning Groups)
+#### Chains: (Nearest-Neighbor-Path Partitions)
 
 - chain population stats
-- chain string factor -- avg. chain span / space dispersion, (chain span stats)
-- chain dispersion factor -- avg. chain disp. / space disp, (chain dispersion stats)
-- chain remoteness factor -- avg. chain remoteness / overall space remoteness, (chain remoteness stats)
-- chain skew factor, (chain skew stats)
+- chain string factor -- avg. chain span / space dispersion, chain span stats
+- chain dispersion factor -- avg. chain disp. / space disp, chain dispersion stats
+- chain remoteness factor -- avg. chain remoteness / overall space remoteness, chain remoteness stats
+- chain skew factor, chain skew stats
 
 *NOTE:* num chains is equal to num nodes  
 *NOTE:* all objects in the space belong to a chain  
 
-#### Clusters: (Nearest-Neighbor NODAL Conglomerate CLUSTERS)
+#### Clusters: (NODAL Conglomerate CLUSTERS)
 
 - num clusters
 - cluster factor -- num clusters divided by num objects
 - string factor -- avg. cluster span / space dispersion
-- regularity, (cluster span stats)
+- regularity -- related to span, cluster span stats
 - ratio clustered versus loners
 - avg cluster population, cluster population stats
-- cluster dispersion factor -- avg. cluster disp. / space disp, (cluster dispersion stats)
+- cluster dispersion factor -- avg. cluster disp. / space disp, cluster dispersion stats
 - avg num nodes per cluster, node count stats
-- cluster remoteness factor -- avg cluster remoteness / overall space remoteness, (cluster remoteness stats)
-- cluster skew factor -- avg. cluster skew / space dispersion, (cluster skew stats)
+- cluster remoteness factor -- avg cluster remoteness / overall space remoteness, cluster remoteness stats
+- cluster skew factor -- avg. cluster skew / space dispersion, cluster skew stats
 
-#### Strong Clusters: (Dispersion and Dual LIMITED Nearest-Neighbor NODAL Conglomerate CLUSTERS)  
+#### Strong Clusters: (Dispersion and Dual LIMITED NODAL Conglomerate CLUSTERS)  
 
 Same info as for clusters.
 
 #### Anti-clusters: (Common Futhest-Neighbor Groups)  
 
-More or less the same information as for clusters, but it WILL not mean the same things. Note that these clusters DO NOT include the word that is their farthest neighbor.
+More or less the same information as for clusters, but it will NOT mean the same things. Also note that these clusters do NOT include the word that is their farthest neighbor.
 
 ### Analogical:
 ```python
