@@ -100,7 +100,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 - node length stats
 - alignment factor
 
-#### Hubs: (Nodal Common Nearest-Neighbor Groups)
+#### Hubs: (Common Nearest-Neighbor Groups)
 
 - num hubs
 - hub num stats
