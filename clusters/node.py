@@ -14,8 +14,8 @@ class Node:
         assert a != b # Objects in a node must be different.
         self.a = a
         self.b = b
-        vec_a = encoder(a)
-        vec_b = encoder(b)
+        vec_a = encoder(a) # if encoder != None else a
+        vec_b = encoder(b) # if encoder != None else b
         self.distance = metric(vec_a, vec_b)
         self.centroid = (vec_a + vec_b) / 2.0
         self.alignment = vec_b - vec_a

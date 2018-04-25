@@ -5,8 +5,8 @@ from tqdm import tqdm
 #import cPickle as pickle
 import dill as pickle
 import os
-import sys
-import multiprocessing
+#import sys
+#import multiprocessing
 
 import clusters
 #from test_set_2d import TestSet2D
@@ -34,6 +34,7 @@ class Analyst:
                 Analyst.unsave(path) -- deletes a saved file. Returns success
 
             Spatial:
+                count
                 centroid
                 * medoid
                 * dispersion
@@ -51,7 +52,7 @@ class Analyst:
                 Clusters: (Nearest-Neighbor NODAL Conglomerate CLUSTERS)
                 Strong Clusters: (Dispersion and Dual LIMITED Nearest-Neighbor
                     NODAL Conglomerate CLUSTERS)
-                Anti-clusters: (Common Futhest-Neighbor Groups)
+                Anti-hubs: (Common Futhest-Neighbor Groups)
 
             Analogical:
                 run_analogies()
@@ -78,7 +79,7 @@ class Analyst:
                 nuclei -- ''
                 chains -- ''
                 extremities -- ''
-                anti-clusters -- dict keyed to outliers, contains anti-clusters
+                anti_hubs -- dict keyed to outliers, contains anti-hubs
                 as_string(obj) -- generic type converters for individual objects
                 as_index(obj)
                 as_vector(obj)
@@ -101,7 +102,8 @@ class Analyst:
                 accepts any string accepted by scipy.spatial.distance.pdist,
                 or any callable accepting vectors as the first two parameters
                 and returning a scalar. This allows for custom distance metrics.
-            encoder -- a callable to convert strings to vectors.
+            encoder -- a callable to convert strings to vectors, or
+                alternatively a list of strings to replace encoder and decoder.
             decoder -- a callable to convert vectors to strings.
             cluster_algorithms -- list of tuples (callable, "Description").
                 Each callable must take an array-like list of vectors and return
@@ -184,18 +186,34 @@ class Analyst:
         # Encoder/Decoder Initializations:
         #   While initializing these should, in theory, be unnecessary,
         #   failing to do so will limit all inputs to findable types.
+        #   If an encoder does not exist, may be replaced with list of strings.
         self._print("Filling the Void")
-        self.encode = encoder # string to vector
-        self.decode = decoder # vector to string
-        self.serialized = False
+        self.ix_to_s = None
+        if callable(encoder) or encoder is None:
+            self.encode = encoder # string to vector
+            self.decode = decoder # vector to string
+        else:
+            assert len(encoder) == len(self.space)
+            self.ix_to_s = encoder
+            self.vec_to_s = {}
+            self.s_to_vec = {}
+            self._print("Mapping the Emptiness")
+            for i in range(len(self.space)):
+                self.vec_to_s[self.space[i]] = self.ix_to_s[i]
+                self.s_to_vec[self.ix_to_s[i]] = self.space[i]
+            self.encode = self.s_to_vec.__getitem__
+            self.decode = self.vec_to_s.__getitem__
+
+        #self.serialized = False
 
         if calculate:
+            # ix_to_s initialized previously
             self.s_to_ix = {}
-            self.ix_to_s = []
             try:
-                self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
-                    desc="Naming Stars and Drawing a Star Map",
-                    disable=(not self.auto_print))]
+                if self.ix_to_s == None:
+                    self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
+                        desc="Naming Stars and Drawing a Star Map",
+                        disable=(not self.auto_print))]
                 for ix, s in enumerate(
                         tqdm(self.ix_to_s, desc="Indexing Planets",
                         disable=(not self.auto_print))):
@@ -236,9 +254,9 @@ class Analyst:
                         self.categories.append("Supernodes")
                         self.categories.append("Nuclei")
                         self.categories.append("Chains")
-                        self.categories.append("NNNCC")
-                        self.categories.append("LNNNCC")
-                        self.categories.append("Anti-clusters")
+                        self.categories.append("NCC")
+                        self.categories.append("LNCC")
+                        self.categories.append("Anti-hubs")
                     else:
                         self.categories.append(t[1])
             self.category_lists = np.empty(
@@ -352,91 +370,78 @@ class Analyst:
         self.centroid = np.mean(self.space, axis=0)
         #self._add_info(self.centroid,
         #    "Spatial", "Centroid - Coordinate Avg")
-        self._add_info(self.ix_to_s[np.argmin([
-            self.metric(self.centroid, v) for v in tqdm(self.space,
-                desc="Electing a Ruler", disable=(not self.auto_print))])],
-            "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
         self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
                 disable=(not self.auto_print))]
         self.dispersion = np.mean(self.centroid_dist, axis=0)
-        self._add_info(self.dispersion,
-            "Spatial", "Dispersion - Centroid Dist Avg", star=True)
         centr_min = np.min(self.centroid_dist, axis=0)
         centr_max = np.max(self.centroid_dist, axis=0)
-        self._add_info(centr_min, "Spatial", "Centroid Dist Min")
-        self._add_info(centr_max, "Spatial", "Centroid Dist Max")
-        self._add_info(centr_max - centr_min,
-            "Spatial", "Centroid Dist Range")
-        self._add_info(self.centroid_dist,
-            "Spatial", "Centroid Dist Histogram Key")
+        if print_report:
+            self._add_info(self.ix_to_s[np.argmin([
+                self.metric(self.centroid, v) for v in tqdm(self.space,
+                    desc="Electing a Ruler", disable=(not self.auto_print))])],
+                "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
+            self._add_info(len(self.space), "Spatial", "Count")
+            self._add_info(self.dispersion,
+                "Spatial", "Dispersion - Centroid Dist Avg", star=True)
+            self._add_info(centr_min, "Spatial", "Centroid Dist Min")
+            self._add_info(centr_max, "Spatial", "Centroid Dist Max")
+            self._add_info(centr_max - centr_min,
+                "Spatial", "Centroid Dist Range")
+            self._add_info(self.centroid_dist,
+                "Spatial", "Centroid Dist Histogram Key")
         #self.remoteness = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
 
-
-        """
-        # Nearest, 2nd Nearest, and Futhest Computation:
-        self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
-        if len(self.space) < 4:
-            return
-        #self._print("Acquainting the Species:")
-        #pbar = tqdm(total=len(self.space), desc="Analyzing Stellar Adjacency",
-        #    disable=(not self.auto_print)) #USE WITH STATEMENT INSTEAD
-        self.counter = 0
-        try: cpus = multiprocessing.cpu_count()
-        except: cpus = 2
-        pool = multiprocessing.Pool(cpus)
-        pool.map(_compute_neighbors, range(len(self.space)))#[pbar]*len(self.space))
-        #pbar.close()
-        """
-
-
         # Nearest Neighbor Info:
         self._print("Building Trade Routes")
         self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._add_info(self.nearest_avg,
-            "Spatial", "Remoteness - Nearest Dist Avg", star=True)
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
-        self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
-        self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
-        self._add_info(nearest_max-nearest_min,
-            "Spatial", "Nearest Dist Range", star=True)
-        self._add_info(self.neighbors_dist[:,0],
-            "Spatial", "Nearest Dist Histogram Key")
+        if print_report:
+            self._add_info(self.nearest_avg,
+                "Spatial", "Remoteness - Nearest Dist Avg", star=True)
+            self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
+            self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
+            self._add_info(nearest_max-nearest_min,
+                "Spatial", "Nearest Dist Range", star=True)
+            self._add_info(self.neighbors_dist[:,0],
+                "Spatial", "Nearest Dist Histogram Key")
 
         # Second-Nearest Neighbor Info:
         self._print("Setting Priorities")
         self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
-        self._add_info(self.nearest2_avg,
-            "Spatial", "Second Nearest Dist Avg")
         self._print("Coming up with Excuses")
         nearest2_min = np.min(self.neighbors_dist[:,1])
         nearest2_max = np.max(self.neighbors_dist[:,1])
-        self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
-        self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
-        self._add_info(nearest2_max-nearest2_min,
-            "Spatial", "Second Nearest Dist Range")
-        self._add_info(self.neighbors_dist[:,1],
-            "Spatial", "Second Nearest Dist Histogram Key")
+        if print_report:
+            self._add_info(self.nearest2_avg,
+                "Spatial", "Second Nearest Dist Avg")
+            self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
+            self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
+            self._add_info(nearest2_max-nearest2_min,
+                "Spatial", "Second Nearest Dist Range")
+            self._add_info(self.neighbors_dist[:,1],
+                "Spatial", "Second Nearest Dist Histogram Key")
 
         #Furthest Neighbor Info:
         self._print("Making Enemies")
         self.furthest_avg = np.mean(self.neighbors_dist[:,2])
-        self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
         self._print("Claiming Frontiers")
         furthest_min = np.min(self.neighbors_dist[:,2])
         furthest_max = np.max(self.neighbors_dist[:,2])
-        far = np.argmax(self.neighbors_dist[:,2])
-        self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
-        self._add_info(furthest_max,
-            "Spatial", "Broadness - Furthest Dist Max", star=True)
-        self._add_info(furthest_max - furthest_min,
-            "Spatial", "Furthest Dist Range")
-        self._add_info(self.neighbors_dist[:,2],
-            "Spatial", "Furthest Dist Histogram Key")
+        #far = np.argmax(self.neighbors_dist[:,2])
+        if print_report:
+            self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
+            self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
+            self._add_info(furthest_max,
+                "Spatial", "Broadness - Furthest Dist Max", star=True)
+            self._add_info(furthest_max - furthest_min,
+                "Spatial", "Furthest Dist Range")
+            self._add_info(self.neighbors_dist[:,2],
+                "Spatial", "Furthest Dist Histogram Key")
 
 
     def _cluster_analysis(self):
@@ -477,8 +482,8 @@ class Analyst:
         print_node_info = "Nodes" in self.categories
         if (print_node_info or "Hubs" in self.categories or "Supernodes" in
                 self.categories or "Nuclei" in self.categories or "Chains" in
-                self.categories or "NNNCC" in self.categories or "LNNNCC" in
-                self.categories or "Anti-clusters" in self.categories):
+                self.categories or "NCC" in self.categories or "LNCC" in
+                self.categories or "Anti-hubs" in self.categories):
                 # ...all dependent on Nodes.
 
             # Compute the Nodes:
@@ -497,7 +502,8 @@ class Analyst:
                 desc="Delineating the Quasars",
                 disable=(not self.auto_print))]
             self._print("Comparing the Cosmos")
-            self._add_info(len(self.nodes), "Nodes", "Count")
+            if print_node_info:
+                self._add_info(len(self.nodes), "Nodes", "Count")
             if print_node_info and len(self.nodes) > 0:
                 node_min = np.min(self.node_lengths)
                 node_max = np.max(self.node_lengths)
@@ -557,34 +563,52 @@ class Analyst:
                 self._add_info(hub_max-hub_min, "Hubs", "Population Range")
                 self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
 
-        """
         # Supernodes:
-        if "Supernodes" in self.categories:
-            self.supernodes = []
-            if len(self.nodes) >= 2:
+        if "Supernodes" in self.categories and len(self.nodes) >= 2:
 
-                # Nearest neighbor-node computation:
-                node_centroids = [n.centroid for n in self.nodes]
-                node_neighbors = []
-                node_neighbors_dist = []
-                for i, vec in enumerate(tqdm(node_centroids,
-                        disable=(not self.auto_print),
-                        desc="Forming Coalitions")):
-                    nearest_i = (0 if i != 0 else 1) # Can't start off on self!
-                    nearest_dist = self.metric(vec, node_centroids[nearest_i])
-                    for j, other in enumerate(node_centroids):
-                        if j != i:
-                            dist = self.metric(vec, other)
-                            if dist < nearest_dist:
-                                nearest_dist = dist
-                                nearest_i = j
-                    node_neighbors.append(nearest_i)
-                    node_neighbors_dist.append(nearest_dist)
-                ?????????????
-                # Compute the Supernodes:
-        """
+            # Nearest neighbor-node computation:
+            centroids = [n.centroid for n in self.nodes]
+            self._print("Fracturing the Empire")
+            dist_matrix = sp.distance.squareform(
+                sp.distance.pdist(
+                    centroids,
+                    self.metric_str
+                        if self.metric_str != None else self.metric))
+            self._print("Establishing a Hierocracy")
+            neighbors = np.argmax(dist_matrix, axis=1)
+            #neighbors_dist = dist_matrix[range(len(dist_matrix)), neighbors]
 
-        #MAKE ANALYST ACCEPT LIST OF WORDS INSTEAD OF ONLY AN ENCODE FUNCTION!
+            # Compute the Supernodes:
+            self.supernodes = [
+                clusters.Node(node,
+                    self.nodes[neighbors[i]],
+                    clusters.Node.get_centroid, self.metric)
+                for i, node in enumerate(tqdm(range(len(self.nodes)),
+                    desc="Ascertaining Universe Filaments",
+                    disable=(not self.auto_print)))
+                if (i == neighbors[neighbors[i]]
+                    and i < neighbors[i])]
+
+            # Supernode Length and other info:
+            self._print("Measuring their Magnitude")
+            self.supernode_lengths = [n.distance for n in self.supernodes]
+            self._print("Minding the Macrocosm")
+            self._add_info(len(self.nodes), "Supernodes", "Count")
+            if len(self.supernodes) > 0:
+                node_min = np.min(self.supernode_lengths)
+                node_max = np.max(self.supernode_lengths)
+                self._add_info(np.mean(self.supernode_lengths),
+                    "Supernodes", "Span Avg")
+                self._add_info(node_min, "Supernodes", "Span Min")
+                self._add_info(node_max, "Supernodes", "Span Max")
+                self._add_info(node_max - node_min, "Supernodes", "Span Range")
+                self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
+                    "Supernodes", "Island Factor", star=True)
+                self._add_info(
+                    len(self.supernodes)*2.0/float(len(self.nodes)),
+                    "Supernodes", "Hierarchical Factor", star=True)
+                self._add_info(self.node_lengths,
+                    "Supernodes", "Span Histogram Key")
 
         # Nuclei:
         pass
@@ -592,13 +616,13 @@ class Analyst:
         # Chains:
         pass
 
-        # NNNCC:
+        # NCC:
         pass
 
-        # LNNNCC:
+        # LNCC:
         pass
 
-        # Anti-clusters:
+        # Anti-hubs:
         pass
 
         # Other Callables:
@@ -620,61 +644,59 @@ class Analyst:
         pass
 
     """
-    # Specific Functions:
-    def rescale(self, theta, alpha=15, power=0.5):
-        ''' Rescales based on observed distribution of angles between words
-            in a postagged Wikipedia word embedding from BYU PCCL.
-            Accepts theta in radians.'''
-        return (0.5 + (math.atan((theta*180/np.pi - 90)/alpha)
-                         / (2*math.atan(90/alpha))))**power
+        # Specific Functions:
+        def rescale(self, theta, alpha=15, power=0.5):
+            ''' Rescales based on observed distribution of angles between words
+                in a postagged Wikipedia word embedding from BYU PCCL.
+                Accepts theta in radians.'''
+            return (0.5 + (math.atan((theta*180/np.pi - 90)/alpha)
+                            / (2*math.atan(90/alpha))))**power
 
-    def test_angles(self, n, alpha=15, power=0.5):
-        dist = [self.rescale(self.s.angle(
-                    self.s.get_vector(self.s.model.vocab[int(x)]),
-                    self.s.get_vector(self.s.model.vocab[int(2*x)])),
-                    alpha, power)
-                for x in (np.random.random(n)*len(self.s.model.vocab)/2.0)]
-        plt.hist(dist, 90)
-        plt.show()
+        def test_angles(self, n, alpha=15, power=0.5):
+            dist = [self.rescale(self.s.angle(
+                        self.s.get_vector(self.s.model.vocab[int(x)]),
+                        self.s.get_vector(self.s.model.vocab[int(2*x)])),
+                        alpha, power)
+                    for x in (np.random.random(n)*len(self.s.model.vocab)/2.0)]
+            plt.hist(dist, 90)
+            plt.show()
 
-    #def scale_bimodal(self, theta):
-    #    deg = theta*180/np.pi
-    #    return 0.5 + (self.cbrt((deg-90)) / (2*self.cbrt(90)))
-    """
+        #def scale_bimodal(self, theta):
+        #    deg = theta*180/np.pi
+        #    return 0.5 + (self.cbrt((deg-90)) / (2*self.cbrt(90)))
 
-    """
-    def cluster_analogy(self, A, B, C, AC_clustername, B_clustername,
-                        num_words=1, exclude=True):
-        ''' Follows form: A:B::C:D.
-            Assumes that we know which cluster each word comes from.'''
-        dist = self.s.get_angle(A, B)
-        A_tighter = (self.clusters[AC_clustername][1]
-                     <= self.clusters[B_clustername][1]
-        C_vec = self.s.get_vector(C)
-        dir_vec = self.clusters[AC_clustername][0] - C_vec
-        if A_tighter: dir_vec = -dir_vec
-        D_vec = self.s.yarax(C_vec, dir_vec, dist)
-        D_vec /= np.linalg.norm(D_vec)
+        def cluster_analogy(self, A, B, C, AC_clustername, B_clustername,
+                            num_words=1, exclude=True):
+            ''' Follows form: A:B::C:D.
+                Assumes that we know which cluster each word comes from.'''
+            dist = self.s.get_angle(A, B)
+            A_tighter = (self.clusters[AC_clustername][1]
+                        <= self.clusters[B_clustername][1]
+            C_vec = self.s.get_vector(C)
+            dir_vec = self.clusters[AC_clustername][0] - C_vec
+            if A_tighter: dir_vec = -dir_vec
+            D_vec = self.s.yarax(C_vec, dir_vec, dist)
+            D_vec /= np.linalg.norm(D_vec)
 
-        if exclude:
-            if self.s.slim == True: # This branch other part of patch:
-                results = self.s.wordify(
-                    self.s.model.get_closest_words(D_vec, num_words+3))
-                trimmed = ([word for word in results[0]
-                            if word not in [A, B, C]],
-                           [results[1][i] for i in range(len(results[1]))
-                            if results[0][i] not in [A, B, C]])
-                return (np.array(trimmed[0][:num_words:]),
-                        np.array(trimmed[1][:num_words:]))
-            else: # This branch is the original return:
-                return self.s.wordify(self.s.model.get_closest_words_excluding(
-                    D_vec, [self.s.get_vector(A), self.s.get_vector(B), C_vec],
-                    num_words))
-        else: # The real original return...
-            return self.s.wordify(
-                self.s.model.get_closest_words(D_vec, num_words))
+            if exclude:
+                if self.s.slim == True: # This branch other part of patch:
+                    results = self.s.wordify(
+                        self.s.model.get_closest_words(D_vec, num_words+3))
+                    trimmed = ([word for word in results[0]
+                                if word not in [A, B, C]],
+                            [results[1][i] for i in range(len(results[1]))
+                                if results[0][i] not in [A, B, C]])
+                    return (np.array(trimmed[0][:num_words:]),
+                            np.array(trimmed[1][:num_words:]))
+                else: # This branch is the original return:
+                    return self.s.wordify(self.s.model.get_closest_words_excluding(
+                        D_vec, [self.s.get_vector(A), self.s.get_vector(B), C_vec],
+                        num_words))
+            else: # The real original return...
+                return self.s.wordify(
+                    self.s.model.get_closest_words(D_vec, num_words))
 
-    def divergence_analogy(self, A, B, C):
+        def divergence_analogy(self, A, B, C):
         ''' Automatically tries to find clusters around A and B,
             and then does a cluster analogy.'''
         raise NotImplementedError("Function not implemented.")
@@ -981,15 +1003,6 @@ class Analyst:
 
     @staticmethod
     def _file_extension(f_name):
-        #if f_name[-7:] == ".pickle": return f_name
-        #if f_name[-4:] == ".pck": return f_name
-        #if f_name[-4:] == ".pcl": return f_name
-        #if f_name[-3:] == ".db": return f_name
-        #if f_name[-8:] == ".analyst": return f_name
-        #if f_name[-3:] == ".an": return f_name
-        #return f_name if f_name[-4:] == ".pkl" else f_name + ".pkl"
-
-        #return f_name if "." in f_name else f_name + ".pkl"
         return f_name if "." in f_name else f_name + ".dill"
 
     """
@@ -1049,30 +1062,6 @@ class Analyst:
     def save(obj, f_name):
         try:
             #obj._serialize()
-            """assert obj.__class__.__name__ == "Analyst"
-            data = {
-                "cls"   :  obj.__class__.__name__,
-                "space" :  obj.space,
-                "metric": obj.metric.__name__ if obj.metric != None else None,
-                "encode": obj.encode.__name__ if obj.encode != None else None,
-                "decode": obj.decode.__name__ if obj.decide != None else None,
-                "c_algs": [(None, pair[1]) for pair in obj.cluster_algorithms],
-                "a_algs": [(None, pair[1]) for pair in obj.analogy_algorithms],
-                "a_sets": obj.analogy_sets,
-                "print" : obj.auto_print,
-                "desc"  : obj.description,
-                "calc"  : obj.calculate,
-                "s_ix"  : obj.s_to_ix,
-                "ix_s"  : obj.ix_to_s,
-                "neigh" : obj.neighbors,
-                "n_dist": obj.neighbors_dist,
-                "g_info": obj.graph_info,
-                "cats"  : obj.categories,
-                "clists": obj.category_lists#,
-                #"s_data": obj.spatial_data,????
-                #"c_data": obj.cluster_data,????
-                #"a_data": obj.analogical_data????
-            }"""
             with open(Analyst._file_extension(f_name), 'wb') as file:
                 pickle.dump(obj, file)#, pickle.HIGHEST_PROTOCOL)
             return True

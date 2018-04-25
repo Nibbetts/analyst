@@ -21,7 +21,7 @@ Generally you would initialize one Analyst instance per one embedding space, and
 
 The Analyst is designed to be abstract; it requires you to tell it what metric to use or to define your own. Likewise it requires a list of cluster types to compute - either callables or recognized tags - and it will iterate through and compute all of them. The built-in, experimental clustering algorithms will save each other compute time where possible by using already-processed parts from others, but custom input clustering functions will be processed entirely individually. Thereafter, the Analyst will run its same analyses on each of those cluster types no matter the source.
 
-The objects encoded in the space must be some sort of strings, or the internal conversion functions will not work.
+The objects encoded in the space must be some sort of strings, or the internal conversion functions will not work. The Analyst either requires an encoder function and a decoder function as parameters, or a list of strings in place of the encoder from which to build an encoder and decoder.
 
 ## Definitions
 
@@ -47,7 +47,7 @@ The objects encoded in the space must be some sort of strings, or the internal c
 - **dispersion:** avg distance of nodes to the center of their distribution
 - **focus:** averaged location of nodes in a cluster; concentration center.
 - **skew:** distance from focus to center.
-- **anti-cluster:** list of objects whose furthest are all the same outlier.
+- **anti-hub:** list of objects whose furthest are all the same outlier.
 - **contingent cluster:** other clusters whose centroid is closer than own //ADD STUFF!! dispersion, to which self is closer than other's dispersion.
 - **contingency:** distance from a cluster to its nearest neighbor // ADD STUFF! cluster, minus its own dispersion
 
@@ -75,6 +75,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 
 *NOTE:* When "stats" is listed for a property, these are included: avg, min, max, range, distribution graph of.
 
+- count
 - centroid
 - dist. to centroid stats
 - medoid
@@ -153,7 +154,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 
 Same info as for clusters.
 
-#### Anti-clusters: (Common Futhest-Neighbor Groups)  
+#### Anti-Hubs: (Common Futhest-Neighbor Groups)  
 
 More or less the same information as for clusters, but it will NOT mean the same things. Also note that these clusters do NOT include the word that is their farthest neighbor.
 
