@@ -1,1 +1,4 @@
 *.pkl
+*.dill
+*.pyc
+*.py~
