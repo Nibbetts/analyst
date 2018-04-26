@@ -450,15 +450,19 @@ class Analyst:
         if "Extremities" in self.categories:
 
             # Compute the Extremities:
-            self.extremities = [
-                clusters.Node(self.ix_to_s[i],
-                    self.ix_to_s[self.neighbors[i][2]],
-                    self.encode, self.metric)
-                for i in tqdm(range(len(self.space)),
-                    desc="Measuring the Reaches",
-                    disable=(not self.auto_print))
-                if (i == self.neighbors[self.neighbors[i][2]][2]
-                    and i < self.neighbors[i][2])]
+            self.extremities = clusters.clusterizer.compute_extremities(
+                self.metric, self.encode, self.neighbors[:,2],
+                self.ix_to_s, self.auto_print
+            )
+            #self.extremities = [
+            #    clusters.Node(self.ix_to_s[i],
+            #        self.ix_to_s[self.neighbors[i][2]],
+            #        self.encode, self.metric)
+            #    for i in tqdm(range(len(self.space)),
+            #        desc="Measuring the Reaches",
+            #        disable=(not self.auto_print))
+            #    if (i == self.neighbors[self.neighbors[i][2]][2]
+            #        and i < self.neighbors[i][2])]
 
             # Extremity Lengths and other info:
             self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
@@ -487,15 +491,19 @@ class Analyst:
                 # ...all dependent on Nodes.
 
             # Compute the Nodes:
-            self.nodes = [
-                clusters.Node(self.ix_to_s[i],
-                    self.ix_to_s[self.neighbors[i][0]],
-                    self.encode, self.metric)
-                for i in tqdm(range(len(self.space)),
-                    desc="Watching the Galaxies Coelesce",
-                    disable=(not self.auto_print))
-                if (i == self.neighbors[self.neighbors[i][0]][0]
-                    and i < self.neighbors[i][0])]
+            self.nodes = clusters.clusterizer.compute_nodes(
+                self.metric, self.encode, self.neighbors[:,0],
+                self.ix_to_s, self.auto_print
+            )
+            #self.nodes = [
+            #    clusters.Node(self.ix_to_s[i],
+            #        self.ix_to_s[self.neighbors[i][0]],
+            #        self.encode, self.metric)
+            #    for i in tqdm(range(len(self.space)),
+            #        desc="Watching the Galaxies Coelesce",
+            #        disable=(not self.auto_print))
+            #    if (i == self.neighbors[self.neighbors[i][0]][0]
+            #        and i < self.neighbors[i][0])]
 
             # Node Length and other info:
             self.node_lengths = [n.distance for n in tqdm(self.nodes,
@@ -526,30 +534,34 @@ class Analyst:
         if "Hubs" in self.categories:
 
             # Compute the Hubs:
-            self.hubs = []
-            temp_hubs = []
-            for i in tqdm(range(len(self.space)),
-                    desc="Finding Galactic Hubs",
-                    disable=(not self.auto_print)):
-                temp_hubs.append(clusters.Cluster(
-                    self.encode, self.metric, nearest=self.nearest,
-                    objects=[self.ix_to_s[i]], nodes=[], auto=False,
-                    name=self.ix_to_s[i]))
-                    # Its name is the original object's decoded string.
-                for index, neighbor in enumerate(self.neighbors[:,0]):
-                    if neighbor == i:
-                        temp_hubs[i].add_objects([self.ix_to_s[index]])
-                    # The 0th index in the hub's list of objects
-                    #   is also it's original object (is included in hub).
-            j = 0
-            for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
-                    disable=(not self.auto_print)):
-                if len(h) >= 4: # obj plus 3 or more for whom it is nearest.
-                    self.hubs.append(h)
-                    self.hubs[j].ID = j
-                    self.hubs[j].calculate()
-                    j += 1
-            del(temp_hubs) # To save on memory.
+            self.hubs = clusters.clusterizer.compute_hubs(
+                self.metric, self.encode, self.nearest, self.neighbors[:,0],
+                self.ix_to_s, self.auto_print
+            )
+            #self.hubs = []
+            #temp_hubs = []
+            #for i in tqdm(range(len(self.space)),
+            #        desc="Finding Galactic Hubs",
+            #        disable=(not self.auto_print)):
+            #    temp_hubs.append(clusters.Cluster(
+            #        self.encode, self.metric, nearest=self.nearest,
+            #        objects=[self.ix_to_s[i]], nodes=[], auto=False,
+            #        name=self.ix_to_s[i]))
+            #        # Its name is the original object's decoded string.
+            #    for index, neighbor in enumerate(self.neighbors[:,0]):
+            #        if neighbor == i:
+            #            temp_hubs[i].add_objects([self.ix_to_s[index]])
+            #        # The 0th index in the hub's list of objects
+            #        #   is also it's original object (is included in hub).
+            #j = 0
+            #for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
+            #        disable=(not self.auto_print)):
+            #    if len(h) >= 4: # obj plus 3 or more for whom it is nearest.
+            #        self.hubs.append(h)
+            #        self.hubs[j].ID = j
+            #        self.hubs[j].calculate()
+            #        j += 1
+            #del(temp_hubs) # To save on memory.
 
             # Hub count, populations, etc:
             self._add_info(len(self.hubs), "Hubs", "Count")
@@ -567,27 +579,31 @@ class Analyst:
         if "Supernodes" in self.categories and len(self.nodes) >= 2:
 
             # Nearest neighbor-node computation:
-            centroids = [n.centroid for n in self.nodes]
-            self._print("Fracturing the Empire")
-            dist_matrix = sp.distance.squareform(
-                sp.distance.pdist(
-                    centroids,
-                    self.metric_str
-                        if self.metric_str != None else self.metric))
-            self._print("Establishing a Hierocracy")
-            neighbors = np.argmax(dist_matrix, axis=1)
-            #neighbors_dist = dist_matrix[range(len(dist_matrix)), neighbors]
-
-            # Compute the Supernodes:
-            self.supernodes = [
-                clusters.Node(node,
-                    self.nodes[neighbors[i]],
-                    clusters.Node.get_centroid, self.metric)
-                for i, node in enumerate(tqdm(range(len(self.nodes)),
-                    desc="Ascertaining Universe Filaments",
-                    disable=(not self.auto_print)))
-                if (i == neighbors[neighbors[i]]
-                    and i < neighbors[i])]
+            self.supernodes = clusters.clusterizer.compute_supernodes(
+                self.nodes, self._print, self.metric_str,
+                self.metric, self.auto_print
+            )
+            #centroids = [n.centroid for n in self.nodes]
+            #self._print("Fracturing the Empire")
+            #dist_matrix = sp.distance.squareform(
+            #    sp.distance.pdist(
+            #        centroids,
+            #        self.metric_str
+            #            if self.metric_str != None else self.metric))
+            #self._print("Establishing a Hierocracy")
+            #neighbors = np.argmax(dist_matrix, axis=1)
+            ##neighbors_dist = dist_matrix[range(len(dist_matrix)), neighbors]
+            #
+            ## Compute the Supernodes:
+            #self.supernodes = [
+            #    clusters.Node(node,
+            #        self.nodes[neighbors[i]],
+            #        clusters.Node.get_centroid, self.metric)
+            #    for i, node in enumerate(tqdm(range(len(self.nodes)),
+            #        desc="Ascertaining Universe Filaments",
+            #        disable=(not self.auto_print)))
+            #    if (i == neighbors[neighbors[i]]
+            #        and i < neighbors[i])]
 
             # Supernode Length and other info:
             self._print("Measuring their Magnitude")

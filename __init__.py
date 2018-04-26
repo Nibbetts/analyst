@@ -39,7 +39,7 @@ from test_set_2d import *
 #   user may type analyst.Cluster()
 from clusters.cluster import *
 from clusters.node import *
-from clsuters.clusterizer import *
+from clusters.clusterizer import *
 
 # NOTE: Don't need both ways, but done for convenience!
 # Recursive way: (Must have import code in subsidiary package inits, too)
