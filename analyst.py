@@ -326,7 +326,7 @@ class Analyst:
         # DISTANCE AND NEIGHBOR COMPUTATION:
 
         # Distance Matrix Calculation
-        self._print("Acquanting the Species")
+        self._print("Acquainting the Species")
         self.distance_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 self.space,
@@ -609,7 +609,7 @@ class Analyst:
             self._print("Measuring their Magnitude")
             self.supernode_lengths = [n.distance for n in self.supernodes]
             self._print("Minding the Macrocosm")
-            self._add_info(len(self.nodes), "Supernodes", "Count")
+            self._add_info(len(self.supernodes), "Supernodes", "Count")
             if len(self.supernodes) > 0:
                 node_min = np.min(self.supernode_lengths)
                 node_max = np.max(self.supernode_lengths)
@@ -623,7 +623,7 @@ class Analyst:
                 self._add_info(
                     len(self.supernodes)*2.0/float(len(self.nodes)),
                     "Supernodes", "Hierarchical Factor", star=True)
-                self._add_info(self.node_lengths,
+                self._add_info(self.supernode_lengths,
                     "Supernodes", "Span Histogram Key")
 
         # Nuclei:

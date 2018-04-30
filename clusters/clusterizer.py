@@ -80,7 +80,7 @@ def compute_supernodes(nodes, printer_fn, metric_str, metric_fn,
         clusters.Node(node,
             nodes[neighbors[i]],
             clusters.Node.get_centroid, metric_fn)
-        for i, node in enumerate(tqdm(range(len(nodes)),
+        for i, node in enumerate(tqdm(nodes,
             desc="Ascertaining Universe Filaments",
             disable=(not show_progress)))
         if (i == neighbors[neighbors[i]]

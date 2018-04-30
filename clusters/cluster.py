@@ -47,8 +47,10 @@ class Cluster:
         if self.auto: self.calculate()
 
     def __add__(self, B):
-        return Cluster(self.encoder, self.metric, self.nearest,
-            self.objects + B.objects, self.nodes + B.nodes, self.auto, None)
+        return Cluster(
+            self.encoder, self.metric, self.nearest,
+            self.objects + B.objects, self.nodes + B.nodes,
+            self.auto & B.auto, None, None)
 
     def __len__(self):
         return len(self.objects)
