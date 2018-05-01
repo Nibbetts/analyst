@@ -17,6 +17,10 @@ word2vec
 conceptnet numberbatch
 
 
+There aren't regions in the space, per se. If things are often around 90 degrees
+apart, then they are dispersed well, as like 6 points across the surface of a ball.
+
+
 use ward dissimilarity somehow?
 
 

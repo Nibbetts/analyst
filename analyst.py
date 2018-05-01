@@ -38,7 +38,7 @@ class Analyst:
                 centroid
                 * medoid
                 * dispersion
-                * remoteness -- avg dist to nearest
+                * repulsion -- avg dist to nearest
                 * broadness -- max dist to furthest
                 various avg, min, max, range, graph of distribution of.
 
@@ -365,7 +365,7 @@ class Analyst:
 
         # MEASUREMENTS:
 
-        # Centroid, Dispersion, Remoteness:
+        # Centroid, Dispersion, repulsion:
         self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
         #self._add_info(self.centroid,
@@ -390,7 +390,7 @@ class Analyst:
                 "Spatial", "Centroid Dist Range")
             self._add_info(self.centroid_dist,
                 "Spatial", "Centroid Dist Histogram Key")
-        #self.remoteness = np.mean(
+        #self.repulsion = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
 
@@ -402,7 +402,7 @@ class Analyst:
         nearest_max = np.max(self.neighbors_dist[:,0])
         if print_report:
             self._add_info(self.nearest_avg,
-                "Spatial", "Remoteness - Nearest Dist Avg", star=True)
+                "Spatial", "repulsion - Nearest Dist Avg", star=True)
             self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
             self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
             self._add_info(nearest_max-nearest_min,
@@ -452,35 +452,12 @@ class Analyst:
             # Compute the Extremities:
             self.extremities = clusters.clusterizer.compute_extremities(
                 self.metric, self.encode, self.neighbors[:,2],
-                self.ix_to_s, self.auto_print
-            )
-            #self.extremities = [
-            #    clusters.Node(self.ix_to_s[i],
-            #        self.ix_to_s[self.neighbors[i][2]],
-            #        self.encode, self.metric)
-            #    for i in tqdm(range(len(self.space)),
-            #        desc="Measuring the Reaches",
-            #        disable=(not self.auto_print))
-            #    if (i == self.neighbors[self.neighbors[i][2]][2]
-            #        and i < self.neighbors[i][2])]
-
+                self.ix_to_s, self.auto_print)
             # Extremity Lengths and other info:
-            self.extremity_lengths = [e.distance for e in tqdm(self.extremities,
-                desc="Setting the scopes",
-                disable=(not self.auto_print))]
+            self._print("Setting the Scopes")
             self._print("Puzzling Over the Star Charts")
-            self._add_info(len(self.extremities),
-                "Extremities", "Count", star=True)
-            if len(self.extremities) > 0:
-                extr_min = np.min(self.extremity_lengths)
-                extr_max = np.max(self.extremity_lengths)
-                self._add_info(np.mean(self.extremity_lengths),
-                    "Extremities", "Span Avg")
-                self._add_info(extr_min, "Extremities", "Span Min", star=True)
-                self._add_info(extr_max, "Extremities", "Span Max", star=True)
-                self._add_info(extr_max - extr_min, "Extremities", "Span Range")
-                self._add_info(self.extremity_lengths,
-                    "Extremities", "Span Histogram Key")
+            self._add_node_type_attributes(self.extremities, "Extremities",
+                [1, 0, 1, 1, 0, 0])
 
         # Nodes:
         print_node_info = "Nodes" in self.categories
@@ -493,32 +470,13 @@ class Analyst:
             # Compute the Nodes:
             self.nodes = clusters.clusterizer.compute_nodes(
                 self.metric, self.encode, self.neighbors[:,0],
-                self.ix_to_s, self.auto_print
-            )
-            #self.nodes = [
-            #    clusters.Node(self.ix_to_s[i],
-            #        self.ix_to_s[self.neighbors[i][0]],
-            #        self.encode, self.metric)
-            #    for i in tqdm(range(len(self.space)),
-            #        desc="Watching the Galaxies Coelesce",
-            #        disable=(not self.auto_print))
-            #    if (i == self.neighbors[self.neighbors[i][0]][0]
-            #        and i < self.neighbors[i][0])]
-
+                self.ix_to_s, self.auto_print)
             # Node Length and other info:
-            self.node_lengths = [n.distance for n in tqdm(self.nodes,
-                desc="Delineating the Quasars",
-                disable=(not self.auto_print))]
+            self._print("Delineating the Quasars")
             self._print("Comparing the Cosmos")
             if print_node_info:
-                self._add_info(len(self.nodes), "Nodes", "Count")
-            if print_node_info and len(self.nodes) > 0:
-                node_min = np.min(self.node_lengths)
-                node_max = np.max(self.node_lengths)
-                self._add_info(np.mean(self.node_lengths), "Nodes", "Span Avg")
-                self._add_info(node_min, "Nodes", "Span Min")
-                self._add_info(node_max, "Nodes", "Span Max")
-                self._add_info(node_max - node_min, "Nodes", "Span Range")
+                self._add_node_type_attributes(self.nodes, "Nodes",
+                [0, 0, 0, 0, 0, 0])
                 self._add_info(len(self.nodes)*2.0/float(len(self.space)),
                     "Nodes", "Nodal Factor", star=True)
                 avg_align = np.mean([n.alignment for n in self.nodes], axis=0)
@@ -528,7 +486,6 @@ class Analyst:
                         np.abs(sp.distance.cosine(avg_align, n.alignment))
                         for n in self.nodes]),
                     "Nodes", "Alignment Factor", star=True)
-                self._add_info(self.node_lengths, "Nodes", "Span Histogram Key")
 
         # Hubs:
         if "Hubs" in self.categories:
@@ -564,16 +521,7 @@ class Analyst:
             #del(temp_hubs) # To save on memory.
 
             # Hub count, populations, etc:
-            self._add_info(len(self.hubs), "Hubs", "Count")
-            if len(self.hubs) > 0:
-                hub_sizes = [len(h) for h in self.hubs]
-                hub_min = np.min(hub_sizes)
-                hub_max = np.max(hub_sizes)
-                self._add_info(np.mean(hub_sizes), "Hubs", "Population Avg")
-                self._add_info(hub_min, "Hubs", "Population Min")
-                self._add_info(hub_max, "Hubs", "Population Max")
-                self._add_info(hub_max-hub_min, "Hubs", "Population Range")
-                self._add_info(hub_sizes, "Hubs", "Population Histogram Key")
+            self._add_cluster_type_attributes(self.hubs, "Hubs")
 
         # Supernodes:
         if "Supernodes" in self.categories and len(self.nodes) >= 2:
@@ -908,6 +856,50 @@ class Analyst:
         self.category_lists[i].append(
             (description, variable, star))
 
+    def _add_clusters_attribute(self, vals, cluster_type, attribute):
+        # vals: a list containing the given attribute for each cluster.
+        # cluster_type: ie. "Hubs".
+        # attribute: ie. "Dispersion".
+        hub_max = np.max(vals)
+        hub_min = np.min(vals)
+        self._add_info(np.mean(vals), cluster_type, attribute + " Avg")
+        self._add_info(hub_min, cluster_type, attribute + " Min")
+        self._add_info(hub_max, cluster_type, attribute + " Max")
+        self._add_info(hub_max-hub_min, cluster_type, attribute + " Range")
+        self._add_info(vals, cluster_type, attribute + " Histogram Key")
+
+    def _add_cluster_type_attributes(self, cluster_list, cluster_type):
+        # cluster_list: a list of all clusters of the given type.
+        # cluster_type: ie. "Hubs".
+        self._add_info(len(cluster_list), cluster_type, "Count")
+        if len(cluster_list) > 0:
+            self._add_clusters_attribute([len(c) for c in cluster_list],
+                cluster_type, "Population")
+            self._add_clusters_attribute([c.dispersion for c in cluster_list],
+                cluster_type, "Dispersion")
+            self._add_clusters_attribute([c.repulsion for c in cluster_list],
+                cluster_type, "Repulsion")
+            self._add_clusters_attribute([c.skew for c in cluster_list],
+                cluster_type, "Skew")
+            self._add_clusters_attribute([len(c.nodes) for c in cluster_list],
+                cluster_type, "Node Count")
+
+    def _add_node_type_attributes(self, node_list, node_type, stars):
+        # node_list: list of all nodes of the given type.
+        # node_type: ie. "Extremities".
+        # stars: boolean list of length 6 for which attributes are important.
+        lengths = [n.distance for n in node_list]
+        self._add_info(len(node_list), node_type, "Count", stars[0])
+        if len(node_list) > 0:
+            node_min = np.min(lengths)
+            node_max = np.max(lengths)
+            self._add_info(np.mean(lengths), node_type, "Span Avg", stars[1])
+            self._add_info(node_min, node_type, "Span Min", stars[2])
+            self._add_info(node_max, node_type, "Span Max", stars[3])
+            self._add_info(node_max-node_min, node_type, "Span Range", stars[4])
+            self._add_info(lengths, node_type, "Span Histogram Key", stars[5])
+
+
     def _print(self, string=""):
         if self.auto_print: print("\r" + string + "...")
 
@@ -974,7 +966,7 @@ class Analyst:
                     "even" (attempts amorphous semi-uniformity of distances btw.
                         points)
                     "grid" (attempts a gridlike uniformity)
-                    "pairs" (generates points in pairs of close remoteness --
+                    "pairs" (generates points in pairs of close repulsion --
                         forces excessive node generation)
                     "line" (generates points in lines)
                     "snake" (generate points in curvy lines)

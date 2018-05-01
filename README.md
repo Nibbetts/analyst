@@ -43,7 +43,7 @@ The objects encoded in the space must be some sort of strings, or the internal c
 - **center:** average location of all objects in a cluster.
 - **string factor:** average cluster span divided by space dispersion
 - **regularity:** find average cluster pop, then find average difference btw. cluster pop and average cluster pop. Regularity is 1/(1+this)
-- **remoteness:** as used here, avg distance of nodes to their nearest neighbors. While not a real measure of spatial or volumentric density, this is a metric for relationships between encoded objects, and thus could potentially be used as a density metric if inverted.
+- **repulsion:** as used here, avg distance of nodes to their nearest neighbors. While not a real measure of spatial or volumentric density, this is a metric for relationships between encoded objects, and thus could potentially be used as a density metric if inverted.
 - **dispersion:** avg distance of nodes to the center of their distribution
 - **focus:** averaged location of nodes in a cluster; concentration center.
 - **skew:** distance from focus to center.
@@ -80,7 +80,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 - dist. to centroid stats
 - medoid
 - dispersion
-- remoteness -- avg dist to nearest
+- repulsion -- avg dist to nearest
 - dist. to nearest stats
 - broadness -- max dist to furthest
 - dist. to furthest stats
@@ -123,7 +123,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 - nucleus regularity
 - nucleus dispersion factor -- avg. nucleus disp. / space disp, nucleus dispersion stats
 - node count stats
-- nucleus remoteness factor -- avg. nucleus remoteness divided by overall space remoteness, nucleus remoteness stats
+- nucleus repulsion factor -- avg. nucleus repulsion divided by overall space repulsion, nucleus repulsion stats
 - nucleus skew factor, nucleus skew stats
 
 #### Chains: (Nearest-Neighbor-Path Partitions)
@@ -131,7 +131,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 - chain population stats
 - chain string factor -- avg. chain span / space dispersion, chain span stats
 - chain dispersion factor -- avg. chain disp. / space disp, chain dispersion stats
-- chain remoteness factor -- avg. chain remoteness / overall space remoteness, chain remoteness stats
+- chain repulsion factor -- avg. chain repulsion / overall space repulsion, chain repulsion stats
 - chain skew factor, chain skew stats
 
 *NOTE:* num chains is equal to num nodes  
@@ -147,7 +147,7 @@ Analyst.unsave(path) # deletes a saved file. Rtrns True if success.
 - avg cluster population, cluster population stats
 - cluster dispersion factor -- avg. cluster disp. / space disp, cluster dispersion stats
 - avg num nodes per cluster, node count stats
-- cluster remoteness factor -- avg cluster remoteness / overall space remoteness, cluster remoteness stats
+- cluster repulsion factor -- avg cluster repulsion / overall space repulsion, cluster repulsion stats
 - cluster skew factor -- avg. cluster skew / space dispersion, cluster skew stats
 
 #### Strong Clusters: (Dispersion and Dual LIMITED NODAL Conglomerate CLUSTERS)  

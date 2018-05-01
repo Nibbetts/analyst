@@ -33,7 +33,7 @@ class Cluster:
         # self.vectors = []
         # self.centroid = []
         # self.dispersion = 0
-        # self.remoteness = 0
+        # self.repulsion = 0
         # self.focus = []
         # self.skew = 0
         # self.medoid = None
@@ -66,7 +66,7 @@ class Cluster:
             + ",\n\tmedoid:      " + str(self.medoid) \
             + ",\n\tcardinality: " + str(len(self.objects)) \
             + ",\n\tdispersion:  " + str(self.dispersion) \
-            + ",\n\tremoteness:  " + str(self.remoteness) \
+            + ",\n\trepulsion:  " + str(self.repulsion) \
             + ",\n\tskew:        " + str(self.skew) \
             + ",\n\tnodes:       " + [str(node) for node in self.nodes] \
             + ",\n\tobjects:     " + [str(obj) for obj in self.objects] + " )"
@@ -103,15 +103,15 @@ class Cluster:
         self.dispersion = np.mean([self.metric(self.centroid, vec)
             for vec in self.vectors], axis=0)
 
-        # Calculate Remoteness:
-        #if self.nearest != None: self.remoteness = sum([self.metric(
+        # Calculate repulsion:
+        #if self.nearest != None: self.repulsion = sum([self.metric(
         #    v, self.encoder(self.nearest(self.objects[i])))
         #    for i, v in self.vectors]) / len(self.objects)
         if self.nearest != None:
-            self.remoteness = np.mean([self.metric(
+            self.repulsion = np.mean([self.metric(
                 v, self.encoder(self.nearest(self.objects[i])))
                 for i, v in enumerate(self.vectors)], axis=0)
-        else: self.remoteness = None
+        else: self.repulsion = None
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
 

@@ -85,3 +85,6 @@ def compute_supernodes(nodes, printer_fn, metric_str, metric_fn,
             disable=(not show_progress)))
         if (i == neighbors[neighbors[i]]
             and i < neighbors[i])]
+
+#def compute_nuclei():
+#def compute_chains():
