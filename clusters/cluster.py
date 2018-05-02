@@ -3,8 +3,8 @@ import numpy as np
 
 class Cluster:
 
-    def __init__(self, encoder, metric, nearest=None,
-        objects=[], nodes=[], auto=False, ID=None, name=None):
+    def __init__(self, encoder, metric, objects, nearest=None,
+            vectors=None, nodes=[], auto=False, ID=None, name=None):
         """
         Parameters:
             encoder: callable; gets one vector from one object at a time.
@@ -13,6 +13,10 @@ class Cluster:
                 If unavailable, only difference is density will be unavailable.
             objects: a list of unencoded objects in an embedding space,
                 including those which are members of the given nodes.
+            vectors: a list of vectors from which to build a cluster.
+                Both objects and vectors may be given, but must match,
+                as no checks will be made to enforce this, creating problems.
+                It is simply for saving on computation time in certain cases.
             nodes: a list of Nodes, which each contains a pair of objects and
                 has a centroid.
             auto: if true, calculates automatically after creation and after
@@ -37,6 +41,8 @@ class Cluster:
         # self.focus = []
         # self.skew = 0
         # self.medoid = None
+        self.vectors = (
+            vectors if vectors != None else map(self.encoder, self.objects))
         if self.auto: self.calculate()
 
     def __iadd__(self, B):
@@ -86,7 +92,6 @@ class Cluster:
         self.nodes += node_list
 
     def calculate(self):
-        self.vectors = map(self.encoder, self.objects)
         #self.centroid = sum(self.vectors) / len(self.vectors)
         self.centroid = np.mean(self.vectors, axis=0)
         #self.focus = sum([n.centroid for n in self.nodes]) / len(self.nodes)

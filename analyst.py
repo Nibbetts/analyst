@@ -8,7 +8,7 @@ import os
 #import sys
 #import multiprocessing
 
-import clusters
+from .clusters import *
 #from test_set_2d import TestSet2D
 
 
@@ -235,6 +235,17 @@ class Analyst:
             # Run Analyses:
             self.graph_info = []
             self.categories = []
+            self.built_in_categories = [
+                "Spatial",
+                "Extremities",
+                "Nodes",
+                "Hubs",
+                "Supernodes",
+                "Nuclei",
+                "Chains",
+                "NCC",
+                "LNCC",
+                "Anti-hubs"]
             self.cluster_algorithms = []
             report_spatial = False
             for t in cluster_algorithms:
@@ -244,19 +255,10 @@ class Analyst:
                     tag = t[1].lower()
                     if tag == "spatial":
                         report_spatial = True
-                        self.categories.append(t[1])
+                        self.categories.append("Spatial")
                     elif tag == "all":
                         report_spatial = True
-                        self.categories.append("Spatial")
-                        self.categories.append("Extremities")
-                        self.categories.append("Nodes")
-                        self.categories.append("Hubs")
-                        self.categories.append("Supernodes")
-                        self.categories.append("Nuclei")
-                        self.categories.append("Chains")
-                        self.categories.append("NCC")
-                        self.categories.append("LNCC")
-                        self.categories.append("Anti-hubs")
+                        map(self.categories.append, self.built_in_categories)
                     else:
                         self.categories.append(t[1])
             self.category_lists = np.empty(
@@ -265,6 +267,7 @@ class Analyst:
             self.analogy_algorithms = analogy_algorithms
             self.analogy_sets = analogy_sets
 
+            self.s_to_node = {}
             self.spatial_data = {}
             self.cluster_data = {}
             self.analogical_data = {}
@@ -316,6 +319,12 @@ class Analyst:
             int(obj)
             return i
         except: return self.space[i]
+
+    # Other Tools:
+    def find_nodes_from_string_list(self, strings):
+        nodes = set(strings).intersection(self.s_to_node.keys())
+        return [self.s_to_node[string] for string in nodes]
+
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
@@ -445,6 +454,8 @@ class Analyst:
 
 
     def _cluster_analysis(self):
+        # NOTE: The built-in algorithms are not included in the loop below
+        #   because some of them depend on each other, and must be in order.
 
         # Extremities:
         if "Extremities" in self.categories:
@@ -457,7 +468,7 @@ class Analyst:
             self._print("Setting the Scopes")
             self._print("Puzzling Over the Star Charts")
             self._add_node_type_attributes(self.extremities, "Extremities",
-                [1, 0, 1, 1, 0, 0])
+                [1, 0, 1, 1, 0, 0, 0])
 
         # Nodes:
         print_node_info = "Nodes" in self.categories
@@ -471,21 +482,26 @@ class Analyst:
             self.nodes = clusters.clusterizer.compute_nodes(
                 self.metric, self.encode, self.neighbors[:,0],
                 self.ix_to_s, self.auto_print)
+            for node in self.nodes:
+                self.s_to_node[node[0]] = node
+                self.s_to_node[node[1]] = node
             # Node Length and other info:
-            self._print("Delineating the Quasars")
-            self._print("Comparing the Cosmos")
             if print_node_info:
+                self._print("Delineating the Quasars")
                 self._add_node_type_attributes(self.nodes, "Nodes",
-                [0, 0, 0, 0, 0, 0])
-                self._add_info(len(self.nodes)*2.0/float(len(self.space)),
-                    "Nodes", "Nodal Factor", star=True)
-                avg_align = np.mean([n.alignment for n in self.nodes], axis=0)
-                avg_align /= np.linalg.norm(avg_align)
-                self._add_info(
-                    np.mean([
-                        np.abs(sp.distance.cosine(avg_align, n.alignment))
-                        for n in self.nodes]),
-                    "Nodes", "Alignment Factor", star=True)
+                [0, 0, 0, 0, 0, 0, 0])
+                if len(self.nodes) > 0:
+                    self._print("Comparing the Cosmos")
+                    self._add_info(len(self.nodes)*2.0/float(len(self.space)),
+                        "Nodes", "Nodal Factor", star=True)
+                    avg_align = np.mean(
+                        [n.alignment for n in self.nodes], axis=0)
+                    avg_align /= np.linalg.norm(avg_align)
+                    self._add_info(
+                        np.mean([
+                            np.abs(sp.distance.cosine(avg_align, n.alignment))
+                            for n in self.nodes]),
+                        "Nodes", "Alignment Factor", star=True)
 
         # Hubs:
         if "Hubs" in self.categories:
@@ -493,32 +509,7 @@ class Analyst:
             # Compute the Hubs:
             self.hubs = clusters.clusterizer.compute_hubs(
                 self.metric, self.encode, self.nearest, self.neighbors[:,0],
-                self.ix_to_s, self.auto_print
-            )
-            #self.hubs = []
-            #temp_hubs = []
-            #for i in tqdm(range(len(self.space)),
-            #        desc="Finding Galactic Hubs",
-            #        disable=(not self.auto_print)):
-            #    temp_hubs.append(clusters.Cluster(
-            #        self.encode, self.metric, nearest=self.nearest,
-            #        objects=[self.ix_to_s[i]], nodes=[], auto=False,
-            #        name=self.ix_to_s[i]))
-            #        # Its name is the original object's decoded string.
-            #    for index, neighbor in enumerate(self.neighbors[:,0]):
-            #        if neighbor == i:
-            #            temp_hubs[i].add_objects([self.ix_to_s[index]])
-            #        # The 0th index in the hub's list of objects
-            #        #   is also it's original object (is included in hub).
-            #j = 0
-            #for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
-            #        disable=(not self.auto_print)):
-            #    if len(h) >= 4: # obj plus 3 or more for whom it is nearest.
-            #        self.hubs.append(h)
-            #        self.hubs[j].ID = j
-            #        self.hubs[j].calculate()
-            #        j += 1
-            #del(temp_hubs) # To save on memory.
+                self.ix_to_s, self.s_to_node, self.auto_print)
 
             # Hub count, populations, etc:
             self._add_cluster_type_attributes(self.hubs, "Hubs")
@@ -529,53 +520,25 @@ class Analyst:
             # Nearest neighbor-node computation:
             self.supernodes = clusters.clusterizer.compute_supernodes(
                 self.nodes, self._print, self.metric_str,
-                self.metric, self.auto_print
-            )
-            #centroids = [n.centroid for n in self.nodes]
-            #self._print("Fracturing the Empire")
-            #dist_matrix = sp.distance.squareform(
-            #    sp.distance.pdist(
-            #        centroids,
-            #        self.metric_str
-            #            if self.metric_str != None else self.metric))
-            #self._print("Establishing a Hierocracy")
-            #neighbors = np.argmax(dist_matrix, axis=1)
-            ##neighbors_dist = dist_matrix[range(len(dist_matrix)), neighbors]
-            #
-            ## Compute the Supernodes:
-            #self.supernodes = [
-            #    clusters.Node(node,
-            #        self.nodes[neighbors[i]],
-            #        clusters.Node.get_centroid, self.metric)
-            #    for i, node in enumerate(tqdm(range(len(self.nodes)),
-            #        desc="Ascertaining Universe Filaments",
-            #        disable=(not self.auto_print)))
-            #    if (i == neighbors[neighbors[i]]
-            #        and i < neighbors[i])]
+                self.metric, self.auto_print)
 
             # Supernode Length and other info:
             self._print("Measuring their Magnitude")
-            self.supernode_lengths = [n.distance for n in self.supernodes]
-            self._print("Minding the Macrocosm")
-            self._add_info(len(self.supernodes), "Supernodes", "Count")
+            self._add_node_type_attributes(self.supernodes, "Supernodes",
+                [0, 0, 0, 0, 0, 0, 0])
             if len(self.supernodes) > 0:
-                node_min = np.min(self.supernode_lengths)
-                node_max = np.max(self.supernode_lengths)
-                self._add_info(np.mean(self.supernode_lengths),
-                    "Supernodes", "Span Avg")
-                self._add_info(node_min, "Supernodes", "Span Min")
-                self._add_info(node_max, "Supernodes", "Span Max")
-                self._add_info(node_max - node_min, "Supernodes", "Span Range")
+                self._print("Minding the Macrocosm")
                 self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
                     "Supernodes", "Island Factor", star=True)
                 self._add_info(
                     len(self.supernodes)*2.0/float(len(self.nodes)),
                     "Supernodes", "Hierarchical Factor", star=True)
-                self._add_info(self.supernode_lengths,
-                    "Supernodes", "Span Histogram Key")
 
         # Nuclei:
-        pass
+        if "Nuclei" in self.categories:
+            self.nuclei = clusters.clusterizer.compute_nuclei()
+            self._print("Performing Cold Fusion")
+            self._add_cluster_type_attributes(self.nuclei, "Nuclei")
 
         # Chains:
         pass
@@ -587,20 +550,38 @@ class Analyst:
         pass
 
         # Anti-hubs:
-        pass
+        if "Anti-hubs" in self.categories:
+            self.anti_hubs = clusters.clusterizer.compute_anti_hubs()
+            self._print("Unraveling the Secrets of Dark Matter")
+            self._add_cluster_type_attributes(self.anti_hubs, "Anti-hubs")
 
-        # Other Callables:
-        pass
-        #for algorithm in self.cluster_algorithms:
-        #    clusters = []
-        #    clusterings = algorithm[0](self.space)
-        #    for c in clusterings:
-        #        clusters.append(clusters.Cluster(c))
-        #
-        # or can use __name__ to get function name!
+        # Cluster Algorithms:
+        for alg in self.cluster_algorithms:
+            # function = alg[0]
+            # description = alg[1]
+            self._print("Analyzing " + alg[1])
 
-        # Invalid non-callables:
-        pass
+            # Custom Callables:
+            if callable(alg[0]):
+                if alg[1] == "" or alg[1] == None:
+                    alg[1] = alg[0].__name__
+                cluster_list = []
+                clusterings = alg[0](self.space)
+                for i, c in enumerate(clusterings):
+                    strings = map(self.decode, c)
+                    nodes = self.find_nodes_from_string_list(strings)
+                    cluster_list.append(clusters.Cluster(
+                        self.encode, self.metric, self.nearest, strings,
+                        vectors=c, nodes=nodes, auto=True, ID=i))
+                
+                self.cluster_data[alg[1]] = cluster_list
+                self._add_cluster_type_attributes(cluster_list, alg[1])
+            
+            # Invalid Non-callables:
+            elif (alg[0] not in self.built_in_categories
+                    and alg[1] not in self.built_in_categories):
+                self._print(
+                    alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
 
     # ANALOGICAL & SPECIFICS:
 
@@ -856,24 +837,25 @@ class Analyst:
         self.category_lists[i].append(
             (description, variable, star))
 
-    def _add_clusters_attribute(self, vals, cluster_type, attribute):
+    def _add_clusters_attribute(self, vals, cluster_type, attribute, stars=[]):
         # vals: a list containing the given attribute for each cluster.
         # cluster_type: ie. "Hubs".
         # attribute: ie. "Dispersion".
         hub_max = np.max(vals)
         hub_min = np.min(vals)
-        self._add_info(np.mean(vals), cluster_type, attribute + " Avg")
-        self._add_info(hub_min, cluster_type, attribute + " Min")
-        self._add_info(hub_max, cluster_type, attribute + " Max")
-        self._add_info(hub_max-hub_min, cluster_type, attribute + " Range")
-        self._add_info(vals, cluster_type, attribute + " Histogram Key")
+        self._add_info(np.mean(vals), cluster_type, attribute + " Avg", stars[0])
+        self._add_info(hub_min, cluster_type, attribute + " Min", stars[1])
+        self._add_info(hub_max, cluster_type, attribute + " Max", stars[2])
+        self._add_info(hub_max-hub_min, cluster_type, attribute + " Range", stars[3])
+        self._add_info(np.std(vals), cluster_type, attribute + " Standard Dev", stars[4])
+        self._add_info(vals, cluster_type, attribute + " Histogram Key", stars[5])
 
     def _add_cluster_type_attributes(self, cluster_list, cluster_type):
         # cluster_list: a list of all clusters of the given type.
         # cluster_type: ie. "Hubs".
         self._add_info(len(cluster_list), cluster_type, "Count")
         if len(cluster_list) > 0:
-            self._add_clusters_attribute([len(c) for c in cluster_list],
+            self._add_clusters_attribute(map(len, cluster_list),
                 cluster_type, "Population")
             self._add_clusters_attribute([c.dispersion for c in cluster_list],
                 cluster_type, "Dispersion")
@@ -887,18 +869,11 @@ class Analyst:
     def _add_node_type_attributes(self, node_list, node_type, stars):
         # node_list: list of all nodes of the given type.
         # node_type: ie. "Extremities".
-        # stars: boolean list of length 6 for which attributes are important.
+        # stars: boolean list of length 7 for which attributes are important.
         lengths = [n.distance for n in node_list]
         self._add_info(len(node_list), node_type, "Count", stars[0])
         if len(node_list) > 0:
-            node_min = np.min(lengths)
-            node_max = np.max(lengths)
-            self._add_info(np.mean(lengths), node_type, "Span Avg", stars[1])
-            self._add_info(node_min, node_type, "Span Min", stars[2])
-            self._add_info(node_max, node_type, "Span Max", stars[3])
-            self._add_info(node_max-node_min, node_type, "Span Range", stars[4])
-            self._add_info(lengths, node_type, "Span Histogram Key", stars[5])
-
+            self._add_clusters_attribute(lengths, node_type, "Span", stars[1:])
 
     def _print(self, string=""):
         if self.auto_print: print("\r" + string + "...")

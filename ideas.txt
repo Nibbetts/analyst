@@ -21,6 +21,16 @@ There aren't regions in the space, per se. If things are often around 90 degrees
 apart, then they are dispersed well, as like 6 points across the surface of a ball.
 
 
+- give specific example use cases for clusters, such as having a custom clustering
+algorithm which builds clusters stemmed from color words. include as example
+- fix cluster/vector discrepancy with clusterizer returns
+- fix analyst to take clusterizers
+- call compute on clusterizers, and give also node info etc, if order controlled
+- make funct to examine a group of given strings thoroughly
+
+fix all to work in python3
+
+
 use ward dissimilarity somehow?
 
 
