@@ -36,7 +36,9 @@ class Cluster:
 
         # self.vectors = []
         # self.centroid = []
+        # self.centroid_length = 0
         # self.dispersion = 0
+        # self.std_dev = 0
         # self.repulsion = 0
         # self.focus = []
         # self.skew = 0
@@ -67,15 +69,17 @@ class Cluster:
     def __str__(self):
         # Cardinality
         return "Cluster(" \
-            +  "\n\tID:          " + str(self.ID) \
-            + ",\n\tname:        " + str(self.name) \
-            + ",\n\tmedoid:      " + str(self.medoid) \
-            + ",\n\tcardinality: " + str(len(self.objects)) \
-            + ",\n\tdispersion:  " + str(self.dispersion) \
-            + ",\n\trepulsion:  " + str(self.repulsion) \
-            + ",\n\tskew:        " + str(self.skew) \
-            + ",\n\tnodes:       " + [str(node) for node in self.nodes] \
-            + ",\n\tobjects:     " + [str(obj) for obj in self.objects] + " )"
+            +  "\n\tID:            " + str(self.ID) \
+            + ",\n\tname:          " + str(self.name) \
+            + ",\n\tmedoid:        " + str(self.medoid) \
+            + ",\n\tcentroid norm: " + str(self.centroid_length) \
+            + ",\n\tcardinality:   " + str(len(self.objects)) \
+            + ",\n\tdispersion:    " + str(self.dispersion) \
+            + ",\n\tstdandard dev: " + str(self.std_dev) \
+            + ",\n\trepulsion:     " + str(self.repulsion) \
+            + ",\n\tskew:          " + str(self.skew) \
+            + ",\n\tnodes:         " + [str(node) for node in self.nodes] \
+            + ",\n\tobjects:       " + [str(obj) for obj in self.objects] + " )"
         #if len(self.objects) > 0:
         #    result += str(self.objects[0])
         #    for obj in self.objects[1:]:
@@ -94,6 +98,7 @@ class Cluster:
     def calculate(self):
         #self.centroid = sum(self.vectors) / len(self.vectors)
         self.centroid = np.mean(self.vectors, axis=0)
+        self.centroid_length = np.linalg.norm(self.centroid)
         #self.focus = sum([n.centroid for n in self.nodes]) / len(self.nodes)
         if len(self.nodes) != 0:
             self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
@@ -107,6 +112,9 @@ class Cluster:
         #    for vec in self.vectors]) / len(self.objects)
         self.dispersion = np.mean([self.metric(self.centroid, vec)
             for vec in self.vectors], axis=0)
+
+        # Calculate Standard Deviation:
+        self.std_dev = np.std(self.vectors)
 
         # Calculate repulsion:
         #if self.nearest != None: self.repulsion = sum([self.metric(

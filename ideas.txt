@@ -27,14 +27,12 @@ algorithm which builds clusters stemmed from color words. include as example
 - fix analyst to take clusterizers
 - call compute on clusterizers, and give also node info etc, if order controlled
 - make funct to examine a group of given strings thoroughly
-
-fix all to work in python3
-
-
-use ward dissimilarity somehow?
-
-
-look into cluster extremities! (strange attractors)
+- standard deviation of vectors from centroids - like dispersion:
+https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-to-vectors
+- fix all to work in python3
+- use ward dissimilarity somehow?
+- look into cluster extremities! (strange attractors)
+- compare google's universal sentence encoder used on words with fastext etc
 
 
 (categories:)
@@ -124,7 +122,7 @@ def shift(string, k=1):
     return s
 
 
-"""self._print("Ousting Nearly Empty Universes") #"Ousting the Flatlanders"
+"""
 if len(self.space) >= 4:
     #return
     for i, vec in enumerate(tqdm(self.space, disable=(not self.auto_print),

@@ -8,7 +8,8 @@ import os
 #import sys
 #import multiprocessing
 
-from .clusters import *
+from .clustertypes import *
+from .clusterizers import *
 #from test_set_2d import TestSet2D
 
 
@@ -266,6 +267,7 @@ class Analyst:
 
             self.analogy_algorithms = analogy_algorithms
             self.analogy_sets = analogy_sets
+            self.distance_matrix = None
 
             self.s_to_node = {}
             self.spatial_data = {}
@@ -325,6 +327,16 @@ class Analyst:
         nodes = set(strings).intersection(self.s_to_node.keys())
         return [self.s_to_node[string] for string in nodes]
 
+    def distance_matrix_getter(self):
+        if self.distance_matrix == None:
+            # Distance Matrix Calculation
+            self._print("Acquainting the Species (Calculating Distance Matrix)")
+            self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
+                self.space,
+                self.metric_str if self.metric_str != None else self.metric))
+        else:
+            return self.distance_matrix
+
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
@@ -334,12 +346,7 @@ class Analyst:
 
         # DISTANCE AND NEIGHBOR COMPUTATION:
 
-        # Distance Matrix Calculation
-        self._print("Acquainting the Species")
-        self.distance_matrix = sp.distance.squareform(
-            sp.distance.pdist(
-                self.space,
-                self.metric_str if self.metric_str != None else self.metric))
+        # distance_matrix_getter()
             
         # Finding Furthest Neighbors
         self._print("Misconstruing Relations")
@@ -374,15 +381,15 @@ class Analyst:
 
         # MEASUREMENTS:
 
-        # Centroid, Dispersion, repulsion:
+        # Centroid, Dispersion, Std Dev, repulsion:
         self._print("Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
-        #self._add_info(self.centroid,
-        #    "Spatial", "Centroid - Coordinate Avg")
+        self.centroid_length = np.linalg.norm(self.centroid)
         self.centroid_dist = [self.metric(self.centroid, v)
             for v in tqdm(self.space, desc="Counting the Lightyears",
                 disable=(not self.auto_print))]
         self.dispersion = np.mean(self.centroid_dist, axis=0)
+        self.std_dev = np.std(self.space)
         centr_min = np.min(self.centroid_dist, axis=0)
         centr_max = np.max(self.centroid_dist, axis=0)
         if print_report:
@@ -391,6 +398,7 @@ class Analyst:
                     desc="Electing a Ruler", disable=(not self.auto_print))])],
                 "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
             self._add_info(len(self.space), "Spatial", "Count")
+            self._add_info(self.centroid_length, "Spatial", "Centroid Length")
             self._add_info(self.dispersion,
                 "Spatial", "Dispersion - Centroid Dist Avg", star=True)
             self._add_info(centr_min, "Spatial", "Centroid Dist Min")
@@ -399,6 +407,7 @@ class Analyst:
                 "Spatial", "Centroid Dist Range")
             self._add_info(self.centroid_dist,
                 "Spatial", "Centroid Dist Histogram Key")
+            self._add_info(self.std_dev, "Spatial", "Standard Dev")
         #self.repulsion = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
@@ -514,25 +523,25 @@ class Analyst:
             # Hub count, populations, etc:
             self._add_cluster_type_attributes(self.hubs, "Hubs")
 
-        # Supernodes:
-        if "Supernodes" in self.categories and len(self.nodes) >= 2:
+        # # Supernodes:
+        # if "Supernodes" in self.categories and len(self.nodes) >= 2:
 
-            # Nearest neighbor-node computation:
-            self.supernodes = clusters.clusterizer.compute_supernodes(
-                self.nodes, self._print, self.metric_str,
-                self.metric, self.auto_print)
+        #     # Nearest neighbor-node computation:
+        #     self.supernodes = clusters.clusterizer.compute_supernodes(
+        #         self.nodes, self._print, self.metric_str,
+        #         self.metric, self.auto_print)
 
-            # Supernode Length and other info:
-            self._print("Measuring their Magnitude")
-            self._add_node_type_attributes(self.supernodes, "Supernodes",
-                [0, 0, 0, 0, 0, 0, 0])
-            if len(self.supernodes) > 0:
-                self._print("Minding the Macrocosm")
-                self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
-                    "Supernodes", "Island Factor", star=True)
-                self._add_info(
-                    len(self.supernodes)*2.0/float(len(self.nodes)),
-                    "Supernodes", "Hierarchical Factor", star=True)
+        #     # Supernode Length and other info:
+        #     self._print("Measuring their Magnitude")
+        #     self._add_node_type_attributes(self.supernodes, "Supernodes",
+        #         [0, 0, 0, 0, 0, 0, 0])
+        #     if len(self.supernodes) > 0:
+        #         self._print("Minding the Macrocosm")
+        #         self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
+        #             "Supernodes", "Island Factor", star=True)
+        #         self._add_info(
+        #             len(self.supernodes)*2.0/float(len(self.nodes)),
+        #             "Supernodes", "Hierarchical Factor", star=True)
 
         # Nuclei:
         if "Nuclei" in self.categories:
@@ -870,9 +879,9 @@ class Analyst:
         # node_list: list of all nodes of the given type.
         # node_type: ie. "Extremities".
         # stars: boolean list of length 7 for which attributes are important.
-        lengths = [n.distance for n in node_list]
         self._add_info(len(node_list), node_type, "Count", stars[0])
         if len(node_list) > 0:
+            lengths = [n.distance for n in node_list]
             self._add_clusters_attribute(lengths, node_type, "Span", stars[1:])
 
     def _print(self, string=""):
