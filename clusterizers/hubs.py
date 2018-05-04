@@ -5,8 +5,7 @@ from .clusterizer import Clusterizer
 
 class HubClusterizer(Clusterizer, object):
 
-    def __init__(self, node_clusterizer, threshold=4,
-            category="Hubs", generic_stats=True):
+    def __init__(self, threshold=4, category="Hubs"):
         #   Notice we can add custom parameters.
 
         # node_clusterizer: requires node info to work. Don't make a new
@@ -15,8 +14,7 @@ class HubClusterizer(Clusterizer, object):
         # threshold: how big a hub has to be to be counted.
         #   Ex: threshold=4 means the object plus 3 more for whom it is nearest.
 
-        super(HubClusterizer, self).__init__(category, generic_stats)
-        self.node_clusterizer = node_clusterizer
+        super(HubClusterizer, self).__init__(category)
         self.threshold = threshold
         self.s_to_node = None
 
@@ -27,11 +25,12 @@ class HubClusterizer(Clusterizer, object):
         nearest = kwargs["nearest_fn"]
         metric = kwargs["metric_fn"]
         encoder = kwargs["encoder_fn"]
+        clusterizer_getter = kwargs["find_clusterizer_by_category_fn"]
 
-        # Make sure Nodes are computed before Hubs:
-        #   Note: the node clusterizer is built not to repeat calculation.
-        self.node_clusterizer.compute_clusters(space, show_progress, **kwargs)
-        self.s_to_node = self.node_clusterizer.string_node_dict
+        # No need to make sure Nodes are computed before Supernodes,
+        #   since get_nodes ensures this for us, without repeating calculation:
+        node_clusterizer = clusterizer_getter("Nodes")
+        self.s_to_node = node_clusterizer.get_string_node_dict()
 
         # Calculate potential hubs:
         temp_hubs = []
@@ -49,7 +48,7 @@ class HubClusterizer(Clusterizer, object):
                 # The 0th index in the hub's list of objects is also
                 #   it's original object (is included in hub).
 
-        # Find the real hubs:
+        # Find the real, neighbor-limited hubs:
         j = 0
         for h in tqdm(temp_hubs,
                 desc="Erecting Centers of Commerce (Finding Hubs)",
@@ -58,6 +57,11 @@ class HubClusterizer(Clusterizer, object):
                 self.clusters.append(h)
                 h.ID = j
                 h.nodes = ([self.s_to_node[h.name]]
-                    if h.name in self.s_to_node.keys() else [])
+                    if h.name in self.s_to_node else [])
                 h.calculate()
                 j += 1
+
+    # Even though we have already filled in self.clusters, we needn't override
+    #   vectors_to_clusters which does so, since it checks for this.
+
+    # Needn't override compute_stats, since generic cluster stats OK for hubs.

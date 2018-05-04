@@ -9,11 +9,11 @@ from ..clustertypes.cluster import Cluster
 """
         .          .     .
       .  ..  .        .            .
-     .. :...   .         .            .             .
+     .. :...   .         .            ..            .
       . .::  :    ..  ..  
     .    ..   .      .:: ..     .
-        .    .     . .: .                 .
-                :      .   .
+        .    .     . .: .                 
+                :      .   .               .
       ..            .       .
             . :                     =-o                  *
            . . : .        .             .
@@ -22,8 +22,26 @@ from ..clustertypes.cluster import Cluster
 """
 
 class Clusterizer:
+    """
+    What: A parent class for customizeable clusterizer objects which do the
+        heavy lifting for the Analyst's spatial analyses.
+    Why: Clusterizers exist to allow you to do custom analyses on an
+        embedding space, or to perform custom clustering algorithms on them.
+        Unless overridden, the built-in functions will perform basic analyses,
+        and the Analyst will then collect and display the data for you.
+    How: Create a custom clusterizer class which inherits from Clusterizer,
+        or from a class performing things you want. An instance of your class,
+        initialized with your parameters, can then be fed into a new Analyst
+        instance. Built-ins that take parameters can also be fed in with custom
+        parameters, instead of using the defaults that the Analyst would.
+    Where: Now, really. You can't possibly think I'll tell you where to find the
+        buried treasure, now can you?
+    Who: Author and programmer is Nathan Tibbetts.
+        Research Mentors: Nancy Fulda, David Wingate.
+    """
+    # An abstract class for clusterizers to inherit from.
 
-    def __init__(self, category="Cluster", generic_stats=True):
+    def __init__(self, category="Cluster"):
         self.category = category
         #   String, name of this cluster type, typically in plural form.
         #   This is allowed to be overridden per instance, since instances may
@@ -43,9 +61,6 @@ class Clusterizer:
         #   NOTE: treat attribute names as case sensitive.
         self.starred = []
         #   Names of attributes which should be marked with a star in report.
-        self.generic_stats = generic_stats
-        #   Whether or not the analyst should compute and include built-in stats
-        #   over this type of cluster.
     
     # TO BE OVERRIDDEN IN EVERY CASE - SUPER CALL UNNEEDED
     @abstractmethod
@@ -53,11 +68,16 @@ class Clusterizer:
         # space: the entire embedding space, a vector of vectors
         # show_progress: whether or not to show a progress bar etc.
         # Available kwargs (always given in case needed):
-        #   strings, metric_str, printer_fn, metric_fn,
-        #   encoder_fn, decoder_fn, nearest_neighbors_ix,
-        #   second_nearest_neighbors_ix, furthest_neighbors_ix,
-        #   distance_matrix_getter_fn, space, show_progress,
-        #   find_nodes_from_string_list_fn.
+        #   space, show_progress, strings, metric_str, printer_fn, metric_fn,
+        #   encoder_fn, decoder_fn, nearest_neighbors_ix_getter_fn,
+        #   second_nearest_neighbors_ix_getter_fn,
+        #   furthest_neighbors_ix_getter_fn, nearest_neighbors_dist_getter_fn,
+        #   second_nearest_neighbors_dist_getter_fn,
+        #   furthest_neighbors_dist_getter_fn, distance_matrix_getter_fn,
+        #   clusterizer_list, find_clusterizer_by_category_fn.
+        # NOTE: Excuse the long names. They should be fairly clear.
+        #   We work with getters because the Analyst ensures 0 or 1 time
+        #   calculations of things on a need-to-know basis.
         # NOTE: The distance_matrix_getter_fn exists to prevent recalculation
         #   of the distance matrix, which is computationally intensive.
         #   It will not be calculated unless you or built-ins use it.
@@ -65,44 +85,68 @@ class Clusterizer:
         #   need to calculate this yourself. Remember, if you are using and
         #   comparing multiple distance metrics, each should be run in a
         #   different analyst instance.
+        # NOTE: By the time this function finishes, self.vector_groups must be
+        #   filled in, but self.clusters doesn't need to be.
         pass
 
     # TO BE OVERRIDDEN IF NEEDED - DO NOT CALL SUPER
     def vectors_to_clusters(self, **kwargs):
         # kwargs: includes all the same as above, in case needed.
-        encoder    = kwargs["encoder_fn"]
-        decoder    = kwargs["decoder_fn"]
-        metric     = kwargs["metric_fn"]
-        nearest    = kwargs["nearest_fn"]
-        find_nodes = kwargs["find_nodes_from_string_list_fn"]
-
+        # This function will automatically turn groups of vectors into clusters,
+        #   unless you have already filled in self.clusters.
         if self.clusters == []:
-            for i, group in enumerate(self.vector_groups):
-                objects = map(decoder, group)
-                nodes = map(find_nodes, objects)
-                self.clusters.append(Cluster(encoder, metric, objects,
-                    nearest=nearest, vectors=group, nodes=nodes, auto=True,
-                    ID=i, name=None))
+            encoder    = kwargs["encoder_fn"]
+            decoder    = kwargs["decoder_fn"]
+            metric     = kwargs["metric_fn"]
+            nearest    = kwargs["nearest_fn"]
+            printer    = kwargs["printer_fn"]
+            clusterizer_getter = kwargs["find_clusterizer_by_category_fn"]
+
+            nodes = None
+            self.node_clusterizer = clusterizer_getter(
+                "Nodes", force_creation=False)
+
+            # Allowing that clusterizer_getter may return None, in case user
+            #   doesn't want Nodes calculated.
+            if self.node_clusterizer != None:
+                string_node_dict = self.node_clusterizer.get_string_node_dict()
+
+                for i, group in enumerate(self.vector_groups):
+                    objects = map(decoder, group)
+                    nodes = map(string_node_dict, objects)
+                    self.clusters.append(Cluster(encoder, metric, objects,
+                        nearest=nearest, vectors=group, nodes=nodes, auto=True,
+                        ID=i, name=None))
+            else:
+                printer("WARNING: 'Nodes' category not found! Clusters will \
+                    have no information on contained Nodes.")
+                nodes = []
+                for i, group in enumerate(self.vector_groups):
+                    objects = map(decoder, group)
+                    self.clusters.append(Cluster(encoder, metric, objects,
+                        nearest=nearest, vectors=group, nodes=nodes, auto=True,
+                        ID=i, name=None))
 
     # TO BE OVERRIDDEN IF NEEDED - SHOULD CALL SUPER
     def compute_stats(self, **kwargs):
         # kwargs: includes all the same as above in case needed.
-        if self.generic_stats:
-            # Do cluster stat stuff here, override for node.
-            self.data_dict["Count"] = len(self.clusters)
-            if len(self.clusters) > 0:
-                self._compute_list_stats(map(len, self.clusters),
-                    "Population",  self.data_dict)
-                self._compute_list_stats([c.centroid_length \
-                    for c in self.clusters], "Centroid Norm", self.data_dict)
-                self._compute_list_stats([c.dispersion for c in self.clusters],
-                    "Dispersion",  self.data_dict)
-                self._compute_list_stats([c.std_dev    for c in self.clusters],
-                    "Standard Dev", self.data_dict)
-                self._compute_list_stats([c.repulsion  for c in self.clusters],
-                    "Repulsion",   self.data_dict)
-                self._compute_list_stats([c.skew       for c in self.clusters],
-                    "Skew",        self.data_dict)
+        # Do generic cluster stat stuff here; override if unwanted,
+        #   or if you want both then override and call super.
+        self.data_dict["Count"] = len(self.clusters)
+        if len(self.clusters) > 0:
+            self._compute_list_stats(map(len, self.clusters),
+                "Population",  self.data_dict)
+            self._compute_list_stats([c.centroid_length \
+                for c in self.clusters], "Centroid Norm", self.data_dict)
+            self._compute_list_stats([c.dispersion for c in self.clusters],
+                "Dispersion",  self.data_dict)
+            self._compute_list_stats([c.std_dev    for c in self.clusters],
+                "Standard Dev", self.data_dict)
+            self._compute_list_stats([c.repulsion  for c in self.clusters],
+                "Repulsion",   self.data_dict)
+            self._compute_list_stats([c.skew       for c in self.clusters],
+                "Skew",        self.data_dict)
+            if self.node_clusterizer != None:
                 self._compute_list_stats([len(c.nodes) for c in self.clusters],
                     "Node Count",  self.data_dict)
 
@@ -114,7 +158,7 @@ class Clusterizer:
 
     # The Analyst will call this function, which pulls it all together.
     #   You shouldn't have to override this function:
-    def _calculate(
+    def calculate(
             self, space, show_progress=True, **kwargs):
         kwargs["space"] = space
         kwargs["show_progress"] = show_progress
@@ -172,7 +216,7 @@ class Clusterizer:
 #             hubs.append(h)
 #             h.ID = j
 #             h.nodes = ([string_node_map[h.name]]
-#                 if h.name in string_node_map.keys() else [])
+#                 if h.name in string_node_map else [])
 #             h.calculate()
 #             j += 1
 #     return hubs

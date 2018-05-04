@@ -169,7 +169,7 @@ class Analyst:
         self.space = embeddings
         
         # Find and store a callable version of the given metric:
-        self._print("Laying the Laws of Physics")
+        self._print("Laying the Laws of Physics (Setting the Metric)")
         if callable(metric):
             self.metric = metric
             self.metric_str = None
@@ -188,7 +188,7 @@ class Analyst:
         #   While initializing these should, in theory, be unnecessary,
         #   failing to do so will limit all inputs to findable types.
         #   If an encoder does not exist, may be replaced with list of strings.
-        self._print("Filling the Void")
+        self._print("Filling the Void (Setting Encoder/Decoder)")
         self.ix_to_s = None
         if callable(encoder) or encoder is None:
             self.encode = encoder # string to vector
@@ -198,7 +198,8 @@ class Analyst:
             self.ix_to_s = encoder
             self.vec_to_s = {}
             self.s_to_vec = {}
-            self._print("Mapping the Emptiness")
+            self._print("Mapping the Emptiness \
+                (Making Encoder/Decoder Mappings)")
             for i in range(len(self.space)):
                 self.vec_to_s[self.space[i]] = self.ix_to_s[i]
                 self.s_to_vec[self.ix_to_s[i]] = self.space[i]
@@ -208,6 +209,7 @@ class Analyst:
         #self.serialized = False
 
         if calculate:
+            # MAYBE PUT THIS OUTSIDE OF IF CALCULATE!
             # ix_to_s initialized previously
             self.s_to_ix = {}
             try:
@@ -224,14 +226,9 @@ class Analyst:
                 print(e)
                 return
 
-            self.neighbors = np.empty((len(self.space),3), dtype=np.uint64)
-                # Indeces correspond to indeces of vectors in the space.
-                #   For each:
-                #   [index of nearest, index of 2nd-nearest, index of furthest]
-                #   These are filled in in the _spatial_analysis.
-            self.neighbors_dist = np.empty(
-                (len(self.space),3))
-                # Same format as above, except distances to those indexed above.
+            # These are explained in the neighbors_getter function:
+            self.neighbors = None
+            self.neighbors_dist = None
 
             # Run Analyses:
             self.graph_info = []
@@ -297,8 +294,10 @@ class Analyst:
 
 
     # Nearest, 2nd-nearest, and futhest getters:
-    #   Each attempts to return the same type given
+    #   Each attempts to return the same type given.
+    #   Each ensures neighbors will be calculated before, but not recalculated.
     def nearest(self, obj):
+        self.neighbors_getter()
         i = self.neighbors[self.as_index(obj)][0]
         if isinstance(obj, basestring): return self.ix_to_s[i]
         try:
@@ -307,6 +306,7 @@ class Analyst:
         except: return self.space[i]
 
     def second_nearest(self, obj):
+        self.neighbors_getter()
         i = self.neighbors[self.as_index(obj)][1]
         if isinstance(obj, basestring): return self.ix_to_s[i]
         try:
@@ -315,6 +315,7 @@ class Analyst:
         except: return self.space[i]
 
     def furthest(self, obj):
+        self.neighbors_getter()
         i = self.neighbors[self.as_index(obj)][2]
         if isinstance(obj, basestring): return self.ix_to_s[i]
         try:
@@ -322,20 +323,87 @@ class Analyst:
             return i
         except: return self.space[i]
 
-    # Other Tools:
-    def find_nodes_from_string_list(self, strings):
-        nodes = set(strings).intersection(self.s_to_node.keys())
-        return [self.s_to_node[string] for string in nodes]
 
+    # Distance and Neighbor Computation:
     def distance_matrix_getter(self):
+        # Allows us to only have to compute the distance matrix once, if needed.
+        # Makes use of scipy in the fastest way possible. Any metric string
+        #   recognized by scipy will work, or any valid function.
+        #   For speed, prefer to use string, if one exists for desired metric.
         if self.distance_matrix == None:
             # Distance Matrix Calculation
             self._print("Acquainting the Species (Calculating Distance Matrix)")
             self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
                 self.space,
                 self.metric_str if self.metric_str != None else self.metric))
-        else:
-            return self.distance_matrix
+        return self.distance_matrix
+
+    def neighbors_getter(self):
+        # Allows us to only have to compute neighbors etc once, if needed.
+        if self.neighbors == None:
+            # Need distance matrix filled in:
+            self.distance_matrix_getter()
+
+            # Initialize Empty Arrays:
+            self.neighbors = np.empty((len(self.space),3), dtype=np.uint64)
+                # Indeces correspond to indeces of vectors in the space.
+                #   For each:
+                #   [index of nearest, index of 2nd-nearest, index of furthest]
+            self.neighbors_dist = np.empty(
+                (len(self.space),3))
+                # Same format as above, except distances to those indexed above.
+
+            # Finding Furthest Neighbors
+            self._print("Misconstruing Relations (Finding Furthest Neighbors)")
+            self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,2] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,2]]
+            self.distance_matrix[
+                range(len(self.space)), range(len(self.space))] = np.inf
+            # Finding Nearest Neighbors
+            self._print("Forming Alliances (Finding Nearest Neighbors)")
+            self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,0] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,0]]
+            self.distance_matrix[
+                range(len(self.space)), self.neighbors[:,0]] = np.inf
+            # Finding Second-Nearest Neighbors
+            self._print("Obfuscating Dynastic Ties \
+                (Finding 2nd-Nearest Neighbors)")
+            self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,1] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,1]]
+            # Put back the numbers we removed:
+            self._print("Resetting the Ship's Computer \
+                (Repairing Distance Matrix)")
+            self.distance_matrix[
+                range(len(self.space)), self.neighbors[:,0]
+            ] = self.neighbors_dist[:,0]
+            self.distance_matrix[
+                range(len(self.space)), range(len(self.space))] = 0.0
+
+        return self.neighbors, self.neighbors_dist
+
+    def nearest_neighbors(self):
+        return self.neighbors_getter()[0][:,0]
+
+    def nearest_neighbors_dist(self):
+        return self.neighbors_getter()[1][:,0]
+
+    def second_nearest_neighbors(self):
+        return self.neighbors_getter()[0][:,1]
+
+    def second_nearest_neighbors_dist(self):
+        return self.neighbors_getter()[1][:,1]
+
+    def furthest_neighbors(self):
+        return self.neighbors_getter()[0][:,2]
+
+    def furthest_neighbors_dist(self):
+        return self.neighbors_getter()[1][:,2]
 
 
     #--------------------------------------------------------------------------#
@@ -343,41 +411,6 @@ class Analyst:
     #--------------------------------------------------------------------------#
 
     def _spatial_analysis(self, print_report=True):
-
-        # DISTANCE AND NEIGHBOR COMPUTATION:
-
-        # distance_matrix_getter()
-            
-        # Finding Furthest Neighbors
-        self._print("Misconstruing Relations")
-        self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
-        self.neighbors_dist[:,2] = self.distance_matrix[
-            range(len(self.distance_matrix)),
-            self.neighbors[:,2]]
-        self.distance_matrix[
-            range(len(self.space)), range(len(self.space))] = np.inf
-        # Finding Nearest Neighbors
-        self._print("Forming Alliances")
-        self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
-        self.neighbors_dist[:,0] = self.distance_matrix[
-            range(len(self.distance_matrix)),
-            self.neighbors[:,0]]
-        self.distance_matrix[
-            range(len(self.space)), self.neighbors[:,0]] = np.inf
-        # Finding Second-Nearest Neighbors
-        self._print("Obfuscating Dynastic Ties")
-        self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
-        self.neighbors_dist[:,1] = self.distance_matrix[
-            range(len(self.distance_matrix)),
-            self.neighbors[:,1]]
-        # Put back the numbers we removed:
-        self._print("Resetting the Ship's Computer")
-        self.distance_matrix[
-            range(len(self.space)), self.neighbors[:,0]
-        ] = self.neighbors_dist[:,0]
-        self.distance_matrix[
-            range(len(self.space)), range(len(self.space))] = 0.0
-
 
         # MEASUREMENTS:
 

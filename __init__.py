@@ -38,9 +38,17 @@ from .test_set_2d import *
 # Non-Recursive way: (subsidiary packages do not need imports in __init__)
 #   user may type analyst.Cluster()
 from .clustertypes import *
+
 from .clustertypes.cluster import *
 from .clustertypes.node import *
+
+from .clusterizers import *
+
 from .clusterizers.clusterizer import *
+from .clusterizers.nodes import *
+from .clusterizers.extremities import *
+from .clusterizers.supernodes import *
+from .clusterizers.hubs import *
 
 # NOTE: Don't need both ways, but done for convenience!
 # Recursive way: (Must have import code in subsidiary package inits, too)

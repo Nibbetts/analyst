@@ -5,8 +5,8 @@ from .nodes import NodeClusterizer
 
 class ExtremityClusterizer(NodeClusterizer, object):
 
-    def __init__(self, category="Extremities", generic_stats=False):
-        super(ExtremityClusterizer, self).__init__(category, generic_stats)
+    def __init__(self, category="Extremities"):
+        super(ExtremityClusterizer, self).__init__(category)
         # NOTE: We don't need the generic stats for simple pairs of objects.
 
     # Overriding
@@ -33,21 +33,12 @@ class ExtremityClusterizer(NodeClusterizer, object):
         self.vector_groups = [
             [node.vec_a, node.vec_b] for node in self.clusters]
 
-    # Don't need to override vectors_to_clusters, since NodeClusterizer does,
-    #   and it is parent.
+    # Don't need to override vectors_to_clusters; if needed, parent would have.
 
     # Overriding (because nodes only have two vectors, need different stats)
     def compute_stats(self, **kwargs):
-        if self.generic_stats:
-            # Extremity Count
-            self.data_dict["Count"] = len(self.clusters)
-            self.add_star("Count")
-
-            # Span Stats
-            if len(self.clusters) > 0:
-                self._compute_list_stats([n.span for n in self.clusters],
-                    "Span", self.data_dict)
-                
-                # We can add stars to things we think are important:
-                self.add_star("Span Min")
-                self.add_star("Span Max")
+        self.add_generic_node_stats()
+        # We can add stars to things we think are important:
+        self.add_star("Count")
+        self.add_star("Span Min")
+        self.add_star("Span Max")

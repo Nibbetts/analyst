@@ -6,10 +6,6 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> a = analyst.Analyst.load("/home/nate/Projects/an_scholar4000_real.dill")
 
 
-
-
-!!!!!!!DON"T PRINT THINGS WE DIDN"T ASK FOR!!
-
 write analogical analyses to compare:
 glove vectors
 FastText
@@ -21,18 +17,60 @@ There aren't regions in the space, per se. If things are often around 90 degrees
 apart, then they are dispersed well, as like 6 points across the surface of a ball.
 
 
-- give specific example use cases for clusters, such as having a custom clustering
-algorithm which builds clusters stemmed from color words. include as example
-- fix cluster/vector discrepancy with clusterizer returns
+Overall:
+--------
+- fix all to work in python3
+- test imports
+- documentation
+
+Analyses:
+---------
+- compare google's universal sentence encoder used on words with fastext etc
+
+Analyst:
+--------
 - fix analyst to take clusterizers
-- call compute on clusterizers, and give also node info etc, if order controlled
+- call compute on clusterizers, and give also node info etc.
+- make sure find_clusterizer_by_category_fn returns None if category doesn't exist,
+or rather will create one!! Based on parameter.
+- fix encoder/decoder initialization to see what can/can't be None, and force
+what will be required.
+
+Word Group Specific Analysis:
+-----------------------------
+- use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
+all other clusters?
+- look into cluster extremities! (strange attractors)
 - make funct to examine a group of given strings thoroughly
 - standard deviation of vectors from centroids - like dispersion:
 https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-to-vectors
-- fix all to work in python3
-- use ward dissimilarity somehow?
-- look into cluster extremities! (strange attractors)
-- compare google's universal sentence encoder used on words with fastext etc
+(This is also for the space as a whole)
+
+Clusterizers TO DO:
+-------------------
+- Spatial
+- Rest of built-ins
+- kmeans or EM (base default off of nodal hub count, or allow varying parameters)
+- PHATE (base default off of nodal hub count, or allow varying parameters)
+- pick some other important ones
+- use variable density of space, by measuring the density of the surrounding region,
+say, pick 10 nearest, and measure their dispersion or repulsion or something; then
+can use this for clusterizing. Could even compare nearer 4 to further 8 or something
+and take a derivative to know how fast the density is changing!
+Want to only define a cluster from a node if local density is decreasing as we go out.
+However, this may have exactly the same effect as defining a hub, because all of the
+nearest neighbor arrows are pointing in - which means density will decrease as we go out.
+Thus hubs have a mathematical basis.
+- Rule-based partitioning clusters (see purple notebook)
+- implement a k-means cheat clusterizer in which you pick words to be cluster centers,
+and partition the rest into those.
+- give specific example use cases for clusters, such as having a custom clustering
+algorithm which builds clusters stemmed from color words. include as example
+- check that we're only printing what we should - particularly with nodes?
+
+Analogical Analyses:
+--------------------
+- EVERYTHING
 
 
 (categories:)
