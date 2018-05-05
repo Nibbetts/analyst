@@ -5,8 +5,8 @@ from .nodes import NodeClusterizer
 
 class ExtremityClusterizer(NodeClusterizer, object):
 
-    def __init__(self, category="Extremities"):
-        super(ExtremityClusterizer, self).__init__(category)
+    def __init__(self, category="Extremities", node_category="Nodes"):
+        super(ExtremityClusterizer, self).__init__(category, node_category)
         # NOTE: We don't need the generic stats for simple pairs of objects.
 
     # Overriding
@@ -14,10 +14,13 @@ class ExtremityClusterizer(NodeClusterizer, object):
             self, space, show_progress=True, **kwargs):
         # The use of **kwargs allows you to pull many pre-computed types
         #   of data from the analyst to save on computation/programming time:
-        strings = kwargs["strings"]
-        encode = kwargs["encoder_fn"]
-        metric = kwargs["metric_fn"]
-        furthest = kwargs["furthest_neighbors_ix"]
+        strings   = kwargs["strings"]
+        encode    = kwargs["encoder_fn"]
+        metric    = kwargs["metric_fn"]
+        neighbors = kwargs["kth_neighbors_ix_fn"]
+
+        # This is an array of indeces for each object's furthest neighbor.
+        furthest  = neighbors(-1)
 
         # Compute Extremities:
         self.clusters = [

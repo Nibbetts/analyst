@@ -8,8 +8,6 @@ if __name__ == "__main__":
         from os import path
         sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
         import scholar.scholar as sch
-    else:
-        raise Exception("Can't run litmus_100d.py as part of a package.")
 
     import analyst as an
     #from ...scholar.scholar import scholar as sch
@@ -30,9 +28,9 @@ if __name__ == "__main__":
     #        "sheep_NN", "anvil_NN", "cake_NN", "dessert_NN", "animal_NN",
     #        "vehicle_NN"]
 
-    words = [word + "_NN" for word in s.get_most_common_words("NN", 2000) if s.exists_in_model(word + "_NN")] +\
-            [word + "_VB" for word in s.get_most_common_words("VB", 1000) if s.exists_in_model(word + "_VB")] +\
-            [word + "_JJ" for word in s.get_most_common_words("JJ", 1000) if s.exists_in_model(word + "_JJ")]
+    words = [word + "_NN" for word in s.get_most_common_words("NN", 200) if s.exists_in_model(word + "_NN")] +\
+            [word + "_VB" for word in s.get_most_common_words("VB", 100) if s.exists_in_model(word + "_VB")] +\
+            [word + "_JJ" for word in s.get_most_common_words("JJ", 100) if s.exists_in_model(word + "_JJ")]
     print("Number of words:", len(words))
 
     vectors_real = map(s.model.get_vector, words)
@@ -66,14 +64,14 @@ if __name__ == "__main__":
         auto_print=True, desc="fake scholar words")
     an_real.compare_difference(an_fake, simple_diff=True)
 
-    worked_r = an_real.save(an_real, "an_scholar4000_real")
-    worked_f = an_fake.save(an_fake, "an_scholar4000_fake")
+    worked_r = an_real.save(an_real, "an_scholar400_real")
+    worked_f = an_fake.save(an_fake, "an_scholar400_fake")
 
     assert worked_r
     assert worked_f
 
-    """an_r = an_real.load("an_scholar4000_real")
-    an_f = an_fake.load("an_scholar4000_fake")
+    """an_r = an_real.load("an_scholar400_real")
+    an_f = an_fake.load("an_scholar400_fake")
 
     assert an_r != None
     assert an_f != None"""

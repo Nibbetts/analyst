@@ -2,3 +2,4 @@
 *.dill
 *.pyc
 *.py~
+*__pycache__*

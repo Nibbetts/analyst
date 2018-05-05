@@ -92,8 +92,9 @@ class Analyst:
     """
 
     def __init__(self, embeddings, metric="cosine",
-        encoder=None, decoder=None, cluster_algorithms=[(None, "All")],
-        analogy_algorithms=[], analogy_sets=[],
+        encoder=None, decoder=None, #cluster_algorithms=[(None, "All")],
+        #analogy_algorithms=[], analogy_sets=[],
+        evaluators=[],
         auto_print=True, desc=None, calculate=True):
         """
         Parameters:
@@ -106,55 +107,56 @@ class Analyst:
             encoder -- a callable to convert strings to vectors, or
                 alternatively a list of strings to replace encoder and decoder.
             decoder -- a callable to convert vectors to strings.
-            cluster_algorithms -- list of tuples (callable, "Description").
-                Each callable must take an array-like list of vectors and return
-                a list of array-like lists of vectors, each representing a
-                cluster. They do not have to partition or even cover the space;
-                ie, the can contain duplicates and do not have to contain all.
-                If the left entry is None or is not callable, will expect a
-                recognized tag in the right instead of a label, indicating to
-                use a built-in function.
-                Recognized tags:
-                    "Spatial" -- basic analysis of the space - must occur even
-                        if not included, but not including it will cause it not
-                        to display results.
-                    "Extremities" -- also generally include.
-                    "Nodes" -- also generally include. Many built-in clustering
-                        algorithms will cause these to be computed anyway.
-                    "Hubs"
-                    "Supernodes"
-                    "Nuclei"
-                    "Chains"
-                    "NNNCC" -- basic built-in experimental clustering algorithm
-                    "LNNNCC" -- advanced, or strong version of the above
-                    "Anti-clusters"
-                    "All" -- will automatically include all of the above.
-                NOTE: As this variable contains functions, it will be altered
-                    to no longer contain functions when an Analyst is pickled.
-            analogy_algorithms -- list of tuples (callable, "Description").
-                Each callable must take word_A, is_to_B, as_C, and must return
-                is_to_D.
-                NOTE: As this variable contains functions, it will be altered
-                    to no longer contain functions when an Analyst is pickled.
-            analogy_sets -- list of tuples: (list_of_quadruples, "Description),
-                where each quadruple is a list of four strings, D being the
-                correct answer to compare against. Example:
-                [
-                    (
-                        [
-                            ["wordA", "wordB", "wordC", "wordD"],
-                            ["wordA", "wordB", "wordC", "wordD"]
-                        ],
-                        "Analogy Test Set 1"
-                    ),
-                    (
-                        [
-                            ["wordA", "wordB", "wordC", "wordD"],
-                            ["wordA", "wordB", "wordC", "wordD"]
-                        ],
-                        "Analogy Test Set 2"
-                    )
-                ]
+            evaluators -- FILL IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # cluster_algorithms -- list of tuples (callable, "Description").
+            #     Each callable must take an array-like list of vectors and return
+            #     a list of array-like lists of vectors, each representing a
+            #     cluster. They do not have to partition or even cover the space;
+            #     ie, the can contain duplicates and do not have to contain all.
+            #     If the left entry is None or is not callable, will expect a
+            #     recognized tag in the right instead of a label, indicating to
+            #     use a built-in function.
+            #     Recognized tags:
+            #         "Spatial" -- basic analysis of the space - must occur even
+            #             if not included, but not including it will cause it not
+            #             to display results.
+            #         "Extremities" -- also generally include.
+            #         "Nodes" -- also generally include. Many built-in clustering
+            #             algorithms will cause these to be computed anyway.
+            #         "Hubs"
+            #         "Supernodes"
+            #         "Nuclei"
+            #         "Chains"
+            #         "NNNCC" -- basic built-in experimental clustering algorithm
+            #         "LNNNCC" -- advanced, or strong version of the above
+            #         "Anti-clusters"
+            #         "All" -- will automatically include all of the above.
+            #     NOTE: As this variable contains functions, it will be altered
+            #         to no longer contain functions when an Analyst is pickled.
+            # analogy_algorithms -- list of tuples (callable, "Description").
+            #     Each callable must take word_A, is_to_B, as_C, and must return
+            #     is_to_D.
+            #     NOTE: As this variable contains functions, it will be altered
+            #         to no longer contain functions when an Analyst is pickled.
+            # analogy_sets -- list of tuples: (list_of_quadruples, "Description),
+            #     where each quadruple is a list of four strings, D being the
+            #     correct answer to compare against. Example:
+            #     [
+            #         (
+            #             [
+            #                 ["wordA", "wordB", "wordC", "wordD"],
+            #                 ["wordA", "wordB", "wordC", "wordD"]
+            #             ],
+            #             "Analogy Test Set 1"
+            #         ),
+            #         (
+            #             [
+            #                 ["wordA", "wordB", "wordC", "wordD"],
+            #                 ["wordA", "wordB", "wordC", "wordD"]
+            #             ],
+            #             "Analogy Test Set 2"
+            #         )
+            #     ]
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
             calculate -- whether or not to run the analysis.
@@ -208,69 +210,72 @@ class Analyst:
 
         #self.serialized = False
 
+        # ix_to_s initialized previously
+        self.s_to_ix = {}
+        try:
+            if self.ix_to_s == None:
+                self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
+                    desc="Naming Stars and Drawing a Star Map",
+                    disable=(not self.auto_print))]
+            for ix, s in enumerate(
+                    tqdm(self.ix_to_s, desc="Indexing Planets",
+                    disable=(not self.auto_print))):
+                self.s_to_ix[s] = ix
+        except Exception as e:
+            print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
+            print(e)
+            return
+
+        # These are explained in the neighbors_getter function:
+        self.neighbors = None
+        self.neighbors_dist = None
+
+        # Run Analyses:
+        self.graph_info = []
+        #self.categories = []
+        #self.analogy_algorithms = analogy_algorithms
+        #self.analogy_sets = analogy_sets
+        self.evaluators = evaluators
+        self.categories = [e.CATEGORY for e in self.evaluators]
+        # self.built_in_categories = [
+        #     "Spatial",
+        #     "Extremities",
+        #     "Nodes",
+        #     "Hubs",
+        #     "Supernodes",
+        #     "Nuclei",
+        #     "Chains",
+        #     "NCC",
+        #     "LNCC",
+        #     "Anti-hubs"]
+        # self.cluster_algorithms = []
+        # report_spatial = False
+        # for t in cluster_algorithms:
+        #     if callable(t[0]):
+        #         self.cluster_algorithms.append(t)
+        #     else:
+        #         tag = t[1].lower()
+        #         if tag == "spatial":
+        #             report_spatial = True
+        #             self.categories.append("Spatial")
+        #         elif tag == "all":
+        #             report_spatial = True
+        #             map(self.categories.append, self.built_in_categories)
+        #         else:
+        #             self.categories.append(t[1])
+        #self.categories = [e.category for e in self.evaluators]
+        self.category_lists = np.empty(
+            shape=(len(self.categories),0)).tolist()
+
+        self.distance_matrix = None
+
+        self.s_to_node = {}
+        self.spatial_data = {}
+        self.cluster_data = {}
+        self.analogical_data = {}
+
         if calculate:
-            # MAYBE PUT THIS OUTSIDE OF IF CALCULATE!
-            # ix_to_s initialized previously
-            self.s_to_ix = {}
-            try:
-                if self.ix_to_s == None:
-                    self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
-                        desc="Naming Stars and Drawing a Star Map",
-                        disable=(not self.auto_print))]
-                for ix, s in enumerate(
-                        tqdm(self.ix_to_s, desc="Indexing Planets",
-                        disable=(not self.auto_print))):
-                    self.s_to_ix[s] = ix
-            except Exception as e:
-                print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
-                print(e)
-                return
-
-            # These are explained in the neighbors_getter function:
-            self.neighbors = None
-            self.neighbors_dist = None
-
-            # Run Analyses:
-            self.graph_info = []
-            self.categories = []
-            self.built_in_categories = [
-                "Spatial",
-                "Extremities",
-                "Nodes",
-                "Hubs",
-                "Supernodes",
-                "Nuclei",
-                "Chains",
-                "NCC",
-                "LNCC",
-                "Anti-hubs"]
-            self.cluster_algorithms = []
-            report_spatial = False
-            for t in cluster_algorithms:
-                if callable(t[0]):
-                    self.cluster_algorithms.append(t)
-                else:
-                    tag = t[1].lower()
-                    if tag == "spatial":
-                        report_spatial = True
-                        self.categories.append("Spatial")
-                    elif tag == "all":
-                        report_spatial = True
-                        map(self.categories.append, self.built_in_categories)
-                    else:
-                        self.categories.append(t[1])
-            self.category_lists = np.empty(
-                shape=(len(self.categories),0)).tolist()
-
-            self.analogy_algorithms = analogy_algorithms
-            self.analogy_sets = analogy_sets
-            self.distance_matrix = None
-
-            self.s_to_node = {}
-            self.spatial_data = {}
-            self.cluster_data = {}
-            self.analogical_data = {}
-            self._spatial_analysis(report_spatial)
+            self._spatial_analysis()
             self._cluster_analysis()
             self._analogical_analysis()
             if auto_print: self.print_report()
@@ -293,35 +298,54 @@ class Analyst:
         except: return self.decode(obj)
 
 
+    # Gets the kth neighbor of obj. Negatives for furthest, 0 for self, positive
+    #   for nearest.
+    # Attempts to return the same type given, ie: index, string, or vector.
+    # Ensures neighbors will be calculated before, without being recalculated.
+    def neighbor_k(self, obj, k):
+        assert -1 <= k <= 2
+        if k == 0: return obj
+        n = k + 1 if k > 0 else k
+        i = self.neighbors_getter()[0][self.as_index(obj)][n]
+        if isinstance(obj, basestring): return self.ix_to_s[i]
+        try:
+            int(obj)
+            return i
+        except: return self.space[i]
+
+    def nearest(self, obj):
+        return self.neighbor_k(obj, 1)
+
+
     # Nearest, 2nd-nearest, and futhest getters:
     #   Each attempts to return the same type given.
     #   Each ensures neighbors will be calculated before, but not recalculated.
-    def nearest(self, obj):
-        self.neighbors_getter()
-        i = self.neighbors[self.as_index(obj)][0]
-        if isinstance(obj, basestring): return self.ix_to_s[i]
-        try:
-            int(obj)
-            return i
-        except: return self.space[i]
+    # def nearest(self, obj):
+    #     self.neighbors_getter()
+    #     i = self.neighbors[self.as_index(obj)][0]
+    #     if isinstance(obj, basestring): return self.ix_to_s[i]
+    #     try:
+    #         int(obj)
+    #         return i
+    #     except: return self.space[i]
 
-    def second_nearest(self, obj):
-        self.neighbors_getter()
-        i = self.neighbors[self.as_index(obj)][1]
-        if isinstance(obj, basestring): return self.ix_to_s[i]
-        try:
-            int(obj)
-            return i
-        except: return self.space[i]
+    # def second_nearest(self, obj):
+    #     self.neighbors_getter()
+    #     i = self.neighbors[self.as_index(obj)][1]
+    #     if isinstance(obj, basestring): return self.ix_to_s[i]
+    #     try:
+    #         int(obj)
+    #         return i
+    #     except: return self.space[i]
 
-    def furthest(self, obj):
-        self.neighbors_getter()
-        i = self.neighbors[self.as_index(obj)][2]
-        if isinstance(obj, basestring): return self.ix_to_s[i]
-        try:
-            int(obj)
-            return i
-        except: return self.space[i]
+    # def furthest(self, obj):
+    #     self.neighbors_getter()
+    #     i = self.neighbors[self.as_index(obj)][2]
+    #     if isinstance(obj, basestring): return self.ix_to_s[i]
+    #     try:
+    #         int(obj)
+    #         return i
+    #     except: return self.space[i]
 
 
     # Distance and Neighbor Computation:
@@ -387,32 +411,49 @@ class Analyst:
 
         return self.neighbors, self.neighbors_dist
 
-    def nearest_neighbors(self):
-        return self.neighbors_getter()[0][:,0]
+    # These return the kth neighbor of all objects in the space, index to index.
+    #   Use negative for furthest, 0 for self, positive for nearest.
+    #   Default None will return the whole matrix.
+    def kth_neighbors(self, k=None):
+        if k == None: return self.neighbors_getter()[0]
+        assert -1 <= k <= 2
+        if k == 0: return range(len(self.space))
+        n = k + 1 if k > 0 else k
+        return self.neighbors_getter()[0][:,n]
 
-    def nearest_neighbors_dist(self):
-        return self.neighbors_getter()[1][:,0]
+    def kth_neighbors_dist(self, k=None):
+        if k == None: return self.neighbors_getter()[1]
+        assert -1 <= k <= 2
+        if k == 0: return np.zeros((len(self.space)), dtype=np.uint64)
+        n = k + 1 if k > 0 else k
+        return self.neighbors_getter()[1][:,n]
 
-    def second_nearest_neighbors(self):
-        return self.neighbors_getter()[0][:,1]
+    # NOTE: This function does NOT force the evaluator to pre-calculate!
+    # NOTE: Since categories SHOULD be unique among evaluators,
+    #   this function will only return the first match it finds. Or None.
+    def find_evaluator(self, category, force_creation=True):
+        # force_creation: whether or not to create a default evaluator for
+        #   built-ins.
+        for e in self.evaluators:
+            if e.category == category: return e
+        if force_creation: 
+            return Analyst.make_default_evaluator(category)
 
-    def second_nearest_neighbors_dist(self):
-        return self.neighbors_getter()[1][:,1]
+    @staticmethod
+    def make_default_evaluator(category):
+        pass
 
-    def furthest_neighbors(self):
-        return self.neighbors_getter()[0][:,2]
-
-    def furthest_neighbors_dist(self):
-        return self.neighbors_getter()[1][:,2]
 
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def _spatial_analysis(self, print_report=True):
+    def _spatial_analysis(self):
 
         # MEASUREMENTS:
+        #self.distance_matrix_getter()
+        self.neighbors_getter()
 
         # Centroid, Dispersion, Std Dev, repulsion:
         self._print("Balancing the Continuum")
@@ -425,22 +466,22 @@ class Analyst:
         self.std_dev = np.std(self.space)
         centr_min = np.min(self.centroid_dist, axis=0)
         centr_max = np.max(self.centroid_dist, axis=0)
-        if print_report:
-            self._add_info(self.ix_to_s[np.argmin([
-                self.metric(self.centroid, v) for v in tqdm(self.space,
-                    desc="Electing a Ruler", disable=(not self.auto_print))])],
-                "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
-            self._add_info(len(self.space), "Spatial", "Count")
-            self._add_info(self.centroid_length, "Spatial", "Centroid Length")
-            self._add_info(self.dispersion,
-                "Spatial", "Dispersion - Centroid Dist Avg", star=True)
-            self._add_info(centr_min, "Spatial", "Centroid Dist Min")
-            self._add_info(centr_max, "Spatial", "Centroid Dist Max")
-            self._add_info(centr_max - centr_min,
-                "Spatial", "Centroid Dist Range")
-            self._add_info(self.centroid_dist,
-                "Spatial", "Centroid Dist Histogram Key")
-            self._add_info(self.std_dev, "Spatial", "Standard Dev")
+        #if print_report:
+        self._add_info(self.ix_to_s[np.argmin([
+            self.metric(self.centroid, v) for v in tqdm(self.space,
+                desc="Electing a Ruler", disable=(not self.auto_print))])],
+            "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
+        self._add_info(len(self.space), "Spatial", "Count")
+        self._add_info(self.centroid_length, "Spatial", "Centroid Length")
+        self._add_info(self.dispersion,
+            "Spatial", "Dispersion - Centroid Dist Avg", star=True)
+        self._add_info(centr_min, "Spatial", "Centroid Dist Min")
+        self._add_info(centr_max, "Spatial", "Centroid Dist Max")
+        self._add_info(centr_max - centr_min,
+            "Spatial", "Centroid Dist Range")
+        self._add_info(self.centroid_dist,
+            "Spatial", "Centroid Dist Histogram Key")
+        self._add_info(self.std_dev, "Spatial", "Standard Dev")
         #self.repulsion = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])))
         #     for i, v in self.vectors])
@@ -451,15 +492,15 @@ class Analyst:
         self._print("Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
-        if print_report:
-            self._add_info(self.nearest_avg,
-                "Spatial", "repulsion - Nearest Dist Avg", star=True)
-            self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
-            self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
-            self._add_info(nearest_max-nearest_min,
-                "Spatial", "Nearest Dist Range", star=True)
-            self._add_info(self.neighbors_dist[:,0],
-                "Spatial", "Nearest Dist Histogram Key")
+        #if print_report:
+        self._add_info(self.nearest_avg,
+            "Spatial", "repulsion - Nearest Dist Avg", star=True)
+        self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
+        self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
+        self._add_info(nearest_max-nearest_min,
+            "Spatial", "Nearest Dist Range", star=True)
+        self._add_info(self.neighbors_dist[:,0],
+            "Spatial", "Nearest Dist Histogram Key")
 
         # Second-Nearest Neighbor Info:
         self._print("Setting Priorities")
@@ -467,15 +508,15 @@ class Analyst:
         self._print("Coming up with Excuses")
         nearest2_min = np.min(self.neighbors_dist[:,1])
         nearest2_max = np.max(self.neighbors_dist[:,1])
-        if print_report:
-            self._add_info(self.nearest2_avg,
-                "Spatial", "Second Nearest Dist Avg")
-            self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
-            self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
-            self._add_info(nearest2_max-nearest2_min,
-                "Spatial", "Second Nearest Dist Range")
-            self._add_info(self.neighbors_dist[:,1],
-                "Spatial", "Second Nearest Dist Histogram Key")
+        #if print_report:
+        self._add_info(self.nearest2_avg,
+            "Spatial", "Second Nearest Dist Avg")
+        self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
+        self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
+        self._add_info(nearest2_max-nearest2_min,
+            "Spatial", "Second Nearest Dist Range")
+        self._add_info(self.neighbors_dist[:,1],
+            "Spatial", "Second Nearest Dist Histogram Key")
 
         #Furthest Neighbor Info:
         self._print("Making Enemies")
@@ -484,146 +525,164 @@ class Analyst:
         furthest_min = np.min(self.neighbors_dist[:,2])
         furthest_max = np.max(self.neighbors_dist[:,2])
         #far = np.argmax(self.neighbors_dist[:,2])
-        if print_report:
-            self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
-            self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
-            self._add_info(furthest_max,
-                "Spatial", "Broadness - Furthest Dist Max", star=True)
-            self._add_info(furthest_max - furthest_min,
-                "Spatial", "Furthest Dist Range")
-            self._add_info(self.neighbors_dist[:,2],
-                "Spatial", "Furthest Dist Histogram Key")
+        #if print_report:
+        self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
+        self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
+        self._add_info(furthest_max,
+            "Spatial", "Broadness - Furthest Dist Max", star=True)
+        self._add_info(furthest_max - furthest_min,
+            "Spatial", "Furthest Dist Range")
+        self._add_info(self.neighbors_dist[:,2],
+            "Spatial", "Furthest Dist Histogram Key")
 
 
     def _cluster_analysis(self):
-        # NOTE: The built-in algorithms are not included in the loop below
-        #   because some of them depend on each other, and must be in order.
+        # # NOTE: The built-in algorithms are not included in the loop below
+        # #   because some of them depend on each other, and must be in order.
 
-        # Extremities:
-        if "Extremities" in self.categories:
+        # # Extremities:
+        # if "Extremities" in self.categories:
 
-            # Compute the Extremities:
-            self.extremities = clusters.clusterizer.compute_extremities(
-                self.metric, self.encode, self.neighbors[:,2],
-                self.ix_to_s, self.auto_print)
-            # Extremity Lengths and other info:
-            self._print("Setting the Scopes")
-            self._print("Puzzling Over the Star Charts")
-            self._add_node_type_attributes(self.extremities, "Extremities",
-                [1, 0, 1, 1, 0, 0, 0])
+        #     # Compute the Extremities:
+        #     self.extremities = clusters.clusterizer.compute_extremities(
+        #         self.metric, self.encode, self.neighbors[:,2],
+        #         self.ix_to_s, self.auto_print)
+        #     # Extremity Lengths and other info:
+        #     self._print("Setting the Scopes")
+        #     self._print("Puzzling Over the Star Charts")
+        #     self._add_node_type_attributes(self.extremities, "Extremities",
+        #         [1, 0, 1, 1, 0, 0, 0])
 
-        # Nodes:
-        print_node_info = "Nodes" in self.categories
-        if (print_node_info or "Hubs" in self.categories or "Supernodes" in
-                self.categories or "Nuclei" in self.categories or "Chains" in
-                self.categories or "NCC" in self.categories or "LNCC" in
-                self.categories or "Anti-hubs" in self.categories):
-                # ...all dependent on Nodes.
+        # # Nodes:
+        # print_node_info = "Nodes" in self.categories
+        # if (print_node_info or "Hubs" in self.categories or "Supernodes" in
+        #         self.categories or "Nuclei" in self.categories or "Chains" in
+        #         self.categories or "NCC" in self.categories or "LNCC" in
+        #         self.categories or "Anti-hubs" in self.categories):
+        #         # ...all dependent on Nodes.
 
-            # Compute the Nodes:
-            self.nodes = clusters.clusterizer.compute_nodes(
-                self.metric, self.encode, self.neighbors[:,0],
-                self.ix_to_s, self.auto_print)
-            for node in self.nodes:
-                self.s_to_node[node[0]] = node
-                self.s_to_node[node[1]] = node
-            # Node Length and other info:
-            if print_node_info:
-                self._print("Delineating the Quasars")
-                self._add_node_type_attributes(self.nodes, "Nodes",
-                [0, 0, 0, 0, 0, 0, 0])
-                if len(self.nodes) > 0:
-                    self._print("Comparing the Cosmos")
-                    self._add_info(len(self.nodes)*2.0/float(len(self.space)),
-                        "Nodes", "Nodal Factor", star=True)
-                    avg_align = np.mean(
-                        [n.alignment for n in self.nodes], axis=0)
-                    avg_align /= np.linalg.norm(avg_align)
-                    self._add_info(
-                        np.mean([
-                            np.abs(sp.distance.cosine(avg_align, n.alignment))
-                            for n in self.nodes]),
-                        "Nodes", "Alignment Factor", star=True)
-
-        # Hubs:
-        if "Hubs" in self.categories:
-
-            # Compute the Hubs:
-            self.hubs = clusters.clusterizer.compute_hubs(
-                self.metric, self.encode, self.nearest, self.neighbors[:,0],
-                self.ix_to_s, self.s_to_node, self.auto_print)
-
-            # Hub count, populations, etc:
-            self._add_cluster_type_attributes(self.hubs, "Hubs")
-
-        # # Supernodes:
-        # if "Supernodes" in self.categories and len(self.nodes) >= 2:
-
-        #     # Nearest neighbor-node computation:
-        #     self.supernodes = clusters.clusterizer.compute_supernodes(
-        #         self.nodes, self._print, self.metric_str,
-        #         self.metric, self.auto_print)
-
-        #     # Supernode Length and other info:
-        #     self._print("Measuring their Magnitude")
-        #     self._add_node_type_attributes(self.supernodes, "Supernodes",
+        #     # Compute the Nodes:
+        #     self.nodes = clusters.clusterizer.compute_nodes(
+        #         self.metric, self.encode, self.neighbors[:,0],
+        #         self.ix_to_s, self.auto_print)
+        #     for node in self.nodes:
+        #         self.s_to_node[node[0]] = node
+        #         self.s_to_node[node[1]] = node
+        #     # Node Length and other info:
+        #     if print_node_info:
+        #         self._print("Delineating the Quasars")
+        #         self._add_node_type_attributes(self.nodes, "Nodes",
         #         [0, 0, 0, 0, 0, 0, 0])
-        #     if len(self.supernodes) > 0:
-        #         self._print("Minding the Macrocosm")
-        #         self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
-        #             "Supernodes", "Island Factor", star=True)
-        #         self._add_info(
-        #             len(self.supernodes)*2.0/float(len(self.nodes)),
-        #             "Supernodes", "Hierarchical Factor", star=True)
+        #         if len(self.nodes) > 0:
+        #             self._print("Comparing the Cosmos")
+        #             self._add_info(len(self.nodes)*2.0/float(len(self.space)),
+        #                 "Nodes", "Nodal Factor", star=True)
+        #             avg_align = np.mean(
+        #                 [n.alignment for n in self.nodes], axis=0)
+        #             avg_align /= np.linalg.norm(avg_align)
+        #             self._add_info(
+        #                 np.mean([
+        #                     np.abs(sp.distance.cosine(avg_align, n.alignment))
+        #                     for n in self.nodes]),
+        #                 "Nodes", "Alignment Factor", star=True)
 
-        # Nuclei:
-        if "Nuclei" in self.categories:
-            self.nuclei = clusters.clusterizer.compute_nuclei()
-            self._print("Performing Cold Fusion")
-            self._add_cluster_type_attributes(self.nuclei, "Nuclei")
+        # # Hubs:
+        # if "Hubs" in self.categories:
 
-        # Chains:
-        pass
+        #     # Compute the Hubs:
+        #     self.hubs = clusters.clusterizer.compute_hubs(
+        #         self.metric, self.encode, self.nearest, self.neighbors[:,0],
+        #         self.ix_to_s, self.s_to_node, self.auto_print)
 
-        # NCC:
-        pass
+        #     # Hub count, populations, etc:
+        #     self._add_cluster_type_attributes(self.hubs, "Hubs")
 
-        # LNCC:
-        pass
+        # # # Supernodes:
+        # # if "Supernodes" in self.categories and len(self.nodes) >= 2:
 
-        # Anti-hubs:
-        if "Anti-hubs" in self.categories:
-            self.anti_hubs = clusters.clusterizer.compute_anti_hubs()
-            self._print("Unraveling the Secrets of Dark Matter")
-            self._add_cluster_type_attributes(self.anti_hubs, "Anti-hubs")
+        # #     # Nearest neighbor-node computation:
+        # #     self.supernodes = clusters.clusterizer.compute_supernodes(
+        # #         self.nodes, self._print, self.metric_str,
+        # #         self.metric, self.auto_print)
 
-        # Cluster Algorithms:
-        for alg in self.cluster_algorithms:
-            # function = alg[0]
-            # description = alg[1]
-            self._print("Analyzing " + alg[1])
+        # #     # Supernode Length and other info:
+        # #     self._print("Measuring their Magnitude")
+        # #     self._add_node_type_attributes(self.supernodes, "Supernodes",
+        # #         [0, 0, 0, 0, 0, 0, 0])
+        # #     if len(self.supernodes) > 0:
+        # #         self._print("Minding the Macrocosm")
+        # #         self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
+        # #             "Supernodes", "Island Factor", star=True)
+        # #         self._add_info(
+        # #             len(self.supernodes)*2.0/float(len(self.nodes)),
+        # #             "Supernodes", "Hierarchical Factor", star=True)
 
-            # Custom Callables:
-            if callable(alg[0]):
-                if alg[1] == "" or alg[1] == None:
-                    alg[1] = alg[0].__name__
-                cluster_list = []
-                clusterings = alg[0](self.space)
-                for i, c in enumerate(clusterings):
-                    strings = map(self.decode, c)
-                    nodes = self.find_nodes_from_string_list(strings)
-                    cluster_list.append(clusters.Cluster(
-                        self.encode, self.metric, self.nearest, strings,
-                        vectors=c, nodes=nodes, auto=True, ID=i))
+        # # Nuclei:
+        # if "Nuclei" in self.categories:
+        #     self.nuclei = clusters.clusterizer.compute_nuclei()
+        #     self._print("Performing Cold Fusion")
+        #     self._add_cluster_type_attributes(self.nuclei, "Nuclei")
+
+        # # Chains:
+        # pass
+
+        # # NCC:
+        # pass
+
+        # # LNCC:
+        # pass
+
+        # # Anti-hubs:
+        # if "Anti-hubs" in self.categories:
+        #     self.anti_hubs = clusters.clusterizer.compute_anti_hubs()
+        #     self._print("Unraveling the Secrets of Dark Matter")
+        #     self._add_cluster_type_attributes(self.anti_hubs, "Anti-hubs")
+
+        # Run the Evaluations:
+        for evaluator in self.evaluators:
+            data_dict, starred, category = evaluator.calculate(
+                space=self.space, show_progress=self.auto_print,
+                strings=self.ix_to_s, metric_str=self.metric_str,
+                printer_fn=self._print, metric_fn=self.metric,
+                encoder_fn=self.encode, decoder_fn=self.decode,
+                generic_neighbor_k_fn=self.neighbor_k,
+                generic_nearest_fn=self.nearest,
+                kth_neighbors_ix_fn=self.kth_neighbors,
+                kth_neighbors_dist_fn=self.kth_neighbors_dist,
+                distance_matrix_getter_fn=self.distance_matrix_getter,
+                evaluator_list=self.evaluators,
+                find_evaluator_by_category_fn=self.find_evaluator)
+
+            for key, value in data_dict:
+                self._add_info(value, category, key, key in starred)
+
+        # # Cluster Algorithms:
+        # for alg in self.cluster_algorithms:
+        #     # function = alg[0]
+        #     # description = alg[1]
+        #     self._print("Analyzing " + alg[1])
+
+        #     # Custom Callables:
+        #     if callable(alg[0]):
+        #         if alg[1] == "" or alg[1] == None:
+        #             alg[1] = alg[0].__name__
+        #         cluster_list = []
+        #         clusterings = alg[0](self.space)
+        #         for i, c in enumerate(clusterings):
+        #             strings = map(self.decode, c)
+        #             nodes = self.find_nodes_from_string_list(strings)
+        #             cluster_list.append(clusters.Cluster(
+        #                 self.encode, self.metric, self.nearest, strings,
+        #                 vectors=c, nodes=nodes, auto=True, ID=i))
                 
-                self.cluster_data[alg[1]] = cluster_list
-                self._add_cluster_type_attributes(cluster_list, alg[1])
+        #         self.cluster_data[alg[1]] = cluster_list
+        #         self._add_cluster_type_attributes(cluster_list, alg[1])
             
-            # Invalid Non-callables:
-            elif (alg[0] not in self.built_in_categories
-                    and alg[1] not in self.built_in_categories):
-                self._print(
-                    alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
+        #     # Invalid Non-callables:
+        #     elif (alg[0] not in self.built_in_categories
+        #             and alg[1] not in self.built_in_categories):
+        #         self._print(
+        #             alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
 
     # ANALOGICAL & SPECIFICS:
 

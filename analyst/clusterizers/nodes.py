@@ -20,18 +20,16 @@ class NodeClusterizer(Clusterizer, object):
 
     def __init__(self, category="Nodes"):
         super(NodeClusterizer, self).__init__(category)
-        # NOTE: We don't need the generic stats for simple pairs of objects.
-        self.computed = False
-        #   Built to prevent recalculation (if you must, then make a new one).
 
     def compute_clusters(
             self, space, show_progress=True, **kwargs):
-        if self.computed: return
+        strings   = kwargs["strings"]
+        encode    = kwargs["encoder_fn"]
+        metric    = kwargs["metric_fn"]
+        neighbors = kwargs["kth_neighbors_ix_fn"]
 
-        strings = kwargs["strings"]
-        encode = kwargs["encoder_fn"]
-        metric = kwargs["metric_fn"]
-        nearest = kwargs["nearest_neighbors_ix"]
+        # Nearest neighbor indeces array:
+        nearest   = neighbors(1)
 
         # Compute Nodes:
         self.clusters = [
@@ -48,9 +46,6 @@ class NodeClusterizer(Clusterizer, object):
         for node in self.clusters:
             self._string_node_dict[node[0]] = node
             self._string_node_dict[node[1]] = node
-
-        # Don't repeat calculations
-        self.computed = True
 
     # Would override to prevent filling in, but it checks, so we needn't worry:
     # def vectors_to_clusters(self, **kwargs):
@@ -96,19 +91,14 @@ class NodeClusterizer(Clusterizer, object):
             self._compute_list_stats([n.span for n in self.clusters],
                 "Span", self.data_dict)
 
-    # These exist to allow getting of node list etc. with the assurance that
-    #   they are filled in.
-    def get_nodes(self, space, show_progress=True, **kwargs):
-        self.compute_clusters(space, show_progress, **kwargs)
-        return self.clusters
-
-    def get_string_node_dict(self, space, show_progress=True, **kwargs):
-        self.compute_clusters(space, show_progress, **kwargs)
+    # These exist to allow getting of node-specific information with the
+    #   assurance that it has been filled in.
+    def get_string_node_dict(self, **kwargs):
+        self.calculate(recalculate_all=False, **kwargs)
         return self._string_node_dict
 
-    def find_nodes_from_string_list(self, strings,
-            space, show_progress=True, **kwargs):
+    def find_nodes_from_string_list(self, string_list, **kwargs):
         # Finds nodes this list completely or even partially intersects.
-        self.compute_clusters(space, show_progress, **kwargs)
-        node_strings = set(strings).intersection(self._string_node_dict.keys())
+        self.calculate(recalculate_all=False, **kwargs)
+        node_strings = set(string_list).intersection(self._string_node_dict)
         return [self._string_node_dict[string] for string in node_strings]

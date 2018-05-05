@@ -5,22 +5,21 @@ from tqdm import tqdm
 from ..clustertypes.node import Node
 from .nodes import NodeClusterizer
 
-class SupernodeClusterizer(NodeClusterizer, object):
+class SupernodeClusterizer(NodeClusterizer, object):!!!!!!!
 
-    def __init__(self, category="Supernodes"):
-        super(SupernodeClusterizer, self).__init__(category)
+    def __init__(self, category="Supernodes", node_category="Nodes"):
+        super(SupernodeClusterizer, self).__init__(category, node_category)
         self.nodes = None
 
-    def compute_clusters(
-            self, space, show_progress=True, **kwargs):
+    def compute_clusters(self, space, show_progress=True, **kwargs):
         printer = kwargs["printer_fn"]
         metric_str = kwargs["metric_str"]
         metric_fn = kwargs["metric_fn"]
-        clusterizer_getter = kwargs["find_clusterizer_by_category_fn"]
+        clusterizer_getter = kwargs["find_evaluator_fn"]
 
         # No need to make sure Nodes are computed before Supernodes,
         #   since get_nodes ensures this for us:
-        node_clusterizer = clusterizer_getter("Nodes")
+        node_clusterizer = clusterizer_getter(node_category)
         self.nodes = node_clusterizer.get_nodes(space, show_progress, **kwargs)
 
         # Compute distance matrix and nearest neighbors for node centroids:

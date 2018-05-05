@@ -20,7 +20,7 @@ Analyst
 
 # Import all classes/functions in Analyst.py:
 from .analyst import * # was from Analyst import *
-from .test_set_2d import *
+#from .test_set_2d import *
 #from analyst.analyst import Analyst
 #from analyst.test_set_2d import TestSet2D
 

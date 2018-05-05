@@ -26,18 +26,32 @@ Overall:
 Analyses:
 ---------
 - compare google's universal sentence encoder used on words with fastext etc
+- various hub configurations side by side
+- (my, in purple notebook) outlier count in small space vs large, and node count.
 
 Analyst:
 --------
-- fix analyst to take clusterizers
+- make superclass evaluator
+- phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
+- make printer recheck data without recalculating in case things have changed?
+- fill in make_default_evaluator
+- add functionality to recompute stars and data but not clusters, or give disclaimer/
+warning that changing it won't work.
+- add functionality to be able to add clusterizers and compute without recomputing,
+unless recompute_all=True.
 - call compute on clusterizers, and give also node info etc.
-- make sure find_clusterizer_by_category_fn returns None if category doesn't exist,
-or rather will create one!! Based on parameter.
 - fix encoder/decoder initialization to see what can/can't be None, and force
 what will be required.
+- evaluation indicators to test validity of an algorithm?
+Davies-Bouldin, Dunn, Silhouette coefficient; or for external evaluation:
+Rand indicator, F indicator, Jaccard indicator,Fowlkes-mallows indicator,
+Mutual information, Confusion matrix.
+- implement grapher
 
 Word Group Specific Analysis:
 -----------------------------
+- make downstream function, second_downstream function, maybe one that switches
+randomly if dist within epsilon
 - use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
 all other clusters?
 - look into cluster extremities! (strange attractors)
@@ -48,7 +62,12 @@ https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-t
 
 Clusterizers TO DO:
 -------------------
+- instead of specific stats, allow variety of stats in each cluster, with dict,
+and iterate through in cluterizer that adds info.
 - Spatial
+    - include Local Outlier Factor, Local Reachability Density.
+    Perhaps in separate clusterizer?
+    - covariance, variance, 
 - Rest of built-ins
 - kmeans or EM (base default off of nodal hub count, or allow varying parameters)
 - PHATE (base default off of nodal hub count, or allow varying parameters)
@@ -71,6 +90,17 @@ algorithm which builds clusters stemmed from color words. include as example
 Analogical Analyses:
 --------------------
 - EVERYTHING
+- make clusterizer, analogist, and analogyRanker subclasses of evaluator.
+
+
+In [121]: def second_downstream(word):
+     ...:     l = []
+     ...:     n = word
+     ...:     while n not in l:
+     ...:         l.append(n)
+     ...:         n = a.second_nearest(n)
+     ...:     print l
+
 
 
 (categories:)
