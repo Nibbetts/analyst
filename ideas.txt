@@ -31,7 +31,7 @@ Analyses:
 
 Analyst:
 --------
-- make superclass evaluator
+- make capacity to find neighbors of nonexistent vector!
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 - make printer recheck data without recalculating in case things have changed?
 - fill in make_default_evaluator
@@ -71,7 +71,7 @@ and iterate through in cluterizer that adds info.
 - Rest of built-ins
 - kmeans or EM (base default off of nodal hub count, or allow varying parameters)
 - PHATE (base default off of nodal hub count, or allow varying parameters)
-- pick some other important ones
+- pick some other important ones, affinity?
 - use variable density of space, by measuring the density of the surrounding region,
 say, pick 10 nearest, and measure their dispersion or repulsion or something; then
 can use this for clusterizing. Could even compare nearer 4 to further 8 or something

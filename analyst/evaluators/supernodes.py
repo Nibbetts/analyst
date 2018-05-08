@@ -5,21 +5,24 @@ from tqdm import tqdm
 from ..clustertypes.node import Node
 from .nodes import NodeClusterizer
 
-class SupernodeClusterizer(NodeClusterizer, object):!!!!!!!
+class SupernodeClusterizer(NodeClusterizer, object):
 
-    def __init__(self, category="Supernodes", node_category="Nodes"):
-        super(SupernodeClusterizer, self).__init__(category, node_category)
+    def __init__(self, category="Supernodes", starred=None,
+            node_category="Nodes"):
+        super(SupernodeClusterizer, self).__init__(
+            category=category, starred=starred, node_category=node_category)
         self.nodes = None
 
     def compute_clusters(self, space, show_progress=True, **kwargs):
-        printer = kwargs["printer_fn"]
-        metric_str = kwargs["metric_str"]
-        metric_fn = kwargs["metric_fn"]
+        printer            = kwargs["printer_fn"]
+        metric_str         = kwargs["metric_str"]
+        metric_fn          = kwargs["metric_fn"]
         clusterizer_getter = kwargs["find_evaluator_fn"]
+        metric_args        = kwargs["metric_args"]
 
         # No need to make sure Nodes are computed before Supernodes,
         #   since get_nodes ensures this for us:
-        node_clusterizer = clusterizer_getter(node_category)
+        node_clusterizer = clusterizer_getter(self.node_category)
         self.nodes = node_clusterizer.get_nodes(space, show_progress, **kwargs)
 
         # Compute distance matrix and nearest neighbors for node centroids:
@@ -28,7 +31,8 @@ class SupernodeClusterizer(NodeClusterizer, object):!!!!!!!
         node_dist_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 centroids,
-                metric_str if metric_str != None else metric_fn))
+                metric_str if metric_str != None else metric_fn,
+                **metric_args))
         printer("Establishing a Hierocracy (Computing Nearest Neighbor Nodes)")
         neighbors = np.argmax(node_dist_matrix, axis=1)
             
@@ -36,7 +40,7 @@ class SupernodeClusterizer(NodeClusterizer, object):!!!!!!!
         self.clusters = [
             Node(node,
                 self.nodes[neighbors[i]],
-                Node.get_centroid, metric_fn)
+                Node.get_centroid, metric_fn, **metric_args)
             for i, node in enumerate(tqdm(self.nodes,
                 desc="Ascertaining Universe Filaments (Finding Supernodes)",
                 disable=(not show_progress)))

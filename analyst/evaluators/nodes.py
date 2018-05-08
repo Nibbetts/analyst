@@ -18,22 +18,24 @@ class NodeClusterizer(Clusterizer, object):
     #         NodeClusterizer.instances[category] = NodeClusterizer(category)
     #     return NodeClusterizer.instances[category]
 
-    def __init__(self, category="Nodes"):
-        super(NodeClusterizer, self).__init__(category)
+    def __init__(self, category="Nodes", starred=None):
+        super(NodeClusterizer, self).__init__(
+            category=category, starred=starred)
 
     def compute_clusters(
             self, space, show_progress=True, **kwargs):
-        strings   = kwargs["strings"]
-        encode    = kwargs["encoder_fn"]
-        metric    = kwargs["metric_fn"]
-        neighbors = kwargs["kth_neighbors_ix_fn"]
+        strings     = kwargs["strings"]
+        encode      = kwargs["encoder_fn"]
+        metric      = kwargs["metric_fn"]
+        neighbors   = kwargs["kth_neighbors_ix_fn"]
+        metric_args = kwargs["metric_args"]
 
         # Nearest neighbor indeces array:
         nearest   = neighbors(1)
 
         # Compute Nodes:
         self.clusters = [
-            Node(strings[i], strings[nearest[i]], encode, metric)
+            Node(strings[i], strings[nearest[i]], encode, metric, **metric_args)
             for i in tqdm(
                 range(len(strings)),
                 desc="Watching the Galaxies Coelesce (Computing Nodes)",

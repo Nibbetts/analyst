@@ -5,8 +5,9 @@ from .nodes import NodeClusterizer
 
 class ExtremityClusterizer(NodeClusterizer, object):
 
-    def __init__(self, category="Extremities", node_category="Nodes"):
-        super(ExtremityClusterizer, self).__init__(category, node_category)
+    def __init__(self, category="Extremities", starred=None):
+        super(ExtremityClusterizer, self).__init__(
+            category=category, starred=starred)
         # NOTE: We don't need the generic stats for simple pairs of objects.
 
     # Overriding
@@ -14,17 +15,19 @@ class ExtremityClusterizer(NodeClusterizer, object):
             self, space, show_progress=True, **kwargs):
         # The use of **kwargs allows you to pull many pre-computed types
         #   of data from the analyst to save on computation/programming time:
-        strings   = kwargs["strings"]
-        encode    = kwargs["encoder_fn"]
-        metric    = kwargs["metric_fn"]
-        neighbors = kwargs["kth_neighbors_ix_fn"]
+        strings     = kwargs["strings"]
+        encode      = kwargs["encoder_fn"]
+        metric      = kwargs["metric_fn"]
+        neighbors   = kwargs["kth_neighbors_ix_fn"]
+        metric_args = kwargs["metric_args"]
 
         # This is an array of indeces for each object's furthest neighbor.
         furthest  = neighbors(-1)
 
         # Compute Extremities:
         self.clusters = [
-            Node(strings[i], strings[furthest[i]], encode, metric)
+            Node(strings[i], strings[furthest[i]],
+                encode, metric, **metric_args)
             for i in tqdm(
                 range(len(space)),
                 desc="Measuring the Reaches (Computing Extremities)",
@@ -45,3 +48,5 @@ class ExtremityClusterizer(NodeClusterizer, object):
         self.add_star("Count")
         self.add_star("Span Min")
         self.add_star("Span Max")
+        # NOTE: These could also have been added by initializing the object with
+        #   starred=["Count","Span Min","Span Max"]

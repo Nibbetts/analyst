@@ -6,7 +6,7 @@ from .clusterizer import Clusterizer
 class HubClusterizer(Clusterizer, object):
 
     def __init__(self, threshold=4, nodal=True, category="Nodal 4-Hubs",
-            node_category="Nodes"):
+            starred=None, node_category="Nodes"):
         #   Notice we can add custom parameters.
 
         # threshold: how big a hub has to be to be counted.
@@ -16,18 +16,20 @@ class HubClusterizer(Clusterizer, object):
         #   the data as a nearest-neighbor directed graph), and not just
         #   potential cluster centers.
 
-        super(HubClusterizer, self).__init__(category, node_category)
+        super(HubClusterizer, self).__init__(
+            category=category, starred=starred, node_category=node_category)
         self.threshold = threshold
         self.nodal = nodal
 
     def compute_clusters(
             self, space, show_progress=True, **kwargs):
-        strings = kwargs["strings"]
-        neighbors = kwargs["kth_neighbors_ix_fn"]
-        nearest = kwargs["generic_nearest_fn"]
-        metric = kwargs["metric_fn"]
-        encoder = kwargs["encoder_fn"]
+        strings          = kwargs["strings"]
+        neighbors        = kwargs["kth_neighbors_ix_fn"]
+        nearest          = kwargs["generic_nearest_fn"]
+        metric           = kwargs["metric_fn"]
+        encoder          = kwargs["encoder_fn"]
         evaluator_getter = kwargs["find_evaluator_fn"]
+        metric_args      = kwargs["metric_args"]
 
         # No need to make sure Nodes are computed before Hubs,
         #   since get_nodes ensures this for us, without repeating calculation:
@@ -43,7 +45,8 @@ class HubClusterizer(Clusterizer, object):
                 disable=(not show_progress)):
             temp_hubs.append(Cluster(
                 encoder, metric, nearest=nearest,
-                objects=[strings[i]], nodes=[], auto=False, name=strings[i]))
+                objects=[strings[i]], nodes=[], auto=False, name=strings[i],
+                **metric_args))
                 # Its name is the original object's decoded string.
             for index, neighbor in enumerate(neighbors):
                 if neighbor == i:

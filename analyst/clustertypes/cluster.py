@@ -3,8 +3,8 @@ import numpy as np
 
 class Cluster:
 
-    def __init__(self, encoder, metric, objects, nearest=None,
-            vectors=None, nodes=[], auto=False, ID=None, name=None):
+    def __init__(self, encoder, metric, objects, nearest=None, vectors=None,
+            nodes=[], auto=False, ID=None, name=None, **metric_args):
         """
         Parameters:
             encoder: callable; gets one vector from one object at a time.
@@ -24,6 +24,8 @@ class Cluster:
             id: only for convenience in indexing clusters when printed or
                 grouped externally.
             name: only for convenience in identifying clusters externally.
+            metric_args: additional arguments to the metric function.
+                Use like **kwargs is used.
         """
         self.ID = ID
         self.name = name
@@ -33,6 +35,7 @@ class Cluster:
         self.nearest = nearest
         self.nodes = nodes
         self.auto = auto
+        self.metric_args = metric_args
 
         # self.vectors = []
         # self.centroid = []
@@ -56,9 +59,9 @@ class Cluster:
 
     def __add__(self, B):
         return Cluster(
-            self.encoder, self.metric, self.nearest,
-            self.objects + B.objects, self.nodes + B.nodes,
-            self.auto & B.auto, None, None)
+            self.encoder, self.metric, nearest=self.nearest,
+            objects=self.objects + B.objects, nodes=self.nodes + B.nodes,
+            auto=self.auto & B.auto, ID=None, name=None, **self.metric_args)
 
     def __len__(self):
         return len(self.objects)
@@ -102,7 +105,8 @@ class Cluster:
         #self.focus = sum([n.centroid for n in self.nodes]) / len(self.nodes)
         if len(self.nodes) != 0:
             self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
-            self.skew = self.metric(self.centroid, self.focus)
+            self.skew = self.metric(
+                self.centroid, self.focus, **self.metric_args)
         else:
             self.focus = None
             self.skew = None
@@ -110,7 +114,8 @@ class Cluster:
         # Calculate Dispersion:
         #self.dispersion = sum([self.metric(self.centroid, vec)
         #    for vec in self.vectors]) / len(self.objects)
-        self.dispersion = np.mean([self.metric(self.centroid, vec)
+        self.dispersion = np.mean([self.metric(
+                self.centroid, vec, **self.metric_args)
             for vec in self.vectors], axis=0)
 
         # Calculate Standard Deviation:
@@ -122,7 +127,8 @@ class Cluster:
         #    for i, v in self.vectors]) / len(self.objects)
         if self.nearest != None:
             self.repulsion = np.mean([self.metric(
-                v, self.encoder(self.nearest(self.objects[i])))
+                    v, self.encoder(self.nearest(self.objects[i])),
+                    **self.metric_args)
                 for i, v in enumerate(self.vectors)], axis=0)
         else: self.repulsion = None
             # NOTE: if objects are placed in clusters different from their
@@ -130,16 +136,17 @@ class Cluster:
 
         # Calculate Medoid:
         self.medoid = self.objects[np.argmin([
-            self.metric(self.centroid, v) for v in self.vectors])]
+            self.metric(self.centroid, v, **self.metric_args) \
+            for v in self.vectors])]
 
 
     def cluster_dist(self, B):
-        return self.metric(self.centroid, B.centroid)
+        return self.metric(self.centroid, B.centroid, **self.metric_args)
 
     def ward_dissimilarity(self, B):
         # In some sense a cost measurement of merging two clusters,
         #   from Ward's Method of agglomerative clustering.
-        return ((self.metric(self.centroid, B.centroid)**2.0
+        return ((self.metric(self.centroid, B.centroid, **self.metric_args)**2.0
                 / (1.0/len(self) + 1.0/len(B))))
 
     #def _serialize(self): # For ability to pickle.

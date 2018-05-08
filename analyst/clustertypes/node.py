@@ -3,20 +3,22 @@ import scipy.spatial as sp
 
 class Node:
 
-    def __init__(self, a, b, encoder, metric):
+    def __init__(self, a, b, encoder, metric, **metric_args):
         """
         Parameters:
             a, b -- anything encodable.
             encoder -- callable with return of a numpy array
                 (else will break at centroid calculation)
             metric -- callable with return of a scalar
+            metric_args -- additional arguments for the metric function.
+                Use like **kwargs is used.
         """
         assert a != b # Objects in a node must be different.
         self.a = a
         self.b = b
         vec_a = encoder(a) # if encoder != None else a
         vec_b = encoder(b) # if encoder != None else b
-        self.distance = metric(vec_a, vec_b)
+        self.distance = metric(vec_a, vec_b, **metric_args)
         self.centroid = (vec_a + vec_b) / 2.0
         self.alignment = vec_b - vec_a
         if metric == sp.distance.euclidean:
