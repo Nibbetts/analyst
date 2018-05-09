@@ -1,7 +1,7 @@
 from tqdm import tqdm
 
 from ..clustertypes.node import Node
-from .nodes import NodeClusterizer
+from .node_clusterizer import NodeClusterizer
 
 class ExtremityClusterizer(NodeClusterizer, object):
 

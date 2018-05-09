@@ -55,7 +55,9 @@ class Clusterizer(Evaluator, object):
     def compute_clusters(self, space, show_progress=True, **kwargs):
         # space: the entire embedding space, a vector of vectors
         # show_progress: whether or not to show a progress bar etc.
-        #   (These two given are also included in kwargs.)
+        # (These two given are also included in kwargs, but with the names
+        #   embeddings and draw_progress. Duplicated as real arguments because they
+        #   are assumed to be very commonly used.)
         # Available kwargs (always given in case needed) listed in parent class,
         #   Evaluator.
         # NOTE: Excuse the long names. They should be fairly clear.
@@ -144,8 +146,8 @@ class Clusterizer(Evaluator, object):
     def calculate(self, recalculate_all=False, **kwargs):
         # For explanations of parameters, see parent Evaluator class.
         if not self.calculated or recalculate_all:
-            space = kwargs["space"]
-            show_progress = kwargs["show_progress"]
+            space = kwargs["embeddings"]
+            show_progress = kwargs["draw_progress"]
             printer = kwargs["printer_fn"]
             
             if show_progress:

@@ -3,14 +3,14 @@ import scipy.spatial as sp
 from tqdm import tqdm
 
 from ..clustertypes.node import Node
-from .nodes import NodeClusterizer
+from .node_clusterizer import NodeClusterizer
 
 class SupernodeClusterizer(NodeClusterizer, object):
 
     def __init__(self, category="Supernodes", starred=None,
             node_category="Nodes"):
         super(SupernodeClusterizer, self).__init__(
-            category=category, starred=starred, node_category=node_category)
+            category=category, starred=starred)
         self.nodes = None
 
     def compute_clusters(self, space, show_progress=True, **kwargs):
@@ -54,8 +54,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
         printer = kwargs["printer_fn"]
         space = kwargs["space"]
 
-        printer("Measuring their Magnitude \
-            (Calculating Supernode Span)")
+        printer("Measuring their Magnitude (Calculating Supernode Span)")
         self.add_generic_node_stats()
 
         if len(self.clusters) > 0:
@@ -66,8 +65,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
             self.add_star("Island Factor")
 
             # Hierarchical Factor
-            printer("Deliberating over Dominions \
-                (Calculating Hierarchical Factor)")
+            printer("Deliberating over Dominions (Calculating Hierarchical Factor)")
             self.data_dict["Hierarchical Factor"] = (
                 len(self.clusters)*2.0/float(len(self.nodes)))
             self.add_star("Hierarchical Factor")

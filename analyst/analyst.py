@@ -1,3 +1,10 @@
+# Compatibility for python 2 and 3:
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import str
+from io import open
+
+# Normal Packages:
 import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
@@ -5,10 +12,13 @@ from tqdm import tqdm
 #import cPickle as pickle
 import dill as pickle
 import os
-#import sys
+#from sys import version_info
 #import multiprocessing
+import traceback
 
+# Own files:
 from .evaluators import *
+#import evaluators
 #from test_set_2d import TestSet2D
 
 
@@ -90,10 +100,22 @@ class Analyst:
                 TestSet2D -- small fake 2D embedding space class for testing
     """
 
-    def __init__(self, embeddings, metric="cosine",
+    BUILT_IN_CATEGORIES = [
+        u"Spatial",
+        u"Extremities",
+        u"Nodes",
+        u"Hubs",
+        u"Supernodes",
+        u"Nuclei",
+        u"Chains",
+        u"NCC",
+        u"LNCC",
+        u"Anti-hubs"]
+
+    def __init__(self, embeddings, metric=u"cosine",
         encoder=None, decoder=None, #cluster_algorithms=[(None, "All")],
         #analogy_algorithms=[], analogy_sets=[],
-        evaluators=[],
+        evaluators=[u"All"],
         auto_print=True, desc=None, calculate=True, **metric_args):
         """
         Parameters:
@@ -164,34 +186,35 @@ class Analyst:
         """
 
         self.auto_print = auto_print
-        print("")
-        self._print("Asking the Grand Question")
-        self._print("Stretching the Fabric of Space and Time")
-        self._print("Enumerating the Dimensions")
+        print(u"")
+        self._print(u"Asking the Grand Question")
+        self._print(u"Stretching the Fabric of Space and Time")
+        self._print(u"Enumerating the Dimensions")
         self.space = embeddings
+        self.description = str(desc)
         
         # Find and store a callable version of the given metric:
-        self._print("Laying the Laws of Physics (Setting the Metric)")
+        self._print(u"Laying the Laws of Physics (Setting the Metric)")
         if callable(metric):
             self.metric = metric
             self.metric_str = None
         else:
             try:
-                self.metric_str = sp.distance._METRIC_ALIAS[metric]
+                self.metric_str = str(sp.distance._METRIC_ALIAS[metric])
                 self.metric = sp.distance._TEST_METRICS[
-                    "test_" + self.metric_str]
+                    u"test_" + self.metric_str]
             except Exception as e:
                 print(e)
-                raise ValueError("'metric' parameter unrecognized and uncallable")
+                raise ValueError(u"FATAL ERROR: %s PARAMETER UNRECOGNIZED AND UNCALLABLE!"
+                    % str(metric))
         self.metric_args = metric_args
         
-        self.description = desc
 
         # Encoder/Decoder Initializations:
         #   While initializing these should, in theory, be unnecessary,
         #   failing to do so will limit all inputs to findable types.
         #   If an encoder does not exist, may be replaced with list of strings.
-        self._print("Filling the Void (Setting Encoder/Decoder)")
+        self._print(u"Filling the Void (Setting Encoder/Decoder)")
         self.ix_to_s = None
         if callable(encoder) or encoder is None:
             self.encode = encoder # string to vector
@@ -201,8 +224,7 @@ class Analyst:
             self.ix_to_s = encoder
             self.vec_to_s = {}
             self.s_to_vec = {}
-            self._print("Mapping the Emptiness \
-                (Making Encoder/Decoder Mappings)")
+            self._print(u"Mapping the Emptiness (Making Encoder/Decoder Mappings)")
             for i in range(len(self.space)):
                 self.vec_to_s[self.space[i]] = self.ix_to_s[i]
                 self.s_to_vec[self.ix_to_s[i]] = self.space[i]
@@ -216,18 +238,19 @@ class Analyst:
         try:
             if self.ix_to_s == None:
                 self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
-                    desc="Naming Stars and Drawing a Star Map",
+                    desc=u"Naming Stars and Drawing a Star Map (Collecting Strings)",
                     disable=(not self.auto_print))]
             for ix, s in enumerate(
-                    tqdm(self.ix_to_s, desc="Indexing Planets",
+                    tqdm(self.ix_to_s, desc=u"Indexing Planets (Making String Mappings)",
                     disable=(not self.auto_print))):
                 self.s_to_ix[s] = ix
         except Exception as e:
-            print("DECODER APPEARS TO HAVE MALFUNCTIONED...")
             print(e)
+            print(u"DECODER APPEARS TO HAVE MALFUNCTIONED!")
             return
 
-        # These are explained in the neighbors_getter function:
+        # These are explained in the neighbors and distance matrix getters:
+        self.distance_matrix = None
         self.neighbors = None
         self.neighbors_dist = None
 
@@ -236,49 +259,28 @@ class Analyst:
         #self.categories = []
         #self.analogy_algorithms = analogy_algorithms
         #self.analogy_sets = analogy_sets
-        self.evaluators = evaluators
-        self.categories = [e.CATEGORY for e in self.evaluators]
-        # self.built_in_categories = [
-        #     "Spatial",
-        #     "Extremities",
-        #     "Nodes",
-        #     "Hubs",
-        #     "Supernodes",
-        #     "Nuclei",
-        #     "Chains",
-        #     "NCC",
-        #     "LNCC",
-        #     "Anti-hubs"]
-        # self.cluster_algorithms = []
-        # report_spatial = False
-        # for t in cluster_algorithms:
-        #     if callable(t[0]):
-        #         self.cluster_algorithms.append(t)
-        #     else:
-        #         tag = t[1].lower()
-        #         if tag == "spatial":
-        #             report_spatial = True
-        #             self.categories.append("Spatial")
-        #         elif tag == "all":
-        #             report_spatial = True
-        #             map(self.categories.append, self.built_in_categories)
-        #         else:
-        #             self.categories.append(t[1])
-        #self.categories = [e.category for e in self.evaluators]
+        self.evaluators = []
+        for e in evaluators:
+            if isinstance(e, str) or isinstance(e, bytes):
+                if str(e.lower()) == u"all":
+                    for cat in Analyst.BUILT_IN_CATEGORIES:
+                        evaluator = Analyst.make_default_evaluator(cat)
+                        if evaluator != None:
+                            self.evaluators.append(evaluator)
+                else:
+                    evaluator = Analyst.make_default_evaluator(e)
+                    if evaluator != None:
+                        self.evaluators.append(evaluator)
+            else:
+                if e != None: self.evaluators.append(e)
+
+        self.categories = [str(e.CATEGORY) for e in self.evaluators]
         self.category_lists = np.empty(
             shape=(len(self.categories),0)).tolist()
 
-        self.distance_matrix = None
-
-        self.s_to_node = {}
-        self.spatial_data = {}
-        self.cluster_data = {}
-        self.analogical_data = {}
 
         if calculate:
-            self._spatial_analysis()
-            self._cluster_analysis()
-            self._analogical_analysis()
+            self._analysis()
             if auto_print: self.print_report()
 
 
@@ -298,7 +300,8 @@ class Analyst:
     #   and of course only returns the nearest object.
     def as_index(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, basestring): return self.s_to_ix[obj]
+            if isinstance(obj, str) or isinstance(obj, bytes):
+                return self.s_to_ix[obj]
             try: return self.s_to_ix[self.decode(obj)]
             except: return int(obj)
         else:
@@ -306,7 +309,8 @@ class Analyst:
     #
     def as_vector(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, basestring): return self.encode(obj)
+            if isinstance(obj, str) or isinstance(obj, bytes):
+                return self.encode(obj)
             try: return self.space[obj]
             except: return obj
         else:
@@ -314,7 +318,8 @@ class Analyst:
     #
     def as_string(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, basestring): return obj
+            if isinstance(obj, str) or isinstance(obj, bytes):
+                return obj
             try: return self.ix_to_s[obj]
             except: return self.decode(obj)
         else:
@@ -331,7 +336,8 @@ class Analyst:
             if k == 0: return obj
             n = k + 1 if k > 0 else k
             i = self.neighbors_getter()[0][self.as_index(obj)][n]
-            if isinstance(obj, basestring): return self.ix_to_s[i]
+            if isinstance(obj, str) or isinstance(obj, bytes):
+                return self.ix_to_s[i]
             try:
                 int(obj)
                 return i
@@ -345,11 +351,11 @@ class Analyst:
             return self.neighbor_k(obj, 1)
         else:
             # Note that if not in_model, we require obj to be a vector.
-            if self.metric_str != "cosine":
+            if self.metric_str != u"cosine":
                 return self.space[np.argmin(self.arbitrary_vector_dist(obj))]
-            else:
+            else: # Optimization for cosine similarity:
                 return self.space[np.argmax(np.dot(
-                    self.space, np.array([vector]).T.squeeze()))]
+                    self.space, np.array([obj]).T.squeeze()))]
 
 
     # Distance and Neighbor Computation:
@@ -360,7 +366,7 @@ class Analyst:
         #   For speed, prefer to use string, if one exists for desired metric.
         if self.distance_matrix == None:
             # Distance Matrix Calculation
-            self._print("Acquainting the Species (Calculating Distance Matrix)")
+            self._print(u"Acquainting the Species (Computing Distance Matrix)")
             self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
                 self.space,
                 self.metric_str if self.metric_str != None else self.metric,
@@ -369,7 +375,7 @@ class Analyst:
 
     def neighbors_getter(self):
         # Allows us to only have to compute neighbors etc once, if needed.
-        if self.neighbors == None:
+        if self.neighbors is None: # Must use 'is' here, else elementwise!
             # Need distance matrix filled in:
             self.distance_matrix_getter()
 
@@ -383,7 +389,7 @@ class Analyst:
                 # Same format as above, except distances to those indexed above.
 
             # Finding Furthest Neighbors
-            self._print("Misconstruing Relations (Finding Furthest Neighbors)")
+            self._print(u"Misconstruing Relations (Finding Furthest Neighbors)")
             self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
             self.neighbors_dist[:,2] = self.distance_matrix[
                 range(len(self.distance_matrix)),
@@ -391,7 +397,7 @@ class Analyst:
             self.distance_matrix[
                 range(len(self.space)), range(len(self.space))] = np.inf
             # Finding Nearest Neighbors
-            self._print("Forming Alliances (Finding Nearest Neighbors)")
+            self._print(u"Forming Alliances (Finding Nearest Neighbors)")
             self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
             self.neighbors_dist[:,0] = self.distance_matrix[
                 range(len(self.distance_matrix)),
@@ -399,15 +405,13 @@ class Analyst:
             self.distance_matrix[
                 range(len(self.space)), self.neighbors[:,0]] = np.inf
             # Finding Second-Nearest Neighbors
-            self._print("Obfuscating Dynastic Ties \
-                (Finding 2nd-Nearest Neighbors)")
+            self._print(u"Obfuscating Dynastic Ties (Finding 2nd-Nearest Neighbors)")
             self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
             self.neighbors_dist[:,1] = self.distance_matrix[
                 range(len(self.distance_matrix)),
                 self.neighbors[:,1]]
             # Put back the numbers we removed:
-            self._print("Resetting the Ship's Computer \
-                (Repairing Distance Matrix)")
+            self._print(u"Resetting the Ship's Computer (Repairing Distance Matrix)")
             self.distance_matrix[
                 range(len(self.space)), self.neighbors[:,0]
             ] = self.neighbors_dist[:,0]
@@ -432,7 +436,7 @@ class Analyst:
         # Includes an extra optimization for the common case
         #   that metric is cosine similarity.
         # NOTE: results are not stored, so recomputes every time.
-        if self.metric_str != "cosine":
+        if self.metric_str != u"cosine":
             return np.argsort(self.arbitrary_vector_dist(vector))
         else:
             distances = np.dot(self.space, np.array([vector]).T.squeeze())
@@ -455,6 +459,33 @@ class Analyst:
         n = k + 1 if k > 0 else k
         return self.neighbors_getter()[1][:,n]
 
+    # Computes the downstream nearest neighbor, and lists the path if asked,
+    #   starting from obj's kth-nearest neighbor,
+    #   then going from one NEAREST neighbor to another until we start to repeat
+    #   (having reached a node). Thus the last two in the list make a node. If
+    #   you start from k=0, obj will be included. k=1 is same, but without obj.
+    # Note: non type-specific, and returns same type as given.
+    # Note: should be faster if path not kept.
+    # Note: probably less efficient if you use straight vectors, because of
+    #   equality checks. Maybe most efficient for indeces?
+    def downstream(self, obj, start_neighbor_k=0, give_path=False):
+        path = None
+        if give_path: path=[]
+        current = self.neighbor_k(obj, start_neighbor_k, in_model=True)
+        while current not in path: # More efficient than overhead for a set?
+            if give_path: path.append(current)
+            current = self.nearest(current)
+        if give_path: return path
+        else: return current
+
+    # Superfast metric function for objects within the model only, using dicts.
+    # Note: generic types.
+    def metric_in_model(self, obj1, obj2):
+        return self.distance_matrix_getter()[
+            self.as_index(obj1, in_model=True),
+            self.as_index(obj2, in_model=True)]
+
+
     # NOTE: This function does NOT force the evaluator to pre-calculate!
     # NOTE: Since categories SHOULD be unique among evaluators,
     #   this function will only return the first match it finds. Or None.
@@ -462,13 +493,42 @@ class Analyst:
         # force_creation: whether or not to create a default evaluator for
         #   built-ins.
         for e in self.evaluators:
-            if e.category == category: return e
+            if e.CATEGORY == category: return e
         if force_creation: 
             return Analyst.make_default_evaluator(category)
 
+    # Makes Built-in Clusterizers with Default Values:
+    # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
+    #   "Hubs" with no number defaults to "Nodal 4-Hubs".
     @staticmethod
     def make_default_evaluator(category):
-        pass
+        cat = category.lower()
+        if cat == u"spatial":
+            pass # FIX THIS!!
+        elif cat == u"nodes":
+            return NodeClusterizer()
+        elif cat == u"extremities":
+            return ExtremityClusterizer()
+        elif cat == u"supernodes":
+            return SupernodeClusterizer()
+        elif u"hubs" in cat:
+            thresh = 4
+            nodal = False
+            if u"nodal " in cat:
+                nodal = True
+            try:
+                thresh = int(cat[6 if nodal else 0:-5]) if u"-hubs" in cat \
+                    else int(cat[6 if nodal else 0:-4])
+            except: pass
+            if cat == u"hubs":
+                nodal = True
+                cat = u"Nodal 4-Hubs"
+            else: cat = category
+            return HubClusterizer(threshold=thresh, nodal=nodal, category=cat)
+        # ADD STUFF!!
+        else:
+            print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '" + category + u"'!")
+            return None
 
 
 
@@ -483,11 +543,11 @@ class Analyst:
         self.neighbors_getter()
 
         # Centroid, Dispersion, Std Dev, repulsion:
-        self._print("Balancing the Continuum")
+        self._print(u"Balancing the Continuum")
         self.centroid = np.mean(self.space, axis=0)
         self.centroid_length = np.linalg.norm(self.centroid)
         self.centroid_dist = [self.metric(self.centroid, v, **self.metric_args)
-            for v in tqdm(self.space, desc="Counting the Lightyears",
+            for v in tqdm(self.space, desc=u"Counting the Lightyears",
                 disable=(not self.auto_print))]
         self.dispersion = np.mean(self.centroid_dist, axis=0)
         self.std_dev = np.std(self.space)
@@ -497,134 +557,126 @@ class Analyst:
         self._add_info(self.ix_to_s[np.argmin([
             self.metric(self.centroid, v, **self.metric_args) \
                 for v in tqdm(self.space,
-                desc="Electing a Ruler", disable=(not self.auto_print))])],
-            "Spatial", "Medoid - Obj Nearest to Centroid", star=True)
-        self._add_info(len(self.space), "Spatial", "Count")
-        self._add_info(self.centroid_length, "Spatial", "Centroid Length")
+                desc=u"Electing a Ruler", disable=(not self.auto_print))])],
+            u"Spatial", u"Medoid - Obj Nearest to Centroid", star=True)
+        self._add_info(len(self.space), u"Spatial", u"Count")
+        self._add_info(self.centroid_length, u"Spatial", u"Centroid Length")
         self._add_info(self.dispersion,
-            "Spatial", "Dispersion - Centroid Dist Avg", star=True)
-        self._add_info(centr_min, "Spatial", "Centroid Dist Min")
-        self._add_info(centr_max, "Spatial", "Centroid Dist Max")
+            u"Spatial", u"Dispersion - Centroid Dist Avg", star=True)
+        self._add_info(centr_min, u"Spatial", u"Centroid Dist Min")
+        self._add_info(centr_max, u"Spatial", u"Centroid Dist Max")
         self._add_info(centr_max - centr_min,
-            "Spatial", "Centroid Dist Range")
+            u"Spatial", u"Centroid Dist Range")
         self._add_info(self.centroid_dist,
-            "Spatial", "Centroid Dist Histogram Key")
-        self._add_info(self.std_dev, "Spatial", "Standard Dev")
+            u"Spatial", u"Centroid Dist Histogram Key")
+        self._add_info(self.std_dev, u"Spatial", u"Standard Dev")
         #self.repulsion = np.mean(
         #    [self.metric(v, self.encoder(self.nearest(self.objects[i])),
         #         **self.metric_args)
         #     for i, v in self.vectors])
 
         # Nearest Neighbor Info:
-        self._print("Building Trade Routes")
+        self._print(u"Building Trade Routes")
         self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._print("Practicing Diplomacy")
+        self._print(u"Practicing Diplomacy")
         nearest_min = np.min(self.neighbors_dist[:,0])
         nearest_max = np.max(self.neighbors_dist[:,0])
         #if print_report:
         self._add_info(self.nearest_avg,
-            "Spatial", "repulsion - Nearest Dist Avg", star=True)
-        self._add_info(nearest_min, "Spatial", "Nearest Dist Min")
-        self._add_info(nearest_max, "Spatial", "Nearest Dist Max")
+            u"Spatial", u"repulsion - Nearest Dist Avg", star=True)
+        self._add_info(nearest_min, u"Spatial", u"Nearest Dist Min")
+        self._add_info(nearest_max, u"Spatial", u"Nearest Dist Max")
         self._add_info(nearest_max-nearest_min,
-            "Spatial", "Nearest Dist Range", star=True)
+            u"Spatial", u"Nearest Dist Range", star=True)
         self._add_info(self.neighbors_dist[:,0],
-            "Spatial", "Nearest Dist Histogram Key")
+            u"Spatial", u"Nearest Dist Histogram Key")
 
         # Second-Nearest Neighbor Info:
-        self._print("Setting Priorities")
+        self._print(u"Setting Priorities")
         self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
-        self._print("Coming up with Excuses")
+        self._print(u"Coming up with Excuses")
         nearest2_min = np.min(self.neighbors_dist[:,1])
         nearest2_max = np.max(self.neighbors_dist[:,1])
         #if print_report:
         self._add_info(self.nearest2_avg,
-            "Spatial", "Second Nearest Dist Avg")
-        self._add_info(nearest2_min, "Spatial", "Second Nearest Dist Min")
-        self._add_info(nearest2_max, "Spatial", "Second Nearest Dist Max")
+            u"Spatial", u"Second Nearest Dist Avg")
+        self._add_info(nearest2_min, u"Spatial", u"Second Nearest Dist Min")
+        self._add_info(nearest2_max, u"Spatial", u"Second Nearest Dist Max")
         self._add_info(nearest2_max-nearest2_min,
-            "Spatial", "Second Nearest Dist Range")
+            u"Spatial", u"Second Nearest Dist Range")
         self._add_info(self.neighbors_dist[:,1],
-            "Spatial", "Second Nearest Dist Histogram Key")
+            u"Spatial", u"Second Nearest Dist Histogram Key")
 
         #Furthest Neighbor Info:
-        self._print("Making Enemies")
+        self._print(u"Making Enemies")
         self.furthest_avg = np.mean(self.neighbors_dist[:,2])
-        self._print("Claiming Frontiers")
+        self._print(u"Claiming Frontiers")
         furthest_min = np.min(self.neighbors_dist[:,2])
         furthest_max = np.max(self.neighbors_dist[:,2])
         #far = np.argmax(self.neighbors_dist[:,2])
         #if print_report:
-        self._add_info(self.furthest_avg, "Spatial", "Furthest Dist Avg")
-        self._add_info(furthest_min, "Spatial", "Furthest Dist Min")
+        self._add_info(self.furthest_avg, u"Spatial", u"Furthest Dist Avg")
+        self._add_info(furthest_min, u"Spatial", u"Furthest Dist Min")
         self._add_info(furthest_max,
-            "Spatial", "Broadness - Furthest Dist Max", star=True)
+            u"Spatial", u"Broadness - Furthest Dist Max", star=True)
         self._add_info(furthest_max - furthest_min,
-            "Spatial", "Furthest Dist Range")
+            u"Spatial", u"Furthest Dist Range")
         self._add_info(self.neighbors_dist[:,2],
-            "Spatial", "Furthest Dist Histogram Key")
+            u"Spatial", u"Furthest Dist Histogram Key")
 
 
-    def _cluster_analysis(self):
+    def _analysis(self):
         # # NOTE: The built-in algorithms are not included in the loop below
         # #   because some of them depend on each other, and must be in order.
 
+        self._spatial_analysis()
+
         # Run the Evaluations:
         for evaluator in self.evaluators:
-            data_dict, starred, category = evaluator.calculate(
-                space=self.space,             show_progress=self.auto_print,
-                strings=self.ix_to_s,         metric_str=self.metric_str,
-                printer_fn=self._print,       metric_fn=self.metric,
-                as_string_fn=self.as_string,  metric_args=self.metric_args,
-                as_index_fn=self.as_index,    encoder_fn=self.encode,
-                as_vector_fn=self.as_vector,  decoder_fn=self.decode,
-                string_ix_map=self.s_to_ix,   exists_fn=self.exists,
-                generic_neighbor_k_fn=self.neighbor_k,
-                generic_nearest_fn=self.nearest,
-                kth_neighbors_ix_fn=self.kth_neighbors,
-                kth_neighbors_dist_fn=self.kth_neighbors_dist,
-                distance_matrix_getter_fn=self.distance_matrix_getter,
-                arbitrary_dist_fn=self.arbitrary_vector_dist,
-                arbitrary_neighbors_fn=self.arbitrary_vector_neighbors,
-                evaluator_list=self.evaluators,
-                find_evaluator_by_category_fn=self.find_evaluator,
-                simulate_cluster_fn=Analyst.simulate_cluster)
+            try:
+                data_dict, starred, category = evaluator.calculate(
+                    recalculate_all=False,
 
-            for key, value in data_dict:
-                self._add_info(value, category, key, key in starred)
+                    embeddings=self.space,        draw_progress=self.auto_print,
+                    strings=self.ix_to_s,         metric_str=self.metric_str,
+                    printer_fn=self._print,       metric_fn=self.metric,
+                    as_string_fn=self.as_string,  metric_args=self.metric_args,
+                    as_index_fn=self.as_index,    encoder_fn=self.encode,
+                    as_vector_fn=self.as_vector,  decoder_fn=self.decode,
+                    string_ix_map=self.s_to_ix,   exists_fn=self.exists,
 
-        # # Cluster Algorithms:
-        # for alg in self.cluster_algorithms:
-        #     # function = alg[0]
-        #     # description = alg[1]
-        #     self._print("Analyzing " + alg[1])
+                    generic_neighbor_k_fn=self.neighbor_k,
+                    generic_nearest_fn=self.nearest,
+                    kth_neighbors_ix_fn=self.kth_neighbors,
+                    kth_neighbors_dist_fn=self.kth_neighbors_dist,
+                    distance_matrix_getter_fn=self.distance_matrix_getter,
+                    arbitrary_dist_fn=self.arbitrary_vector_dist,
+                    arbitrary_neighbors_fn=self.arbitrary_vector_neighbors,
+                    metric_in_model_fn=self.metric_in_model,
+                    downstream_fn=self.downstream,
+                    evaluator_list=self.evaluators,
+                    find_evaluator_fn=self.find_evaluator,
+                    simulate_cluster_fn=Analyst.simulate_cluster)
 
-        #     # Custom Callables:
-        #     if callable(alg[0]):
-        #         if alg[1] == "" or alg[1] == None:
-        #             alg[1] = alg[0].__name__
-        #         cluster_list = []
-        #         clusterings = alg[0](self.space)
-        #         for i, c in enumerate(clusterings):
-        #             strings = map(self.decode, c)
-        #             nodes = self.find_nodes_from_string_list(strings)
-        #             cluster_list.append(clusters.Cluster(
-        #                 self.encode, self.metric, self.nearest, strings,
-        #                 vectors=c, nodes=nodes, auto=True, ID=i))
-                
-        #         self.cluster_data[alg[1]] = cluster_list
-        #         self._add_cluster_type_attributes(cluster_list, alg[1])
-            
-        #     # Invalid Non-callables:
-        #     elif (alg[0] not in self.built_in_categories
-        #             and alg[1] not in self.built_in_categories):
-        #         self._print(
-        #             alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
+                # The below compatibilities should be unnecessary because both
+                #   keys and starred come from same source, thus same version.
+                #   Also, they're just going to be printed later, so no others
+                #   need it either.
+                #starred = map(str, starred)
+                #key = str(key)
+                #category = str(category)
 
-    # ANALOGICAL & SPECIFICS:
+                for (key, value) in data_dict.items():
+                    self._add_info(value, category, key, key in starred)
 
-    def _analogical_analysis(self):
-        pass
+            except Exception as e:
+                #print(e)
+                traceback.print_exc()
+                print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR INHERIT FROM Evaluator CLASS?"
+                    % evaluator.CATEGORY)
+
+
+    # SPECIFICS INSPECTION:
 
     def graph(self, hist_key, bins=16):
         """
@@ -646,12 +698,12 @@ class Analyst:
         #   where A_B_compared is A-B if simple_diff, else is A-B/avg(absA,absB)
         # Also adds double-histogram information from the comparison in self,
         #   but not in analyst2.
-        self._print("Bridging Two Universes")
-        print("")
-        if self.description == None: self.description = "ANALYST 1"
-        if analyst2.description == None: desc2 = "ANALYST 2"
+        self._print(u"Bridging Two Universes")
+        print(u"")
+        if self.description == None: self.description = u"ANALYST 1"
+        if analyst2.description == None: desc2 = u"ANALYST 2"
         else: desc2 = analyst2.description
-        print(self.description.upper() + " vs. " + desc2.upper())
+        print(self.description.upper() + u" vs. " + desc2.upper())
 
         # Combine and sort the Categories without losing any of them:
         all_categories = []
@@ -675,7 +727,7 @@ class Analyst:
 
         # Combine and sort the info in each category without losing any:
         for category in all_categories:
-            print(category + ": ")
+            print(category + u": ")
             # Gather info from each:
             try:
                 info_list_1 = self.category_lists[category_indeces[category][0]]
@@ -712,31 +764,31 @@ class Analyst:
                 info2 = (info_list_2[info_indeces[info][1]] if
                     info_indeces[info][1] != None else None)
                 if info1 == info2 == None:
-                    comb = ["???", None, None, "", " "]
+                    comb = [u"???", None, None, u"", u" "]
                 elif info1 == None:
-                    comb = [info2[0], None, info2[1], "",
-                        "*" if info2[2] else " "]
+                    comb = [info2[0], None, info2[1], u"",
+                        u"*" if info2[2] else u" "]
                 elif info2 == None:
-                    comb = [info1[0], info1[1], None, "",
-                        "*" if info1[2] else " "]
+                    comb = [info1[0], info1[1], None, u"",
+                        u"*" if info1[2] else u" "]
                 # Gather and format the rest:
                 else:
                     comb = [
                         info1[0], # Description
                         info1[1], # var1
                         info2[1], # var2
-                        "",       # comparison vars 1 & 2, or combined hist key
-                        "*" if (info1[2] or info2[2]) else " "] # Star
+                        u"",       # comparison vars 1 & 2, or combined hist key
+                        u"*" if (info1[2] or info2[2]) else u" "] # Star
                     # Deal with histogram keys, putting () around them:
-                    if "Histogram Key" in comb[0]:
+                    if u"Histogram Key" in comb[0]:
                         # Add a new key for a combined histogram:
                         self.graph_info.append(("2", info1[1], info2[1]))
-                        comb[1] = "(" + str(comb[1]) + ")"
-                        comb[2] = "(" + str(comb[2]) + ")"
-                        comb[3] = "(" + str(len(self.graph_info) - 1) + ")"
+                        comb[1] = u"(" + str(comb[1]) + u")"
+                        comb[2] = u"(" + str(comb[2]) + u")"
+                        comb[3] = u"(" + str(len(self.graph_info) - 1) + u")"
                 # Then if not strings, more formatting:
-                if not (isinstance(comb[1], basestring) or
-                        isinstance(comb[2], basestring)):
+                if not (isinstance(comb[1], str) or
+                        isinstance(comb[2], str)):
                     if comb[1] != None and comb[2] != None and comb:
                         # Commented versions is just a-b;
                         #   New version is scaled difference, (a-b)/avg(a,b):
@@ -745,35 +797,35 @@ class Analyst:
                         #elif "Histogram Key" not in comb[0]:
                             #comb[3] = comb[1] - comb[2]
                         # For int or float pairs, not keys or strings or Nones:
-                        if "Histogram Key" not in comb[0]:
+                        if u"Histogram Key" not in comb[0]:
                             if simple_diff:
-                                comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
+                                comb[3] = u"{:<11.8f}".format(comb[1] - comb[2])
                             else:
                                 average = (abs(comb[1]) + abs(comb[2]))/2.0
-                                if average != 0: comb[3] = "{:<11.8f}".format(
+                                if average != 0: comb[3] = u"{:<11.8f}".format(
                                     (comb[1] - comb[2])/average)
-                                else: comb[3] = "nan"
+                                else: comb[3] = u"nan"
                     # Format floats differently:
                     if comb[1] != None and comb[1] % 1.0 != 0:
-                        comb[1] = "{:<11.8f}".format(comb[1])
+                        comb[1] = u"{:<11.8f}".format(comb[1])
                     if comb[2] != None and comb[2] % 1.0 != 0:
-                        comb[2] = "{:<11.8f}".format(comb[2])
+                        comb[2] = u"{:<11.8f}".format(comb[2])
                 #else: # Add quotes around printed words:
-                #    if isinstance(comb[1], basestring):
+                #    if isinstance(comb[1], str):
                 #        comb[1] = "\"" + comb[1] + "\""
-                #    if isinstance(comb[2], basestring):
+                #    if isinstance(comb[2], str):
                 #        comb[2] = "\"" + comb[2] + "\""
 
                 # And finally print a line:
-                print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
+                print(u"  {} {:<11}  {:<11}  {:<11} {}{}".format(
                     comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
                 '''
-                elif isinstance(info1[1], basestring) or info1[1] % 1.0 == 0:
+                elif isinstance(info1[1], str) or info1[1] % 1.0 == 0:
                     print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
                         comb[4],
                         info1[1],
                         info2[1],
-                        ("" if (isinstance(info1[1], basestring)
+                        ("" if (isinstance(info1[1], str)
                                 or info1[1] == None or info2[1] == None) else (
                             info1[1]-info2[1])),???????????????
                         comb[4],
@@ -803,7 +855,7 @@ class Analyst:
         # Description and category must be strings.
         #variable = None
         #i = None
-        if "Histogram Key" in description:
+        if u"Histogram Key" in description:
             variable = len(self.graph_info)
             self.graph_info.append(var)
         else: variable = var
@@ -816,39 +868,39 @@ class Analyst:
         self.category_lists[i].append(
             (description, variable, star))
 
-    def _print(self, string=""):
-        if self.auto_print: print("\r" + string + "...")
+    def _print(self, string=u""):
+        if self.auto_print: print(u"\r" + str(string) + u"...")
 
     def print_report(self):
-        self._print("Revealing the Grand Plan")
-        print("")
+        self._print(u"Revealing the Grand Plan")
+        print(u"")
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
-            print(category + ": ")
+            print(category + u": ")
             for cat in self.category_lists[i]:
                 #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
                 #print(cat[0],cat[1],sep="\t") #python3
-                if isinstance(cat[1], basestring) or cat[1] % 1.0 == 0:
+                if isinstance(cat[1], str) or cat[1] % 1.0 == 0:
                     # Keep strings strings and ints ints... :
-                    print("  {} {:<11} {}{}".format(
+                    print(u"  {} {:<11} {}{}".format(
                         "*" if cat[2] else " ", # Stars
-                        ("(" + str(cat[1]) + ")" if "Histogram Key" in cat[0]
+                        (u"(" + str(cat[1]) + u")" if u"Histogram Key" in cat[0]
                             #else ("\"" + cat[1] + "\"" if # Quotes around words
-                            #    isinstance(cat[1], basestring) else cat[1])),
+                            #    isinstance(cat[1], str) else cat[1])),
                             else cat[1]),
-                        "*" if cat[2] else " ", # Stars
+                        u"*" if cat[2] else u" ", # Stars
                         cat[0]))
                 else:
                     # ...But format floats to look uniform:
-                    print("  {} {:<11.8f} {}{}".format(
-                        "*" if cat[2] else " ", # Stars
+                    print(u"  {} {:<11.8f} {}{}".format(
+                        u"*" if cat[2] else u" ", # Stars
                         cat[1],
-                        "*" if cat[2] else " ", # Stars
+                        u"*" if cat[2] else u" ", # Stars
                         cat[0]))
                 #cat_new = [
                 #    cat[0],
                 #    ("{:<11.8f}".format(cat[1]) if (
-                #        cat[1] % 1.0 != 0 and not isinstance(cat[1], basestring)
+                #        cat[1] % 1.0 != 0 and not isinstance(cat[1], str)
                 #        ) else (
                 #            "(" + str(cat[1]) + ")" if "Histogram Key" in cat[0]
                 #            else cat[1])),
@@ -927,7 +979,7 @@ class Analyst:
 
     @staticmethod
     def _file_extension(f_name):
-        return f_name if "." in f_name else f_name + ".dill"
+        return str(f_name) if u"." in str(f_name) else f_name + u".dill"
 
     @staticmethod
     def save(obj, f_name):
@@ -937,7 +989,7 @@ class Analyst:
                 pickle.dump(obj, file)#, pickle.HIGHEST_PROTOCOL)
             return True
         except Exception as e:
-            print("ERROR: Save function expected Analyst object.")
+            print(u"ERROR: Save function expected Analyst object.")
             print(e)
             return False
 
@@ -950,7 +1002,8 @@ class Analyst:
                 #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
                 return an
         except Exception as e:
-            print("ERROR: Unable to load or deserialize Analyst object from file: \"" + name + "\"")
+            print(u"ERROR: Unable to load or deserialize Analyst object from file: '"
+                + name + u"'")
             print(e)
             #raise e
             return None

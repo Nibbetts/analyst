@@ -19,7 +19,8 @@ apart, then they are dispersed well, as like 6 points across the surface of a ba
 
 Overall:
 --------
-- fix all to work in python3
+- fix all to work in python3 - check if evaluator kwargs need to be unicode,
+particularly if run and save in python 2, then go to 3 to run again.
 - test imports
 - documentation
 
@@ -31,10 +32,10 @@ Analyses:
 
 Analyst:
 --------
-- make capacity to find neighbors of nonexistent vector!
+- continue adding make_default_evaluator options for new evaluators.
+- phase in metric_in_model to be used where can. Check if can in nodes/clusters.
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 - make printer recheck data without recalculating in case things have changed?
-- fill in make_default_evaluator
 - add functionality to recompute stars and data but not clusters, or give disclaimer/
 warning that changing it won't work.
 - add functionality to be able to add clusterizers and compute without recomputing,
@@ -50,7 +51,7 @@ Mutual information, Confusion matrix.
 
 Word Group Specific Analysis:
 -----------------------------
-- make downstream function, second_downstream function, maybe one that switches
+- make second_downstream function? And maybe one that switches
 randomly if dist within epsilon
 - use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
 all other clusters?
@@ -91,15 +92,6 @@ Analogical Analyses:
 --------------------
 - EVERYTHING
 - make clusterizer, analogist, and analogyRanker subclasses of evaluator.
-
-
-In [121]: def second_downstream(word):
-     ...:     l = []
-     ...:     n = word
-     ...:     while n not in l:
-     ...:         l.append(n)
-     ...:         n = a.second_nearest(n)
-     ...:     print l
 
 
 

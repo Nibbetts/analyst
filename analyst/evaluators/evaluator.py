@@ -94,8 +94,8 @@ class Evaluator:
         # recalculate_all: whether or not to force it to recompute everything.
         #   Should be rarely, if ever, needed.
         # Available kwargs (always given in case needed):
-        #   space,                      : 2D matrix, the whole vector space.
-        #   show_progress,              : bool, whether user wants printouts.
+        #   embeddings,                 : 2D matrix, the whole vector space.
+        #   draw_progress,              : bool, whether user wants printouts.
         #   strings,                    : list, objects of space, indeces match.
         #   printer_fn,                 : callable, Analyst's printout function.
         #   metric_str,                 : string, name of metric; for scipy.
@@ -115,6 +115,8 @@ class Evaluator:
         #   distance_matrix_getter_fn,  : getter, for the whole distance matrix.
         #   arbitrary_dist_fn,          : callable, dist to each obj in space.
         #   arbitrary_neighbors_fn,     : callable, all ix ordered by proximity.
+        #   metric_in_model_fn,         : getter, fast metric for in-model.
+        #   downstream_fn,              : callable, nearest-neighbor chain.
         #   evaluator_list,             : list, all evaluators the Analyst has.
         #   find_evaluator_fn,          : getter, finds evaluator by category.
         #   simulate_cluster_fn.        : callable, Analyst's cluster simulator.

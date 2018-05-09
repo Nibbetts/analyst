@@ -24,7 +24,7 @@ class HubClusterizer(Clusterizer, object):
     def compute_clusters(
             self, space, show_progress=True, **kwargs):
         strings          = kwargs["strings"]
-        neighbors        = kwargs["kth_neighbors_ix_fn"]
+        neighbors_fn     = kwargs["kth_neighbors_ix_fn"]
         nearest          = kwargs["generic_nearest_fn"]
         metric           = kwargs["metric_fn"]
         encoder          = kwargs["encoder_fn"]
@@ -33,10 +33,11 @@ class HubClusterizer(Clusterizer, object):
 
         # No need to make sure Nodes are computed before Hubs,
         #   since get_nodes ensures this for us, without repeating calculation:
-        node_clusterizer = evaluator_getter(self.node_category,
+        self.node_clusterizer = evaluator_getter(self.node_category,
             force_creation=self.nodal)
-        s_to_node = node_clusterizer.get_string_node_dict() \
-            if node_clusterizer != None else None
+        s_to_node = self.node_clusterizer.get_string_node_dict() \
+            if self.node_clusterizer != None else None
+        neighbors = neighbors_fn(1)
 
         # Calculate potential hubs:
         temp_hubs = []

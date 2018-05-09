@@ -1,6 +1,50 @@
 A Place Where Deprecated Code Goes to Die...
 --------------------------------------------------------------------------------    
 
+    # # Cluster Algorithms:
+    # for alg in self.cluster_algorithms:
+    #     # function = alg[0]
+    #     # description = alg[1]
+    #     self._print("Analyzing " + alg[1])
+
+    #     # Custom Callables:
+    #     if callable(alg[0]):
+    #         if alg[1] == "" or alg[1] == None:
+    #             alg[1] = alg[0].__name__
+    #         cluster_list = []
+    #         clusterings = alg[0](self.space)
+    #         for i, c in enumerate(clusterings):
+    #             strings = map(self.decode, c)
+    #             nodes = self.find_nodes_from_string_list(strings)
+    #             cluster_list.append(clusters.Cluster(
+    #                 self.encode, self.metric, self.nearest, strings,
+    #                 vectors=c, nodes=nodes, auto=True, ID=i))
+            
+    #         self.cluster_data[alg[1]] = cluster_list
+    #         self._add_cluster_type_attributes(cluster_list, alg[1])
+        
+    #     # Invalid Non-callables:
+    #     elif (alg[0] not in self.built_in_categories
+    #             and alg[1] not in self.built_in_categories):
+    #         self._print(
+    #             alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
+
+    # self.cluster_algorithms = []
+    # report_spatial = False
+    # for t in cluster_algorithms:
+    #     if callable(t[0]):
+    #         self.cluster_algorithms.append(t)
+    #     else:
+    #         tag = t[1].lower()
+    #         if tag == "spatial":
+    #             report_spatial = True
+    #             self.categories.append("Spatial")
+    #         elif tag == "all":
+    #             report_spatial = True
+    #             map(self.categories.append, self.built_in_categories)
+    #         else:
+    #             self.categories.append(t[1])
+
     # Nearest, 2nd-nearest, and futhest getters:
     #   Each attempts to return the same type given.
     #   Each ensures neighbors will be calculated before, but not recalculated.

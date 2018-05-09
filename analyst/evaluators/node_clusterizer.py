@@ -31,7 +31,7 @@ class NodeClusterizer(Clusterizer, object):
         metric_args = kwargs["metric_args"]
 
         # Nearest neighbor indeces array:
-        nearest   = neighbors(1)
+        nearest     = neighbors(1)
 
         # Compute Nodes:
         self.clusters = [
@@ -58,7 +58,7 @@ class NodeClusterizer(Clusterizer, object):
     # Overriding (because nodes only have two vectors, need different stats)
     def compute_stats(self, **kwargs):
         printer = kwargs["printer_fn"]
-        space = kwargs["space"]
+        space = kwargs["embeddings"]
 
         self.add_generic_node_stats()
 
@@ -71,8 +71,7 @@ class NodeClusterizer(Clusterizer, object):
             #   I tend to think this is important.
 
             # Alignment Factor
-            printer("Musing over Magnetic Moments \
-                (Calculating Alignment Factor)")
+            printer("Musing over Magnetic Moments (Calculating Alignment Factor)")
             avg_align = np.mean(
                 [n.alignment for n in self.clusters], axis=0)
             avg_align /= np.linalg.norm(avg_align)
@@ -90,7 +89,7 @@ class NodeClusterizer(Clusterizer, object):
 
         if len(self.clusters) > 0:
             # Span Stats
-            self._compute_list_stats([n.span for n in self.clusters],
+            self._compute_list_stats([n.distance for n in self.clusters],
                 "Span", self.data_dict)
 
     # These exist to allow getting of node-specific information with the
