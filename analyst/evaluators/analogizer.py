@@ -36,10 +36,10 @@ class Analogizer(Evaluator, object):
         #   List of lists of words, or equivalent functional structure.
         #   Inner lists, for basic usage, will be of length 4, a:b::c:d.
         #   This will be None if reading from a file.
-        # self.CATEGORY = category  # See parent.
-        # self.data_dict = {}       # See parent.
-        # self.starred = []         # See parent.
-        # self.calculated = False   # See parent.
+        # self.CATEGORY = category       # See parent.
+        # self.data_dict = OrderedDict() # See parent.
+        # self.starred = []              # See parent.
+        # self.calculated = False        # See parent.
 
     # OVERRIDEABLE
     def compute_stats(self, **kwargs):
@@ -56,6 +56,8 @@ class Analogizer(Evaluator, object):
     #   You shouldn't have to override this function:
     def calculate(self, recalculate_all=False, **kwargs):
         if not self.calculated or recalculate_all:
+            if kwargs == {}:
+                print("NOT YET CALCULATED AND NO KWARGS GIVEN!")
             printer = kwargs["printer_fn"]
             show_progress = kwargs["show_progress"]
 

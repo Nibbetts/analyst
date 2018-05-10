@@ -32,6 +32,8 @@ Analyses:
 
 Analyst:
 --------
+- make analyst compare2analysts function take a comparator fn or strings.
+- make function to get k neighbors of an object
 - continue adding make_default_evaluator options for new evaluators.
 - phase in metric_in_model to be used where can. Check if can in nodes/clusters.
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
@@ -92,6 +94,40 @@ Analogical Analyses:
 --------------------
 - EVERYTHING
 - make clusterizer, analogist, and analogyRanker subclasses of evaluator.
+
+
+
+def formatit(data, width=10, parentheses=False, start_at=0):
+    #if parentheses: w = max(9, width)
+    #else: w = max(7, width)
+    w = max(9, width)
+    result = ""
+    if isinstance(data, str) or isinstance(data, bytes) or parentheses:
+        # Strings or Bytestrings
+        result = " " # For negatives on others
+        if parentheses: result += "(" + str(data) + ")"
+        else: result += data
+        format_str = "{:" + str(w) + "}"
+        result = format_str.format(result)
+        if len(result) > w:
+            result += "\n" + " "*(start_at + w)
+    else:
+        if (abs(data) >= 1e4 and not parentheses) \
+                or (abs(data) < 1e-4 and data != 0):
+            # Large or Small
+            format_str = "{: " + str(w) + "." + str(w - 7) + "e}"
+            result = format_str.format(data)
+        elif isinstance(data, int):
+            # Integer
+            format_str = "{:< " + str(w) + "d}"
+            result = format_str.format(int(data))
+        else:
+            # Float
+            format_str = "{: " + str(w - 1) + "." \
+                + str(w - 2 - len(str(int(data)))) + "f}"
+            result = format_str.format(data)
+    return result
+
 
 
 

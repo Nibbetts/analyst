@@ -102,10 +102,10 @@ class Analyst:
 
     BUILT_IN_CATEGORIES = [
         u"Spatial",
-        u"Extremities",
         u"Nodes",
-        u"Hubs",
+        u"Extremities",
         u"Supernodes",
+        u"Hubs",
         u"Nuclei",
         u"Chains",
         u"NCC",
@@ -334,7 +334,7 @@ class Analyst:
         if in_model:
             assert -1 <= k <= 2
             if k == 0: return obj
-            n = k + 1 if k > 0 else k
+            n = k - 1 if k > 0 else k
             i = self.neighbors_getter()[0][self.as_index(obj)][n]
             if isinstance(obj, str) or isinstance(obj, bytes):
                 return self.ix_to_s[i]
@@ -442,21 +442,22 @@ class Analyst:
             distances = np.dot(self.space, np.array([vector]).T.squeeze())
             return distances.argsort()[::-1]
 
-    # These return the kth neighbor of all objects in the space, index to index.
+    # These return the kth neighbor of all objects in the space, index-to-
+    #   index | distance, respectively.
     #   Use negative for furthest, 0 for self, positive for nearest.
     #   Default None will return the whole matrix.
     def kth_neighbors(self, k=None):
         if k == None: return self.neighbors_getter()[0]
         assert -1 <= k <= 2
         if k == 0: return range(len(self.space))
-        n = k + 1 if k > 0 else k
+        n = k - 1 if k > 0 else k
         return self.neighbors_getter()[0][:,n]
 
     def kth_neighbors_dist(self, k=None):
         if k == None: return self.neighbors_getter()[1]
         assert -1 <= k <= 2
         if k == 0: return np.zeros((len(self.space)), dtype=np.uint64)
-        n = k + 1 if k > 0 else k
+        n = k - 1 if k > 0 else k
         return self.neighbors_getter()[1][:,n]
 
     # Computes the downstream nearest neighbor, and lists the path if asked,
@@ -489,13 +490,13 @@ class Analyst:
     # NOTE: This function does NOT force the evaluator to pre-calculate!
     # NOTE: Since categories SHOULD be unique among evaluators,
     #   this function will only return the first match it finds. Or None.
-    def find_evaluator(self, category, force_creation=True):
+    def find_evaluator(self, category, force_creation=False):
         # force_creation: whether or not to create a default evaluator for
         #   built-ins.
         for e in self.evaluators:
-            if e.CATEGORY == category: return e
+            if str(e.CATEGORY) == category: return e
         if force_creation: 
-            return Analyst.make_default_evaluator(category)
+            return Analyst.make_default_evaluator(str(category))
 
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
@@ -504,14 +505,14 @@ class Analyst:
     def make_default_evaluator(category):
         cat = category.lower()
         if cat == u"spatial":
-            pass # FIX THIS!!
+            return Spatializer()
         elif cat == u"nodes":
             return NodeClusterizer()
         elif cat == u"extremities":
             return ExtremityClusterizer()
         elif cat == u"supernodes":
             return SupernodeClusterizer()
-        elif u"hubs" in cat:
+        elif u"hubs" in cat and u"anti" not in cat:
             thresh = 4
             nodal = False
             if u"nodal " in cat:
@@ -536,100 +537,9 @@ class Analyst:
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def _spatial_analysis(self):
-
-        # MEASUREMENTS:
-        #self.distance_matrix_getter()
-        self.neighbors_getter()
-
-        # Centroid, Dispersion, Std Dev, repulsion:
-        self._print(u"Balancing the Continuum")
-        self.centroid = np.mean(self.space, axis=0)
-        self.centroid_length = np.linalg.norm(self.centroid)
-        self.centroid_dist = [self.metric(self.centroid, v, **self.metric_args)
-            for v in tqdm(self.space, desc=u"Counting the Lightyears",
-                disable=(not self.auto_print))]
-        self.dispersion = np.mean(self.centroid_dist, axis=0)
-        self.std_dev = np.std(self.space)
-        centr_min = np.min(self.centroid_dist, axis=0)
-        centr_max = np.max(self.centroid_dist, axis=0)
-        #if print_report:
-        self._add_info(self.ix_to_s[np.argmin([
-            self.metric(self.centroid, v, **self.metric_args) \
-                for v in tqdm(self.space,
-                desc=u"Electing a Ruler", disable=(not self.auto_print))])],
-            u"Spatial", u"Medoid - Obj Nearest to Centroid", star=True)
-        self._add_info(len(self.space), u"Spatial", u"Count")
-        self._add_info(self.centroid_length, u"Spatial", u"Centroid Length")
-        self._add_info(self.dispersion,
-            u"Spatial", u"Dispersion - Centroid Dist Avg", star=True)
-        self._add_info(centr_min, u"Spatial", u"Centroid Dist Min")
-        self._add_info(centr_max, u"Spatial", u"Centroid Dist Max")
-        self._add_info(centr_max - centr_min,
-            u"Spatial", u"Centroid Dist Range")
-        self._add_info(self.centroid_dist,
-            u"Spatial", u"Centroid Dist Histogram Key")
-        self._add_info(self.std_dev, u"Spatial", u"Standard Dev")
-        #self.repulsion = np.mean(
-        #    [self.metric(v, self.encoder(self.nearest(self.objects[i])),
-        #         **self.metric_args)
-        #     for i, v in self.vectors])
-
-        # Nearest Neighbor Info:
-        self._print(u"Building Trade Routes")
-        self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._print(u"Practicing Diplomacy")
-        nearest_min = np.min(self.neighbors_dist[:,0])
-        nearest_max = np.max(self.neighbors_dist[:,0])
-        #if print_report:
-        self._add_info(self.nearest_avg,
-            u"Spatial", u"repulsion - Nearest Dist Avg", star=True)
-        self._add_info(nearest_min, u"Spatial", u"Nearest Dist Min")
-        self._add_info(nearest_max, u"Spatial", u"Nearest Dist Max")
-        self._add_info(nearest_max-nearest_min,
-            u"Spatial", u"Nearest Dist Range", star=True)
-        self._add_info(self.neighbors_dist[:,0],
-            u"Spatial", u"Nearest Dist Histogram Key")
-
-        # Second-Nearest Neighbor Info:
-        self._print(u"Setting Priorities")
-        self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
-        self._print(u"Coming up with Excuses")
-        nearest2_min = np.min(self.neighbors_dist[:,1])
-        nearest2_max = np.max(self.neighbors_dist[:,1])
-        #if print_report:
-        self._add_info(self.nearest2_avg,
-            u"Spatial", u"Second Nearest Dist Avg")
-        self._add_info(nearest2_min, u"Spatial", u"Second Nearest Dist Min")
-        self._add_info(nearest2_max, u"Spatial", u"Second Nearest Dist Max")
-        self._add_info(nearest2_max-nearest2_min,
-            u"Spatial", u"Second Nearest Dist Range")
-        self._add_info(self.neighbors_dist[:,1],
-            u"Spatial", u"Second Nearest Dist Histogram Key")
-
-        #Furthest Neighbor Info:
-        self._print(u"Making Enemies")
-        self.furthest_avg = np.mean(self.neighbors_dist[:,2])
-        self._print(u"Claiming Frontiers")
-        furthest_min = np.min(self.neighbors_dist[:,2])
-        furthest_max = np.max(self.neighbors_dist[:,2])
-        #far = np.argmax(self.neighbors_dist[:,2])
-        #if print_report:
-        self._add_info(self.furthest_avg, u"Spatial", u"Furthest Dist Avg")
-        self._add_info(furthest_min, u"Spatial", u"Furthest Dist Min")
-        self._add_info(furthest_max,
-            u"Spatial", u"Broadness - Furthest Dist Max", star=True)
-        self._add_info(furthest_max - furthest_min,
-            u"Spatial", u"Furthest Dist Range")
-        self._add_info(self.neighbors_dist[:,2],
-            u"Spatial", u"Furthest Dist Histogram Key")
-
-
     def _analysis(self):
         # # NOTE: The built-in algorithms are not included in the loop below
         # #   because some of them depend on each other, and must be in order.
-
-        self._spatial_analysis()
 
         # Run the Evaluations:
         for evaluator in self.evaluators:
@@ -637,6 +547,7 @@ class Analyst:
                 data_dict, starred, category = evaluator.calculate(
                     recalculate_all=False,
 
+                    # NOTE: The rest are the kwargs:
                     embeddings=self.space,        draw_progress=self.auto_print,
                     strings=self.ix_to_s,         metric_str=self.metric_str,
                     printer_fn=self._print,       metric_fn=self.metric,
@@ -669,7 +580,7 @@ class Analyst:
                 for (key, value) in data_dict.items():
                     self._add_info(value, category, key, key in starred)
 
-            except Exception as e:
+            except Exception: # as e:
                 #print(e)
                 traceback.print_exc()
                 print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR INHERIT FROM Evaluator CLASS?"
@@ -880,7 +791,8 @@ class Analyst:
             for cat in self.category_lists[i]:
                 #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
                 #print(cat[0],cat[1],sep="\t") #python3
-                if isinstance(cat[1], str) or cat[1] % 1.0 == 0:
+                if isinstance(cat[1], str) or isinstance(cat[1], bytes) \
+                        or cat[1] % 1.0 == 0:
                     # Keep strings strings and ints ints... :
                     print(u"  {} {:<11} {}{}".format(
                         "*" if cat[2] else " ", # Stars

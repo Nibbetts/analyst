@@ -1,22 +1,9 @@
 import numpy as np
 from abc import abstractmethod
+from collections import OrderedDict
 
 from ..clustertypes.cluster import Cluster
 
-"""
-        .          .     .
-      .  ..  .        .            .
-     .. :...   .         .            ..            .
-      . .::  :    ..  ..  
-    .    ..   .      .:: ..     .
-        .    .     . .: .                 
-                :      .   .               .
-      ..            .       .
-            . :                     =-o                  *
-           . . : .        .             .
-     .       .           .  .
-          .           .        "Space, the Final Frontier..."
-"""
 
 class Evaluator:
     """
@@ -51,7 +38,7 @@ class Evaluator:
         #   since instances may be given different starting parameters,
         #   thus needing new labels to disambiguate.
         #   NOTE: Treat categories as case-sensitive.
-        self.data_dict = {}
+        self.data_dict = OrderedDict()
         #   Additional information to be included in the printed report.
         #   Keys are attribute name strings, vals are ints, floats, strings, or
         #   lists if "Histogram Key" in key.
@@ -96,7 +83,7 @@ class Evaluator:
         # Available kwargs (always given in case needed):
         #   embeddings,                 : 2D matrix, the whole vector space.
         #   draw_progress,              : bool, whether user wants printouts.
-        #   strings,                    : list, objects of space, indeces match.
+        #   strings,                    : list, objects in space, indeces match.
         #   printer_fn,                 : callable, Analyst's printout function.
         #   metric_str,                 : string, name of metric; for scipy.
         #   metric_fn,                  : callable, the one Analyst was given.
@@ -129,8 +116,10 @@ class Evaluator:
         #   cluster simulator is included only with feelings of reservation.
 
         if not self.calculated or recalculate_all:
+            if kwargs == {}:
+                print("NOT YET CALCULATED AND NO KWARGS GIVEN!")
             printer = kwargs["printer_fn"]
-            show_progress = kwargs["show_progress"]
+            show_progress = kwargs["draw_progress"]
 
             if show_progress:
                 printer("Evaluating " + self.CATEGORY)

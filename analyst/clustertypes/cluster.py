@@ -33,6 +33,7 @@ class Cluster:
         self.encoder = encoder
         self.metric = metric
         self.nearest = nearest
+        self.vectors = vectors
         self.nodes = nodes
         self.auto = auto
         self.metric_args = metric_args
@@ -40,14 +41,14 @@ class Cluster:
         # self.vectors = []
         # self.centroid = []
         # self.centroid_length = 0
+        # self.centroid_distances = []
         # self.dispersion = 0
         # self.std_dev = 0
         # self.repulsion = 0
         # self.focus = []
         # self.skew = 0
         # self.medoid = None
-        self.vectors = (
-            vectors if vectors != None else map(self.encoder, self.objects))
+
         if self.auto: self.calculate()
 
     def __iadd__(self, B):
@@ -60,6 +61,7 @@ class Cluster:
     def __add__(self, B):
         return Cluster(
             self.encoder, self.metric, nearest=self.nearest,
+            vectors=np.vstack((self.vectors, B.vectors)),
             objects=self.objects + B.objects, nodes=self.nodes + B.nodes,
             auto=self.auto & B.auto, ID=None, name=None, **self.metric_args)
 
@@ -81,8 +83,8 @@ class Cluster:
             + ",\n\tstdandard dev: " + str(self.std_dev) \
             + ",\n\trepulsion:     " + str(self.repulsion) \
             + ",\n\tskew:          " + str(self.skew) \
-            + ",\n\tnodes:         " + [str(node) for node in self.nodes] \
-            + ",\n\tobjects:       " + [str(obj) for obj in self.objects] + " )"
+            + ",\n\tnodes:         " + str([str(node) for node in self.nodes]) \
+            + ",\n\tobjects:       " + str([str(o) for o in self.objects]) +" )"
         #if len(self.objects) > 0:
         #    result += str(self.objects[0])
         #    for obj in self.objects[1:]:
@@ -99,6 +101,9 @@ class Cluster:
         self.nodes += node_list
 
     def calculate(self):
+        if self.vectors is None or self.vectors is []:
+            self.vectors = map(self.encoder, self.objects)
+
         #self.centroid = sum(self.vectors) / len(self.vectors)
         self.centroid = np.mean(self.vectors, axis=0)
         self.centroid_length = np.linalg.norm(self.centroid)
@@ -114,9 +119,9 @@ class Cluster:
         # Calculate Dispersion:
         #self.dispersion = sum([self.metric(self.centroid, vec)
         #    for vec in self.vectors]) / len(self.objects)
-        self.dispersion = np.mean([self.metric(
-                self.centroid, vec, **self.metric_args)
-            for vec in self.vectors], axis=0)
+        self.centroid_distances = [self.metric(
+                self.centroid, vec, **self.metric_args) for vec in self.vectors]
+        self.dispersion = np.mean(self.centroid_distances, axis=0)
 
         # Calculate Standard Deviation:
         self.std_dev = np.std(self.vectors)

@@ -22,8 +22,9 @@ class SupernodeClusterizer(NodeClusterizer, object):
 
         # No need to make sure Nodes are computed before Supernodes,
         #   since get_nodes ensures this for us:
-        node_clusterizer = clusterizer_getter(self.node_category)
-        self.nodes = node_clusterizer.get_nodes(space, show_progress, **kwargs)
+        node_clusterizer = clusterizer_getter(
+            self.node_category, force_creation=True)
+        self.nodes = node_clusterizer.get_clusters(**kwargs)
 
         # Compute distance matrix and nearest neighbors for node centroids:
         centroids = [n.centroid for n in self.nodes]
@@ -52,7 +53,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
     # Overriding (because nodes only have two vectors, need different stats)
     def compute_stats(self, **kwargs):
         printer = kwargs["printer_fn"]
-        space = kwargs["space"]
+        space = kwargs["embeddings"]
 
         printer("Measuring their Magnitude (Calculating Supernode Span)")
         self.add_generic_node_stats()

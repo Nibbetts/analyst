@@ -38,7 +38,7 @@ class Clusterizer(Evaluator, object):
         #   Should contain a list of lists of vectors after compute_clusters is
         #   called. Also only used for detailed inspection, or is used if
         #   vectors_to_clusters is not overridden.
-        # self.data_dict = {}
+        # self.data_dict = OrderedDict()
         #   Additional information to be included in the printed report.
         #   Keys are attribute name strings, vals are ints, floats, strings, or
         #   lists if "Histogram Key" in key.
@@ -134,9 +134,9 @@ class Clusterizer(Evaluator, object):
                 "Standard Dev", self.data_dict)
             self._compute_list_stats([c.repulsion  for c in self.clusters],
                 "Repulsion",   self.data_dict)
-            self._compute_list_stats([c.skew       for c in self.clusters],
-                "Skew",        self.data_dict)
             if self.node_clusterizer != None:
+                self._compute_list_stats([c.skew       for c in self.clusters],
+                    "Skew",        self.data_dict)
                 self._compute_list_stats([len(c.nodes) for c in self.clusters],
                     "Node Count",  self.data_dict)
 
@@ -146,6 +146,8 @@ class Clusterizer(Evaluator, object):
     def calculate(self, recalculate_all=False, **kwargs):
         # For explanations of parameters, see parent Evaluator class.
         if not self.calculated or recalculate_all:
+            if kwargs == {}:
+                print("NOT YET CALCULATED AND NO KWARGS GIVEN!")
             space = kwargs["embeddings"]
             show_progress = kwargs["draw_progress"]
             printer = kwargs["printer_fn"]

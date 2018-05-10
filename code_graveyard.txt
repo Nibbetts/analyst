@@ -1,6 +1,94 @@
 A Place Where Deprecated Code Goes to Die...
 --------------------------------------------------------------------------------    
 
+    def _spatial_analysis(self):
+
+        # MEASUREMENTS:
+        #self.distance_matrix_getter()
+        self.neighbors_getter()
+
+        # Centroid, Dispersion, Std Dev, repulsion:
+        self._print(u"Balancing the Continuum")
+        self.centroid = np.mean(self.space, axis=0)
+        self.centroid_length = np.linalg.norm(self.centroid)
+        self.centroid_dist = [self.metric(self.centroid, v, **self.metric_args)
+            for v in tqdm(self.space, desc=u"Counting the Lightyears",
+                disable=(not self.auto_print))]
+        self.dispersion = np.mean(self.centroid_dist, axis=0)
+        self.std_dev = np.std(self.space)
+        centr_min = np.min(self.centroid_dist, axis=0)
+        centr_max = np.max(self.centroid_dist, axis=0)
+        #if print_report:
+        self._add_info(self.ix_to_s[np.argmin([
+            self.metric(self.centroid, v, **self.metric_args) \
+                for v in tqdm(self.space,
+                desc=u"Electing a Ruler", disable=(not self.auto_print))])],
+            u"Spatial", u"Medoid - Obj Nearest to Centroid", star=True)
+        self._add_info(len(self.space), u"Spatial", u"Count")
+        self._add_info(self.centroid_length, u"Spatial", u"Centroid Length")
+        self._add_info(self.dispersion,
+            u"Spatial", u"Dispersion - Centroid Dist Avg", star=True)
+        self._add_info(centr_min, u"Spatial", u"Centroid Dist Min")
+        self._add_info(centr_max, u"Spatial", u"Centroid Dist Max")
+        self._add_info(centr_max - centr_min,
+            u"Spatial", u"Centroid Dist Range")
+        self._add_info(self.centroid_dist,
+            u"Spatial", u"Centroid Dist Histogram Key")
+        self._add_info(self.std_dev, u"Spatial", u"Standard Dev")
+        #self.repulsion = np.mean(
+        #    [self.metric(v, self.encoder(self.nearest(self.objects[i])),
+        #         **self.metric_args)
+        #     for i, v in self.vectors])
+
+        # Nearest Neighbor Info:
+        self._print(u"Building Trade Routes")
+        self.nearest_avg = np.mean(self.neighbors_dist[:,0])
+        self._print(u"Practicing Diplomacy")
+        nearest_min = np.min(self.neighbors_dist[:,0])
+        nearest_max = np.max(self.neighbors_dist[:,0])
+        #if print_report:
+        self._add_info(self.nearest_avg,
+            u"Spatial", u"repulsion - Nearest Dist Avg", star=True)
+        self._add_info(nearest_min, u"Spatial", u"Nearest Dist Min")
+        self._add_info(nearest_max, u"Spatial", u"Nearest Dist Max")
+        self._add_info(nearest_max-nearest_min,
+            u"Spatial", u"Nearest Dist Range", star=True)
+        self._add_info(self.neighbors_dist[:,0],
+            u"Spatial", u"Nearest Dist Histogram Key")
+
+        # Second-Nearest Neighbor Info:
+        self._print(u"Setting Priorities")
+        self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
+        self._print(u"Coming up with Excuses")
+        nearest2_min = np.min(self.neighbors_dist[:,1])
+        nearest2_max = np.max(self.neighbors_dist[:,1])
+        #if print_report:
+        self._add_info(self.nearest2_avg,
+            u"Spatial", u"Second Nearest Dist Avg")
+        self._add_info(nearest2_min, u"Spatial", u"Second Nearest Dist Min")
+        self._add_info(nearest2_max, u"Spatial", u"Second Nearest Dist Max")
+        self._add_info(nearest2_max-nearest2_min,
+            u"Spatial", u"Second Nearest Dist Range")
+        self._add_info(self.neighbors_dist[:,1],
+            u"Spatial", u"Second Nearest Dist Histogram Key")
+
+        #Furthest Neighbor Info:
+        self._print(u"Making Enemies")
+        self.furthest_avg = np.mean(self.neighbors_dist[:,2])
+        self._print(u"Claiming Frontiers")
+        furthest_min = np.min(self.neighbors_dist[:,2])
+        furthest_max = np.max(self.neighbors_dist[:,2])
+        #far = np.argmax(self.neighbors_dist[:,2])
+        #if print_report:
+        self._add_info(self.furthest_avg, u"Spatial", u"Furthest Dist Avg")
+        self._add_info(furthest_min, u"Spatial", u"Furthest Dist Min")
+        self._add_info(furthest_max,
+            u"Spatial", u"Broadness - Furthest Dist Max", star=True)
+        self._add_info(furthest_max - furthest_min,
+            u"Spatial", u"Furthest Dist Range")
+        self._add_info(self.neighbors_dist[:,2],
+            u"Spatial", u"Furthest Dist Histogram Key")
+
     # # Cluster Algorithms:
     # for alg in self.cluster_algorithms:
     #     # function = alg[0]

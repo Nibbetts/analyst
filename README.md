@@ -46,7 +46,7 @@ The objects encoded in the space must be some sort of strings, or the internal c
 - **repulsion:** as used here, avg distance of nodes to their nearest neighbors. While not a real measure of spatial or volumentric density, this is a metric for relationships between encoded objects, and thus could potentially be used as a density metric if inverted.
 - **dispersion:** avg distance of nodes to the center of their distribution
 - **focus:** averaged location of nodes in a cluster; concentration center.
-- **skew:** distance from focus to center.
+- **skew:** distance from focus to centroid.
 - **anti-hub:** list of objects whose furthest are all the same outlier.
 - **contingent cluster:** other clusters whose centroid is closer than own //ADD STUFF!! dispersion, to which self is closer than other's dispersion.
 - **contingency:** distance from a cluster to its nearest neighbor // ADD STUFF! cluster, minus its own dispersion
