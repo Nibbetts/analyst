@@ -1,7 +1,7 @@
 # Compatibility for python 2 and 3:
 from __future__ import print_function
 from __future__ import absolute_import
-from builtins import str
+from builtins import str, bytes
 from io import open
 
 # Normal Packages:
@@ -528,7 +528,8 @@ class Analyst:
             return HubClusterizer(threshold=thresh, nodal=nodal, category=cat)
         # ADD STUFF!!
         else:
-            print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '" + category + u"'! SKIPPING IT.")
+            print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '"
+                + category + u"'! SKIPPING IT.")
             return None
 
     def add_evaluators(self, *args):
@@ -537,8 +538,10 @@ class Analyst:
             version = 2
             category = evaluator.CATEGORY
             while category in self.categories:
-                category = evaluator.CATEGORY + " (" + str(version) + ")"
+                category = evaluator.CATEGORY + u" (" + str(version) + u")"
             evaluator.CATEGORY = category
+
+        warning = u"WARNING: Evaluator category '{}' already exists! {} it."
 
         # Add evaluators and categories
         for e in args:
@@ -551,21 +554,23 @@ class Analyst:
                                 self.categories.append(evaluator.CATEGORY)
                                 self.evaluators.append(evaluator)
                             else:
-                                self._print("WARNING: Evaluator category '{}' already exists! SKIPPING it.\n".format(evaluator.CATEGORY))
+                                self._print(warning.format(
+                                    evaluator.CATEGORY, u"SKIPPING"))
                 else: # If keyword matching a built-in
                     evaluator = Analyst.make_default_evaluator(e)
                     if evaluator != None:
                         if evaluator.CATEGORY in self.categories:
-                            self._print("WARNING: Evaluator category '{}' already exists! RENAMING it.\n".format(evaluator.CATEGORY))
+                            self._print(warning.format(
+                                evaluator.CATEGORY, u"RENAMING"))
                             rename_evaluator(evaluator)
                         self.categories.append(evaluator.CATEGORY)
                         self.evaluators.append(evaluator)
             else: # If actual evaluator object
                 if e != None:
-                    if evaluator.CATEGORY in self.categories:
-                        self._print("WARNING: Evaluator category '{}' already exists! RENAMING it.\n".format(evaluator.CATEGORY))
-                        rename_evaluator(evaluator)
-                    self.categories.append(evaluator.CATEGORY)
+                    if e.CATEGORY in self.categories:
+                        self._print(warning.format(e.CATEGORY, u"RENAMING"))
+                        rename_evaluator(e)
+                    self.categories.append(e.CATEGORY)
                     self.evaluators.append(e)
 
         # Modify category_lists to match categories
@@ -646,7 +651,8 @@ class Analyst:
 
     # COMPARATIVE:
 
-    def _formatit(self, data, width=10, parentheses=False, start_at=0):
+    @staticmethod
+    def _formatit(data, width=10, parentheses=False, start_at=0):
         #if parentheses: w = max(9, width)
         #else: w = max(7, width)
         w = max(9, width)
@@ -660,8 +666,8 @@ class Analyst:
             else: result += data
             format_str = "{:" + str(w) + "}"
             result = format_str.format(result)
-            #if len(result) > w:
-            #    result += "\n" + " " * (start_at + w)
+            if len(result) > w:
+                result += "\n" + " " * (start_at + w)
         else:
             if (abs(data) >= 1e4 and not parentheses) \
                     or (abs(data) < 1e-4 and data != 0):
@@ -678,45 +684,45 @@ class Analyst:
                     + str(w - 2 - len(str(int(abs(data))))) + "f}"
                 result = format_str.format(data)
         return result
+    
+    # My own diff function, which emphasizes numbers further from zero:
+    @staticmethod
+    def weighted_difference(a, b):
+        average = (abs(a) + abs(b))/2.0
+        if average != 0: return (a - b)/average
+        else: return np.nan
 
+    # Compare this analyst with another, data per data.
     def compare_difference(self, analyst2, w=10, comparator=u"simple"):
         # Prints a full report with three numbers for each property
         #   instead of one - val_for_A, val_for_B, A_B_compared.
         # comparator:
-        #   callable (may compare strings, may return ""), or a built-in:
+        #   callable (not used on strings or None), or a built-in:
+        #   "none" or None: don't print the third column
         #   "simple": A - B
         #   "weighted": (A - B) / avg(abs(A), abs(B))
         # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
         #   Total width will be: (3 + (w + 1)*num_cols + 2 + len(description))
-        # NOTE: Adds double-histogram information from the comparison in self,
-        #   BUT NOT IN analyst2.
+        # Returns: a grapher object with double-histogram information
+        #   from the comparison
         self._print(u"Bridging Two Universes",
             u"Building One-to-one Comparison")
         print(u"")
-
-        # Simple difference function:
-        def difference(a, b):
-            if isinstance(a, str) or isinstance(a, bytes) or \
-                    isinstance(b, str) or isinstance(b, bytes): return ""
-            else: return a - b
         
-        # My own version, which emphasizes numbers further from zero:
-        def weighted_difference(a, b):
-            if isinstance(a, str) or isinstance(a, bytes) or \
-                    isinstance(b, str) or isinstance(b, bytes): return ""
-            else:
-                average = (abs(a) + abs(b))/2.0
-                if average != 0: return (a - b)/average
-                else: return np.nan
-
-        if self.description == None: self.description = u"ANALYST 1"
+        # Descriptions to use:
+        if self.description == None: desc = u"ANALYST 1"
+        else: desc = self.description
         if analyst2.description == None: desc2 = u"ANALYST 2"
         else: desc2 = analyst2.description
-        print(self.description.upper() + u" vs. " + desc2.upper())
+        print(desc.upper() + u" vs. " + desc2.upper())
 
+        # Comparator:
         if callable(comparator): comparison = comparator
-        elif comparator.lower() == u"simple": comparison = difference
-        else: comparison = weighted_difference
+        elif comparator == None or comparator.lower() == "none":
+            comparator = None
+            comparison = lambda a, b: ""
+        elif comparator.lower() == u"simple": comparison = lambda a, b: a - b
+        else: comparison = Analyst.weighted_difference
 
         # Combine and sort the Categories without losing any of them:
         all_categories = []
@@ -794,23 +800,169 @@ class Analyst:
                 if comb[1] != None and comb[2] != None:
                     if u"Histogram Key" in comb[0]:
                         # Add a new key for a combined histogram:
-                        self.graph_info.append((u"combo", info1[1], info2[1]))
+                        self.graph_info.append((u"c", info1[1], info2[1]))
                         comb[3] = len(self.graph_info) - 1
-                    else: comb[3] = comparison(comb[1], comb[2])
+                    elif not (isinstance(comb[1], str) or \
+                            isinstance(comb[1], bytes) or \
+                            isinstance(comb[2], str) or \
+                            isinstance(comb[2], bytes)):
+                        comb[3] = comparison(comb[1], comb[2])
                 
                 # Formatting:
-                comb[1] = self._formatit(comb[1], w, is_hist, 3)
-                comb[2] = self._formatit(comb[2], w, is_hist, 3+(w+1))
-                comb[3] = self._formatit(comb[3], w, is_hist, 3+(w+1)*2)
+                comb[1] = Analyst._formatit(comb[1], w, is_hist, 3)
+                comb[2] = Analyst._formatit(comb[2], w, is_hist, 3+(w+1))
+                comb[3] = Analyst._formatit(comb[3], w, is_hist, 3+(w+1)*2)
 
                 # And finally print a line:
-                print(u"  {}{} {} {} {} {}".format(
+                if comparator == None:
+                    print(u"  {}{} {} {} {}".format(
+                        comb[4], comb[1], comb[2], comb[4], comb[0]))
+                else: print(u"  {}{} {} {} {} {}".format(
                     comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
 
     @staticmethod
-    def compare(digits=10, comparator=u"std", *ana_list):
-        # Lists side by side the values for each analyst in the list.
-        pass
+    def compare(ana_list, w=10, comparators=[u"all"]):
+        # Lists side by side the values for each analyst in the list,
+        #   as well as a column for each comparator, run on that stat.
+        # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
+        #   Total width will be: (6 + (w + 1)*(an + comp) + len(description))
+        # comparator:
+        #   empty list: no comparison columns
+        #   callable (Takes list of available values; does NOT need to handle
+        #       strings or None), or a built-in:
+        #   "all": all builtins
+        #   "std": standard deviation across the stat
+        #   "avg" or "average": average across the stat
+        #   "max" or "maximum": maximum value
+        #   "min" or "minimum": minimum value
+        #   "rng" or "range": max value minus min value
+        # ana_list: a list of analysts. Kinda thought that was clear... :)
+        # Returns: a grapher object with multi-histogram information from the!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #   the comparison.
+        assert len(ana_list) > 0
+        ana_list[0]._print(u"Bridging Two Universes",
+            u"Building One-to-one Comparison")
+        print(u"")
+
+        # Descriptions to use:
+        title = u"Comparison:"
+        descriptions = []
+        for i, a in enumerate(ana_list):
+            if a.description == None:
+                title += u" ANALYST " + str(i + 1)
+                descriptions.append(u"ANALYST " + str(i + 1))
+            else:
+                title += " " + a.description.upper()
+                descriptions.append(a.description.upper())
+            if i < len(ana_list) - 1: title += ","
+        print(title)
+
+        # Comparator:
+        comparisons = []
+        def rng(l): return np.max(l) - np.min(l)
+        for i, c in enumerate(comparators):
+            if callable(c): comparisons.append(c)
+            else: 
+                word = c.lower()
+                if word == u"all":
+                    if np.std not in comparisons: comparisons.append(np.std)
+                    if np.mean not in comparisons: comparisons.append(np.mean)
+                    if np.max not in comparisons: comparisons.append(np.max)
+                    if np.min not in comparisons: comparisons.append(np.min)
+                    if rng not in comparisons: comparisons.append(rng)
+                elif word == u"std" and np.std not in comparisons:
+                    comparisons.append(np.std)
+                elif (word == u"avg" or word == u"average") \
+                    and np.mean not in comparisons: comparisons.append(np.mean)
+                elif (word == u"max" or word == u"maximum") \
+                    and np.max not in comparisons: comparisons.append(np.max)
+                elif (word == u"min" or word == u"minimum") \
+                    and np.min not in comparisons: comparisons.append(np.min)
+                elif (word == u"rng" or word == u"range") \
+                    and rng not in comparisons: comparisons.append(rng)
+
+        # Column Headers:
+        title_string = u"   " + u"{} " * len(ana_list) + u"|" + \
+            "{} " * len(comparisons) + u"  PROPERTY"
+        titles = descriptions + [c.__name__.upper() for c in comparisons]
+        s = 3
+        for i, t in enumerate(titles):
+            titles[i] = Analyst._formatit(t, w, False, s)
+            s += w + 1
+            if i == len(ana_list): s += 1
+        print(title_string.format(*titles))
+
+        # Line Template:
+        line_string = u"  {}" + u"{} " * len(ana_list) + u"|" + \
+            u"{} " * len(comparisons) + u"|{}{}"
+        #graphs = []
+
+        # Helper function; All the work to print one category:
+        def print_category(c):
+            print(c + u":")
+            # Get the information from this category in each Analyst:
+            category_lists = []
+            for a in ana_list:
+                try:
+                    index = a.categories.index(c)
+                    category_lists.append(a.category_lists[index])
+                except: category_lists.append(None)
+            
+            # Collect data:
+            descriptions = []
+            desc_lower = set()
+            stars = {}
+            values = {}
+            for a, l in enumerate(category_lists): # a is index of analyst
+                if l is not None:
+                    for t in l:
+                        desc = t[0].lower()
+                        values[(a, desc)] = t[1]
+                        if desc not in desc_lower:
+                            desc_lower.add(desc)
+                            descriptions.append(t[0])
+                            stars[desc] = t[2]
+                        else: stars[desc] = stars[desc] or t[2]
+
+            # Print lines:
+            for desc in descriptions:
+                d = desc.lower()
+                is_hist = u"histogram key" in d
+
+                # Gather Data:
+                datalist = [values[(a, d)] if (a, d) in values else u"" \
+                    for a in range(len(ana_list))]
+                # Comparisons:
+                numbers = filter(lambda a: not isinstance(a, str) \
+                    and not isinstance(a, bytes), datalist)
+                if numbers == [] or is_hist:
+                    comps = [u""] * len(comparisons)
+                else: comps = [comp(numbers) for comp in comparisons]
+                # Histograms:
+                #if is_hist:
+                #    if comps == []!!: comps = [len(graphs)]
+                #    else: comps[0] = len(graphs)
+                #    #keys = [datalist[i] if data]!!!
+                #    graphs.append(tuple("c") + tuple([a.graph_info[...]]))
+                # Formatting:
+                data = []
+                s = 3
+                for i, v in enumerate(datalist + comps):
+                    data.append(Analyst._formatit(v, w, is_hist, s))
+                    s += w + 1
+                    if i == len(ana_list): s += 1
+                star = u"*" if stars[d] else u" "
+                data = [star] + data + [star, desc]
+                print(line_string.format(*data))
+
+        # Put it all together - Loop through and print each category in order:
+        categories = []
+        for a in ana_list:
+            for c in a.categories:
+                if c not in categories:
+                    categories.append(c)
+                    print_category(c)
+
 
 
     #--------------------------------------------------------------------------#
@@ -853,7 +1005,7 @@ class Analyst:
             for cat in self.category_lists[i]:
                 print(u"  {}{} {}{}".format(
                     "*" if cat[2] else u" ", # Stars
-                    self._formatit(cat[1], w, u"Histogram Key" in cat[0], 3),
+                    Analyst._formatit(cat[1], w, u"Histogram Key" in cat[0], 3),
                     u"*" if cat[2] else u" ", # Stars
                     cat[0]))
 

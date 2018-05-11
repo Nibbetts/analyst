@@ -13,11 +13,14 @@ Overall:
 --------
 - decide whether it is better to have it be able to save live objects and continue
 computing, or whether it is better to have it be backwards compatibile by only
-storing pure data. Or fix problem w/ hybrid?
+storing pure data. Or fix problem w/ hybrid? OR MAKE NEW INSTANCE IN LOAD FUNCTION!
 - fix all to work in python3 - check if evaluator kwargs need to be unicode,
 particularly if run and save in python 2, then go to 3 to run again.
 - test imports
 - documentation
+- update metric_args to use a partial function instead, from functtools.
+Sholdn't interfere with scipy because of metric_str? Use update_wrapper, python3 book pg 145.
+Or if not functtools.partial, then functtools.partialmethod, or simple decorator.
 
 Analyses:
 ---------
@@ -31,9 +34,15 @@ glove vectors
 FastText
 word2vec
 conceptnet numberbatch
+universal sentence encoder with one word embeddings
+
+*** DO COMPARISON AND SEND TO NANCY, ALONG W/ MY ANALYSIS ON WHAT THE NUMBERS MEAN
 
 Analyst:
 --------
+- decide if multi-comparison needs grapher....
+- make grapher object, and have analyst have it as a data member - analyst's graph
+function just call's its grapher's graph function.
 - make delete_evaluator function, and function to make it printable if not?
 - make ability to compare two+ categories side-by-side, like as 2 analysts.
 - make analyst compare2analysts function take a comparator fn or strings.
