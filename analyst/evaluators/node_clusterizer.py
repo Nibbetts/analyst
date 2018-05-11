@@ -29,17 +29,16 @@ class NodeClusterizer(Clusterizer, object):
         metric      = kwargs["metric_fn"]
         neighbors   = kwargs["kth_neighbors_ix_fn"]
         metric_args = kwargs["metric_args"]
+        printer     = kwargs["printer_fn"]
 
         # Nearest neighbor indeces array:
         nearest     = neighbors(1)
 
         # Compute Nodes:
+        printer("Watching the Galaxies Coelesce", "Computing Nodes")
         self.clusters = [
             Node(strings[i], strings[nearest[i]], encode, metric, **metric_args)
-            for i in tqdm(
-                range(len(strings)),
-                desc="Watching the Galaxies Coelesce (Computing Nodes)",
-                disable=(not show_progress))
+            for i in tqdm(range(len(strings)), disable=(not show_progress))
             if (i == nearest[nearest[i]]
                 and i < nearest[i])]
 
@@ -64,14 +63,15 @@ class NodeClusterizer(Clusterizer, object):
 
         if len(self.clusters) > 0:
             # Nodal Factor
-            printer("Comparing the Cosmos (Calculating Nodal Factor)")
+            printer("Comparing the Cosmos", "Calculating Nodal Factor")
             self.data_dict["Nodal Factor"] = (
                 len(self.clusters)*2.0/float(len(space)))
             self.add_star("Nodal Factor")
             #   I tend to think this is important.
 
             # Alignment Factor
-            printer("Musing over Magnetic Moments (Calculating Alignment Factor)")
+            printer("Musing over Magnetic Moments",
+                "Calculating Alignment Factor")
             avg_align = np.mean(
                 [n.alignment for n in self.clusters], axis=0)
             avg_align /= np.linalg.norm(avg_align)

@@ -1,16 +1,8 @@
 nate@hatch:~/Projects/analyst$ python
-Python 2.7.12 (default, Dec  4 2017, 14:50:18) 
-[GCC 5.4.0 20160609] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
 >>> import analyst
 >>> a = analyst.Analyst.load("/home/nate/Projects/an_scholar4000_real.dill")
 
 
-write analogical analyses to compare:
-glove vectors
-FastText
-word2vec
-conceptnet numberbatch
 
 
 There aren't regions in the space, per se. If things are often around 90 degrees
@@ -19,6 +11,9 @@ apart, then they are dispersed well, as like 6 points across the surface of a ba
 
 Overall:
 --------
+- decide whether it is better to have it be able to save live objects and continue
+computing, or whether it is better to have it be backwards compatibile by only
+storing pure data. Or fix problem w/ hybrid?
 - fix all to work in python3 - check if evaluator kwargs need to be unicode,
 particularly if run and save in python 2, then go to 3 to run again.
 - test imports
@@ -26,12 +21,21 @@ particularly if run and save in python 2, then go to 3 to run again.
 
 Analyses:
 ---------
+- compare before adn after being in an RNN. Norms, and also performance on analogies.
+- find which stats are most indicative of success, then add those into a loss function!!
 - compare google's universal sentence encoder used on words with fastext etc
 - various hub configurations side by side
 - (my, in purple notebook) outlier count in small space vs large, and node count.
+- write analogical analyses to compare:
+glove vectors
+FastText
+word2vec
+conceptnet numberbatch
 
 Analyst:
 --------
+- make delete_evaluator function, and function to make it printable if not?
+- make ability to compare two+ categories side-by-side, like as 2 analysts.
 - make analyst compare2analysts function take a comparator fn or strings.
 - make function to get k neighbors of an object
 - continue adding make_default_evaluator options for new evaluators.
@@ -40,11 +44,6 @@ Analyst:
 - make printer recheck data without recalculating in case things have changed?
 - add functionality to recompute stars and data but not clusters, or give disclaimer/
 warning that changing it won't work.
-- add functionality to be able to add clusterizers and compute without recomputing,
-unless recompute_all=True.
-- call compute on clusterizers, and give also node info etc.
-- fix encoder/decoder initialization to see what can/can't be None, and force
-what will be required.
 - evaluation indicators to test validity of an algorithm?
 Davies-Bouldin, Dunn, Silhouette coefficient; or for external evaluation:
 Rand indicator, F indicator, Jaccard indicator,Fowlkes-mallows indicator,
@@ -65,6 +64,7 @@ https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-t
 
 Clusterizers TO DO:
 -------------------
+- add norms of words, and average norms etc in clusters and space, for non-normalized spaces.
 - instead of specific stats, allow variety of stats in each cluster, with dict,
 and iterate through in cluterizer that adds info.
 - Spatial
@@ -94,39 +94,6 @@ Analogical Analyses:
 --------------------
 - EVERYTHING
 - make clusterizer, analogist, and analogyRanker subclasses of evaluator.
-
-
-
-def formatit(data, width=10, parentheses=False, start_at=0):
-    #if parentheses: w = max(9, width)
-    #else: w = max(7, width)
-    w = max(9, width)
-    result = ""
-    if isinstance(data, str) or isinstance(data, bytes) or parentheses:
-        # Strings or Bytestrings
-        result = " " # For negatives on others
-        if parentheses: result += "(" + str(data) + ")"
-        else: result += data
-        format_str = "{:" + str(w) + "}"
-        result = format_str.format(result)
-        if len(result) > w:
-            result += "\n" + " "*(start_at + w)
-    else:
-        if (abs(data) >= 1e4 and not parentheses) \
-                or (abs(data) < 1e-4 and data != 0):
-            # Large or Small
-            format_str = "{: " + str(w) + "." + str(w - 7) + "e}"
-            result = format_str.format(data)
-        elif isinstance(data, int):
-            # Integer
-            format_str = "{:< " + str(w) + "d}"
-            result = format_str.format(int(data))
-        else:
-            # Float
-            format_str = "{: " + str(w - 1) + "." \
-                + str(w - 2 - len(str(int(data)))) + "f}"
-            result = format_str.format(data)
-    return result
 
 
 

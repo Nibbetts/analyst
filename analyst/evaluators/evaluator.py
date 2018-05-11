@@ -85,7 +85,7 @@ class Evaluator:
         #   draw_progress,              : bool, whether user wants printouts.
         #   strings,                    : list, objects in space, indeces match.
         #   printer_fn,                 : callable, Analyst's printout function.
-        #   metric_str,                 : string, name of metric; for scipy.
+        #   metric_str,                 : None|string, metric name, for scipy.
         #   metric_fn,                  : callable, the one Analyst was given.
         #   metric_args,                : dict, arguments for metric function.
         #   encoder_fn,                 : callable, string to vector.

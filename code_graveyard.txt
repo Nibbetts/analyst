@@ -1,453 +1,94 @@
 A Place Where Deprecated Code Goes to Die...
 --------------------------------------------------------------------------------    
 
-    def _spatial_analysis(self):
-
-        # MEASUREMENTS:
-        #self.distance_matrix_getter()
-        self.neighbors_getter()
-
-        # Centroid, Dispersion, Std Dev, repulsion:
-        self._print(u"Balancing the Continuum")
-        self.centroid = np.mean(self.space, axis=0)
-        self.centroid_length = np.linalg.norm(self.centroid)
-        self.centroid_dist = [self.metric(self.centroid, v, **self.metric_args)
-            for v in tqdm(self.space, desc=u"Counting the Lightyears",
-                disable=(not self.auto_print))]
-        self.dispersion = np.mean(self.centroid_dist, axis=0)
-        self.std_dev = np.std(self.space)
-        centr_min = np.min(self.centroid_dist, axis=0)
-        centr_max = np.max(self.centroid_dist, axis=0)
-        #if print_report:
-        self._add_info(self.ix_to_s[np.argmin([
-            self.metric(self.centroid, v, **self.metric_args) \
-                for v in tqdm(self.space,
-                desc=u"Electing a Ruler", disable=(not self.auto_print))])],
-            u"Spatial", u"Medoid - Obj Nearest to Centroid", star=True)
-        self._add_info(len(self.space), u"Spatial", u"Count")
-        self._add_info(self.centroid_length, u"Spatial", u"Centroid Length")
-        self._add_info(self.dispersion,
-            u"Spatial", u"Dispersion - Centroid Dist Avg", star=True)
-        self._add_info(centr_min, u"Spatial", u"Centroid Dist Min")
-        self._add_info(centr_max, u"Spatial", u"Centroid Dist Max")
-        self._add_info(centr_max - centr_min,
-            u"Spatial", u"Centroid Dist Range")
-        self._add_info(self.centroid_dist,
-            u"Spatial", u"Centroid Dist Histogram Key")
-        self._add_info(self.std_dev, u"Spatial", u"Standard Dev")
-        #self.repulsion = np.mean(
-        #    [self.metric(v, self.encoder(self.nearest(self.objects[i])),
-        #         **self.metric_args)
-        #     for i, v in self.vectors])
-
-        # Nearest Neighbor Info:
-        self._print(u"Building Trade Routes")
-        self.nearest_avg = np.mean(self.neighbors_dist[:,0])
-        self._print(u"Practicing Diplomacy")
-        nearest_min = np.min(self.neighbors_dist[:,0])
-        nearest_max = np.max(self.neighbors_dist[:,0])
-        #if print_report:
-        self._add_info(self.nearest_avg,
-            u"Spatial", u"repulsion - Nearest Dist Avg", star=True)
-        self._add_info(nearest_min, u"Spatial", u"Nearest Dist Min")
-        self._add_info(nearest_max, u"Spatial", u"Nearest Dist Max")
-        self._add_info(nearest_max-nearest_min,
-            u"Spatial", u"Nearest Dist Range", star=True)
-        self._add_info(self.neighbors_dist[:,0],
-            u"Spatial", u"Nearest Dist Histogram Key")
-
-        # Second-Nearest Neighbor Info:
-        self._print(u"Setting Priorities")
-        self.nearest2_avg = np.mean(self.neighbors_dist[:,1])
-        self._print(u"Coming up with Excuses")
-        nearest2_min = np.min(self.neighbors_dist[:,1])
-        nearest2_max = np.max(self.neighbors_dist[:,1])
-        #if print_report:
-        self._add_info(self.nearest2_avg,
-            u"Spatial", u"Second Nearest Dist Avg")
-        self._add_info(nearest2_min, u"Spatial", u"Second Nearest Dist Min")
-        self._add_info(nearest2_max, u"Spatial", u"Second Nearest Dist Max")
-        self._add_info(nearest2_max-nearest2_min,
-            u"Spatial", u"Second Nearest Dist Range")
-        self._add_info(self.neighbors_dist[:,1],
-            u"Spatial", u"Second Nearest Dist Histogram Key")
-
-        #Furthest Neighbor Info:
-        self._print(u"Making Enemies")
-        self.furthest_avg = np.mean(self.neighbors_dist[:,2])
-        self._print(u"Claiming Frontiers")
-        furthest_min = np.min(self.neighbors_dist[:,2])
-        furthest_max = np.max(self.neighbors_dist[:,2])
-        #far = np.argmax(self.neighbors_dist[:,2])
-        #if print_report:
-        self._add_info(self.furthest_avg, u"Spatial", u"Furthest Dist Avg")
-        self._add_info(furthest_min, u"Spatial", u"Furthest Dist Min")
-        self._add_info(furthest_max,
-            u"Spatial", u"Broadness - Furthest Dist Max", star=True)
-        self._add_info(furthest_max - furthest_min,
-            u"Spatial", u"Furthest Dist Range")
-        self._add_info(self.neighbors_dist[:,2],
-            u"Spatial", u"Furthest Dist Histogram Key")
-
-    # # Cluster Algorithms:
-    # for alg in self.cluster_algorithms:
-    #     # function = alg[0]
-    #     # description = alg[1]
-    #     self._print("Analyzing " + alg[1])
-
-    #     # Custom Callables:
-    #     if callable(alg[0]):
-    #         if alg[1] == "" or alg[1] == None:
-    #             alg[1] = alg[0].__name__
-    #         cluster_list = []
-    #         clusterings = alg[0](self.space)
-    #         for i, c in enumerate(clusterings):
-    #             strings = map(self.decode, c)
-    #             nodes = self.find_nodes_from_string_list(strings)
-    #             cluster_list.append(clusters.Cluster(
-    #                 self.encode, self.metric, self.nearest, strings,
-    #                 vectors=c, nodes=nodes, auto=True, ID=i))
-            
-    #         self.cluster_data[alg[1]] = cluster_list
-    #         self._add_cluster_type_attributes(cluster_list, alg[1])
-        
-    #     # Invalid Non-callables:
-    #     elif (alg[0] not in self.built_in_categories
-    #             and alg[1] not in self.built_in_categories):
-    #         self._print(
-    #             alg[0] + ", " + alg[1] +" UNRECOGNIZED and NOT CALLABLE!")
-
-    # self.cluster_algorithms = []
-    # report_spatial = False
-    # for t in cluster_algorithms:
-    #     if callable(t[0]):
-    #         self.cluster_algorithms.append(t)
-    #     else:
-    #         tag = t[1].lower()
-    #         if tag == "spatial":
-    #             report_spatial = True
-    #             self.categories.append("Spatial")
-    #         elif tag == "all":
-    #             report_spatial = True
-    #             map(self.categories.append, self.built_in_categories)
-    #         else:
-    #             self.categories.append(t[1])
-
-    # Nearest, 2nd-nearest, and futhest getters:
-    #   Each attempts to return the same type given.
-    #   Each ensures neighbors will be calculated before, but not recalculated.
-    # def nearest(self, obj):
-    #     self.neighbors_getter()
-    #     i = self.neighbors[self.as_index(obj)][0]
-    #     if isinstance(obj, basestring): return self.ix_to_s[i]
-    #     try:
-    #         int(obj)
-    #         return i
-    #     except: return self.space[i]
-
-    # def second_nearest(self, obj):
-    #     self.neighbors_getter()
-    #     i = self.neighbors[self.as_index(obj)][1]
-    #     if isinstance(obj, basestring): return self.ix_to_s[i]
-    #     try:
-    #         int(obj)
-    #         return i
-    #     except: return self.space[i]
-
-    # def furthest(self, obj):
-    #     self.neighbors_getter()
-    #     i = self.neighbors[self.as_index(obj)][2]
-    #     if isinstance(obj, basestring): return self.ix_to_s[i]
-    #     try:
-    #         int(obj)
-    #         return i
-    #     except: return self.space[i]
-
-
-
-    # def _add_clusters_attribute(self, vals, cluster_type, attribute, stars=[]):
-    #     # vals: a list containing the given attribute for each cluster.
-    #     # cluster_type: ie. "Hubs".
-    #     # attribute: ie. "Dispersion".
-    #     hub_max = np.max(vals)
-    #     hub_min = np.min(vals)
-    #     self._add_info(np.mean(vals), cluster_type, attribute + " Avg", stars[0])
-    #     self._add_info(hub_min, cluster_type, attribute + " Min", stars[1])
-    #     self._add_info(hub_max, cluster_type, attribute + " Max", stars[2])
-    #     self._add_info(hub_max-hub_min, cluster_type, attribute + " Range", stars[3])
-    #     self._add_info(np.std(vals), cluster_type, attribute + " Standard Dev", stars[4])
-    #     self._add_info(vals, cluster_type, attribute + " Histogram Key", stars[5])
-
-    # def _add_cluster_type_attributes(self, cluster_list, cluster_type):
-    #     # cluster_list: a list of all clusters of the given type.
-    #     # cluster_type: ie. "Hubs".
-    #     self._add_info(len(cluster_list), cluster_type, "Count")
-    #     if len(cluster_list) > 0:
-    #         self._add_clusters_attribute(map(len, cluster_list),
-    #             cluster_type, "Population")
-    #         self._add_clusters_attribute([c.dispersion for c in cluster_list],
-    #             cluster_type, "Dispersion")
-    #         self._add_clusters_attribute([c.repulsion for c in cluster_list],
-    #             cluster_type, "Repulsion")
-    #         self._add_clusters_attribute([c.skew for c in cluster_list],
-    #             cluster_type, "Skew")
-    #         self._add_clusters_attribute([len(c.nodes) for c in cluster_list],
-    #             cluster_type, "Node Count")
-
-    # def _add_node_type_attributes(self, node_list, node_type, stars):
-    #     # node_list: list of all nodes of the given type.
-    #     # node_type: ie. "Extremities".
-    #     # stars: boolean list of length 7 for which attributes are important.
-    #     self._add_info(len(node_list), node_type, "Count", stars[0])
-    #     if len(node_list) > 0:
-    #         lengths = [n.distance for n in node_list]
-    #         self._add_clusters_attribute(lengths, node_type, "Span", stars[1:])
-
-
-
-    """
-    def _serialize(self):
-        # method to prepare an analyst instance for saving.
-        if not self.serialized:
-            self.metric = self.metric.__name__ if self.metric != None else None
-            self.encode = self.encode.__name__ if self.encode != None else None
-            self.decode = self.decode.__name__ if self.decode != None else None
-            self.cluster_algorithms = [
-                (None, pair[1]) for pair in self.cluster_algorithms]
-            self.analogy_algorithms = [
-                (None, pair[1]) for pair in self.analogy_algorithms]
-
-            # Serialize the Clusters (Nodes don't need it):
-            for key in self.cluster_data:
-                for cluster in self.cluster_data[key]:
-                    cluster._serialize()
-
-            self.serialized = True
-
-    def _deserialize(self, metric, encoder, decoder,
-                     cluster_algorithms, analogy_algorithms):
-        assert self.serialized
-        if callable(metric):
-            assert metric.__name__ == self.metric
-            self.metric = metric
-        elif metric == "l2" or metric == "euclidean":
-            self.metric = sp.distance.euclidean
-        elif metric == "cosine_similarity":
-            self.metric = sp.distance.cosine
-        elif metric == "l1":
-            self.metric = sp.distance.cityblock
-        else: raise ValueError("'metric' parameter unrecognized and uncallable")            
-            
-        if encoder != None: assert encoder.__name__ == self.encode
-        self.encode = encoder
-        if decoder != None: assert decoder.__name__ == self.decode
-        self.decode = decoder
-
-        if cluster_algorithms != None:
-            assert zip(*cluster_algorithms)[1] == zip(*self.cluster_algorithms)[1]
-        self.cluster_algorithms = cluster_algorithms
-        if analogy_algorithms != None:
-            assert zip(*analogy_algorithms)[1] == zip(*self.analogy_algorithms)[1]
-        self.analogy_algorithms = analogy_algorithms
-
-        # Deserialize the Clusters:
-        for key in self.cluster_data:
-            for cluster in self.cluster_data[key]:
-                cluster._deserialize(metric, encoder, decoder)
-
-        self.serialized = False
-    """
-
-
-
-//FROM CLUSTERIZER:
-
-    # def compute_hubs(metric_fn, encoder_fn, nearest_fn, nearest_neighbors_ix,
-#                  strings, string_node_map, show_progress=True):
-#     hubs = []
-#     temp_hubs = []
-#     for i in tqdm(range(len(strings)),
-#             desc="Finding Galactic Hubs",
-#             disable=(not show_progress)):
-#         temp_hubs.append(clusters.Cluster(
-#             encoder_fn, metric_fn, nearest=nearest_fn,
-#             objects=[strings[i]], nodes=[], auto=False,
-#             name=strings[i]))
-#             # Its name is the original object's decoded string.
-#         for index, neighbor in enumerate(nearest_neighbors_ix):
-#             if neighbor == i:
-#                 temp_hubs[i].add_objects([strings[index]])
-#             # The 0th index in the hub's list of objects
-#             #   is also it's original object (is included in hub).
-#     j = 0
-#     for h in tqdm(temp_hubs, desc="Erecting Centers of Commerce",
-#             disable=(not show_progress)):
-#         if len(h) >= 4: # obj plus 3 or more for whom it is nearest.
-#             hubs.append(h)
-#             h.ID = j
-#             h.nodes = ([string_node_map[h.name]]
-#                 if h.name in string_node_map else [])
-#             h.calculate()
-#             j += 1
-#     return hubs
-
-
-# def compute_supernodes(nodes, printer_fn, metric_str, metric_fn,
-#                        show_progress=True):
-#     centroids = [n.centroid for n in nodes]
-#     printer_fn("Fracturing the Empire")
-#     dist_matrix = sp.distance.squareform(
-#         sp.distance.pdist(
-#             centroids,
-#             metric_str if metric_str != None else metric_fn))
-#     printer_fn("Establishing a Hierocracy")
-#     neighbors = np.argmax(dist_matrix, axis=1)
-#     #neighbors_dist = dist_matrix[range(len(dist_matrix)), neighbors]
-
-#     # Compute the Supernodes:
-#     return [
-#         clusters.Node(node,
-#             nodes[neighbors[i]],
-#             clusters.Node.get_centroid, metric_fn)
-#         for i, node in enumerate(tqdm(nodes,
-#             desc="Ascertaining Universe Filaments",
-#             disable=(not show_progress)))
-#         if (i == neighbors[neighbors[i]]
-#             and i < neighbors[i])]
-
-# def compute_nuclei():
-#     pass
-
-# def compute_chains():
-#     pass
-
-# def compute_NCC():
-#     pass
-
-# def compute_LNCC():
-#     pass
-
-# def compute_anti_hubs():
-#     pass
-
-
-# def compute_nodes(metric_fn, encoder_fn, nearest_neighbors_ix,
-#                   strings, show_progress=True):
-#     return [
-#         clusters.Node(strings[i],
-#             strings[nearest_neighbors_ix[i]],
-#             encoder_fn,
-#             metric_fn)
-#         for i in tqdm(
-#             range(len(strings)),
-#             desc="Watching the Galaxies Coelesce",
-#             disable=(not show_progress))
-#         if (i == nearest_neighbors_ix[nearest_neighbors_ix[i]]
-#             and i < nearest_neighbors_ix[i])
-#     ]
-
-
-
 //FROM ANALYST:
 
-        # # Extremities:
-        # if "Extremities" in self.categories:
+    # # Nuclei:
+    # if "Nuclei" in self.categories:
+    #     self.nuclei = clusters.clusterizer.compute_nuclei()
+    #     self._print("Performing Cold Fusion")
+    #     self._add_cluster_type_attributes(self.nuclei, "Nuclei")
 
-        #     # Compute the Extremities:
-        #     self.extremities = clusters.clusterizer.compute_extremities(
-        #         self.metric, self.encode, self.neighbors[:,2],
-        #         self.ix_to_s, self.auto_print)
-        #     # Extremity Lengths and other info:
-        #     self._print("Setting the Scopes")
-        #     self._print("Puzzling Over the Star Charts")
-        #     self._add_node_type_attributes(self.extremities, "Extremities",
-        #         [1, 0, 1, 1, 0, 0, 0])
+    # # Anti-hubs:
+    # if "Anti-hubs" in self.categories:
+    #     self.anti_hubs = clusters.clusterizer.compute_anti_hubs()
+    #     self._print("Unraveling the Secrets of Dark Matter")
+    #     self._add_cluster_type_attributes(self.anti_hubs, "Anti-hubs")
 
-        # # Nodes:
-        # print_node_info = "Nodes" in self.categories
-        # if (print_node_info or "Hubs" in self.categories or "Supernodes" in
-        #         self.categories or "Nuclei" in self.categories or "Chains" in
-        #         self.categories or "NCC" in self.categories or "LNCC" in
-        #         self.categories or "Anti-hubs" in self.categories):
-        #         # ...all dependent on Nodes.
 
-        #     # Compute the Nodes:
-        #     self.nodes = clusters.clusterizer.compute_nodes(
-        #         self.metric, self.encode, self.neighbors[:,0],
-        #         self.ix_to_s, self.auto_print)
-        #     for node in self.nodes:
-        #         self.s_to_node[node[0]] = node
-        #         self.s_to_node[node[1]] = node
-        #     # Node Length and other info:
-        #     if print_node_info:
-        #         self._print("Delineating the Quasars")
-        #         self._add_node_type_attributes(self.nodes, "Nodes",
-        #         [0, 0, 0, 0, 0, 0, 0])
-        #         if len(self.nodes) > 0:
-        #             self._print("Comparing the Cosmos")
-        #             self._add_info(len(self.nodes)*2.0/float(len(self.space)),
-        #                 "Nodes", "Nodal Factor", star=True)
-        #             avg_align = np.mean(
-        #                 [n.alignment for n in self.nodes], axis=0)
-        #             avg_align /= np.linalg.norm(avg_align)
-        #             self._add_info(
-        #                 np.mean([
-        #                     np.abs(sp.distance.cosine(avg_align, n.alignment))
-        #                     for n in self.nodes]),
-        #                 "Nodes", "Alignment Factor", star=True)
 
-        # # Hubs:
-        # if "Hubs" in self.categories:
 
-        #     # Compute the Hubs:
-        #     self.hubs = clusters.clusterizer.compute_hubs(
-        #         self.metric, self.encode, self.nearest, self.neighbors[:,0],
-        #         self.ix_to_s, self.s_to_node, self.auto_print)
 
-        #     # Hub count, populations, etc:
-        #     self._add_cluster_type_attributes(self.hubs, "Hubs")
+self.strings = None
+if callable(encoder) or encoder is None:
+    self.encode = encoder # string to vector
+    self.decode = decoder # vector to string
+else:
+    assert len(encoder) == len(self.space)
+    self.strings = encoder
+    self.vec_to_s = {}
+    self.s_to_vec = {}
+    for i in range(len(self.space)):
+        self.vec_to_s[self.space[i]] = self.strings[i]
+        self.s_to_vec[self.strings[i]] = self.space[i]
+    self.encode = self.s_to_vec.__getitem__
+    self.decode = self.vec_to_s.__getitem__
 
-        # # # Supernodes:
-        # # if "Supernodes" in self.categories and len(self.nodes) >= 2:
 
-        # #     # Nearest neighbor-node computation:
-        # #     self.supernodes = clusters.clusterizer.compute_supernodes(
-        # #         self.nodes, self._print, self.metric_str,
-        # #         self.metric, self.auto_print)
 
-        # #     # Supernode Length and other info:
-        # #     self._print("Measuring their Magnitude")
-        # #     self._add_node_type_attributes(self.supernodes, "Supernodes",
-        # #         [0, 0, 0, 0, 0, 0, 0])
-        # #     if len(self.supernodes) > 0:
-        # #         self._print("Minding the Macrocosm")
-        # #         self._add_info(len(self.supernodes)*4.0/float(len(self.space)),
-        # #             "Supernodes", "Island Factor", star=True)
-        # #         self._add_info(
-        # #             len(self.supernodes)*2.0/float(len(self.nodes)),
-        # #             "Supernodes", "Hierarchical Factor", star=True)
 
-        # # Nuclei:
-        # if "Nuclei" in self.categories:
-        #     self.nuclei = clusters.clusterizer.compute_nuclei()
-        #     self._print("Performing Cold Fusion")
-        #     self._add_cluster_type_attributes(self.nuclei, "Nuclei")
+"""
+def _serialize(self):
+    # method to prepare an analyst instance for saving.
+    if not self.serialized:
+        self.metric = self.metric.__name__ if self.metric != None else None
+        self.encode = self.encode.__name__ if self.encode != None else None
+        self.decode = self.decode.__name__ if self.decode != None else None
+        self.cluster_algorithms = [
+            (None, pair[1]) for pair in self.cluster_algorithms]
+        self.analogy_algorithms = [
+            (None, pair[1]) for pair in self.analogy_algorithms]
 
-        # # Chains:
-        # pass
+        # Serialize the Clusters (Nodes don't need it):
+        for key in self.cluster_data:
+            for cluster in self.cluster_data[key]:
+                cluster._serialize()
 
-        # # NCC:
-        # pass
+        self.serialized = True
 
-        # # LNCC:
-        # pass
+def _deserialize(self, metric, encoder, decoder,
+                    cluster_algorithms, analogy_algorithms):
+    assert self.serialized
+    if callable(metric):
+        assert metric.__name__ == self.metric
+        self.metric = metric
+    elif metric == "l2" or metric == "euclidean":
+        self.metric = sp.distance.euclidean
+    elif metric == "cosine_similarity":
+        self.metric = sp.distance.cosine
+    elif metric == "l1":
+        self.metric = sp.distance.cityblock
+    else: raise ValueError("'metric' parameter unrecognized and uncallable")            
+        
+    if encoder != None: assert encoder.__name__ == self.encode
+    self.encode = encoder
+    if decoder != None: assert decoder.__name__ == self.decode
+    self.decode = decoder
 
-        # # Anti-hubs:
-        # if "Anti-hubs" in self.categories:
-        #     self.anti_hubs = clusters.clusterizer.compute_anti_hubs()
-        #     self._print("Unraveling the Secrets of Dark Matter")
-        #     self._add_cluster_type_attributes(self.anti_hubs, "Anti-hubs")
+    if cluster_algorithms != None:
+        assert zip(*cluster_algorithms)[1] == zip(*self.cluster_algorithms)[1]
+    self.cluster_algorithms = cluster_algorithms
+    if analogy_algorithms != None:
+        assert zip(*analogy_algorithms)[1] == zip(*self.analogy_algorithms)[1]
+    self.analogy_algorithms = analogy_algorithms
 
+    # Deserialize the Clusters:
+    for key in self.cluster_data:
+        for cluster in self.cluster_data[key]:
+            cluster._deserialize(metric, encoder, decoder)
+
+    self.serialized = False
+"""
 
 
 --------------------------------------------------------------------------------

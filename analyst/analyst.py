@@ -8,7 +8,7 @@ from io import open
 import numpy as np
 import scipy.spatial as sp
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+from tqdm import tqdm, trange
 #import cPickle as pickle
 import dill as pickle
 import os
@@ -112,22 +112,23 @@ class Analyst:
         u"LNCC",
         u"Anti-hubs"]
 
-    def __init__(self, embeddings, metric=u"cosine",
-        encoder=None, decoder=None, #cluster_algorithms=[(None, "All")],
-        #analogy_algorithms=[], analogy_sets=[],
-        evaluators=[u"All"],
+    def __init__(self, embeddings=None, strings=None,
+        encoder=None, decoder=None, metric=u"cosine", evaluators=[u"All"],
         auto_print=True, desc=None, calculate=True, **metric_args):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
-                Must have static indeces. (ie: not a dict or set)
+                Must have static indeces. (ie: not dict or set) (semi-optional)
+            strings -- a list of strings. (semi-optional)
+            encoder -- a callable to convert strings to vectors. (semi-optional)
+            decoder -- a callable to convert vectors to strings. (semi-optional)
+            # NOTE: Put in as many of the above four as you can to reduce
+            #   initial computation time. It WILL build the rest for rapid
+            #   access, if it can, or will crash and tell you it can't.
             metric -- the distance metric used throughout,
                 accepts any string accepted by scipy.spatial.distance.pdist,
                 or any callable accepting vectors as the first two parameters
                 and returning a scalar. This allows for custom distance metrics.
-            encoder -- a callable to convert strings to vectors, or
-                alternatively a list of strings to replace encoder and decoder.
-            decoder -- a callable to convert vectors to strings.
             evaluators -- FILL IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             # cluster_algorithms -- list of tuples (callable, "Description").
             #     Each callable must take an array-like list of vectors and return
@@ -187,14 +188,11 @@ class Analyst:
 
         self.auto_print = auto_print
         print(u"")
-        self._print(u"Asking the Grand Question")
-        self._print(u"Stretching the Fabric of Space and Time")
-        self._print(u"Enumerating the Dimensions")
-        self.space = embeddings
+        self._print(u"Asking the Grand Question", u"What is the Purpose of this Space?")
         self.description = str(desc)
         
         # Find and store a callable version of the given metric:
-        self._print(u"Laying the Laws of Physics (Setting the Metric)")
+        self._print(u"Laying the Laws of Physics", u"Setting the Metric")
         if callable(metric):
             self.metric = metric
             self.metric_str = None
@@ -208,80 +206,78 @@ class Analyst:
                 raise ValueError(u"FATAL ERROR: %s PARAMETER UNRECOGNIZED AND UNCALLABLE!"
                     % str(metric))
         self.metric_args = metric_args
-        
 
         # Encoder/Decoder Initializations:
-        #   While initializing these should, in theory, be unnecessary,
-        #   failing to do so will limit all inputs to findable types.
-        #   If an encoder does not exist, may be replaced with list of strings.
-        self._print(u"Filling the Void (Setting Encoder/Decoder)")
-        self.ix_to_s = None
-        if callable(encoder) or encoder is None:
-            self.encode = encoder # string to vector
-            self.decode = decoder # vector to string
-        else:
-            assert len(encoder) == len(self.space)
-            self.ix_to_s = encoder
-            self.vec_to_s = {}
+        # OK if: encoder and strings, decoder and vectors, strings and vectors:
+        #   encoder + strings -> vectors; vectors + strings -> decoder.
+        #   decoder + vectors -> strings; strings + vectors -> encoder.
+        #   strings + vectors -> encoder & decoder.
+        self._print("Enumerating the Dimensions", "Making Internal Converters")
+        # Find embeddings:
+        if embeddings is None:
+            if encoder is None or strings is None:
+                raise ValueError(u"FATAL ERROR: Without embeddings, you must give both an encoder and strings!")
+            else:
+                self._print(u"Stretching the Fabric of Space and Time", u"Finding Embeddings")
+                self.space = map(encoder,
+                    tqdm(strings, disable=(not self.auto_print)))
+        else: self.space = embeddings
+        # Find strings:
+        if strings is None:
+            if embeddings is None and decoder is None:
+                raise ValueError(u"FATAL ERROR: Without strings, you must give both a decoder and embeddings!")
+            else:
+                self._print(u"Naming Stars and Drawing a Star Map", u"Collecting Strings")
+                self.strings = map(decoder,
+                    tqdm(embeddings, disable=(not self.auto_print)))
+        else: self.strings = strings
+        # Now we have both embeddings and strings.
+        assert len(self.space) == len(self.strings)
+        # Make encoder:
+        if encoder is None:
+            self._print(u"Filling the Void", u"Mapping New Encoder")
             self.s_to_vec = {}
-            self._print(u"Mapping the Emptiness (Making Encoder/Decoder Mappings)")
-            for i in range(len(self.space)):
-                self.vec_to_s[self.space[i]] = self.ix_to_s[i]
-                self.s_to_vec[self.ix_to_s[i]] = self.space[i]
+            for i in trange(len(self.strings), disable=(not self.auto_print)):
+                self.s_to_vec[self.strings[i]] = self.space[i]
             self.encode = self.s_to_vec.__getitem__
+        else:
+            assert callable(encoder)
+            self.encode = encoder
+        # Make decoder:
+        if decoder is None:
+            self._print(u"Mapping the Emptiness", u"Mapping New Decoder")
+            self.vec_to_s = {}
+            for i in trange(len(self.space), disable=(not self.auto_print)):
+                self.vec_to_s[self.space[i]] = self.strings[i]
             self.decode = self.vec_to_s.__getitem__
+        else:
+            assert callable(decoder)
+            self.decode = decoder
 
-        #self.serialized = False
-
-        # ix_to_s initialized previously
+        # Separate Map for quick string indexing:
         self.s_to_ix = {}
-        try:
-            if self.ix_to_s == None:
-                self.ix_to_s = [self.decode(vec) for vec in tqdm(self.space,
-                    desc=u"Naming Stars and Drawing a Star Map (Collecting Strings)",
-                    disable=(not self.auto_print))]
-            for ix, s in enumerate(
-                    tqdm(self.ix_to_s, desc=u"Indexing Planets (Making String Mappings)",
-                    disable=(not self.auto_print))):
-                self.s_to_ix[s] = ix
-        except Exception as e:
-            print(e)
-            print(u"DECODER APPEARS TO HAVE MALFUNCTIONED!")
-            return
+        self._print(u"Indexing Planets", u"Making String-Index Mappings")
+        for ix, s in enumerate(
+                tqdm(self.strings, disable=(not self.auto_print))):
+            self.s_to_ix[s] = ix
+        # NOTE: I'm not making vec_to_ix because I assume that the length of the
+        #   vectors makes it more efficient to use s_to_ix[decode(vec)].
 
         # These are explained in the neighbors and distance matrix getters:
         self.distance_matrix = None
         self.neighbors = None
         self.neighbors_dist = None
 
-        # Run Analyses:
+        # Data
         self.graph_info = []
-        #self.categories = []
-        #self.analogy_algorithms = analogy_algorithms
-        #self.analogy_sets = analogy_sets
+        self.categories = []
         self.evaluators = []
-        for e in evaluators:
-            if isinstance(e, str) or isinstance(e, bytes):
-                if str(e.lower()) == u"all":
-                    for cat in Analyst.BUILT_IN_CATEGORIES:
-                        evaluator = Analyst.make_default_evaluator(cat)
-                        if evaluator != None:
-                            self.evaluators.append(evaluator)
-                else:
-                    evaluator = Analyst.make_default_evaluator(e)
-                    if evaluator != None:
-                        self.evaluators.append(evaluator)
-            else:
-                if e != None: self.evaluators.append(e)
+        self.category_lists = []
+        self.add_evaluators(*evaluators)
 
-        self.categories = [str(e.CATEGORY) for e in self.evaluators]
-        self.category_lists = np.empty(
-            shape=(len(self.categories),0)).tolist()
-
-
+        # Run Analyses:
         if calculate:
-            self._analysis()
-            if auto_print: self.print_report()
+            self.analysis()
 
 
     # Generic type converters & tools for inputs and outputs:
@@ -320,7 +316,7 @@ class Analyst:
         if in_model:
             if isinstance(obj, str) or isinstance(obj, bytes):
                 return obj
-            try: return self.ix_to_s[obj]
+            try: return self.strings[obj]
             except: return self.decode(obj)
         else:
             return self.decode(self.nearest(obj, in_model=False))
@@ -337,7 +333,7 @@ class Analyst:
             n = k - 1 if k > 0 else k
             i = self.neighbors_getter()[0][self.as_index(obj)][n]
             if isinstance(obj, str) or isinstance(obj, bytes):
-                return self.ix_to_s[i]
+                return self.strings[i]
             try:
                 int(obj)
                 return i
@@ -366,7 +362,8 @@ class Analyst:
         #   For speed, prefer to use string, if one exists for desired metric.
         if self.distance_matrix == None:
             # Distance Matrix Calculation
-            self._print(u"Acquainting the Species (Computing Distance Matrix)")
+            self._print(u"Acquainting the Species",
+                u"Computing Distance Matrix")
             self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
                 self.space,
                 self.metric_str if self.metric_str != None else self.metric,
@@ -389,7 +386,8 @@ class Analyst:
                 # Same format as above, except distances to those indexed above.
 
             # Finding Furthest Neighbors
-            self._print(u"Misconstruing Relations (Finding Furthest Neighbors)")
+            self._print(u"Misconstruing Relations",
+                u"Finding Furthest Neighbors")
             self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
             self.neighbors_dist[:,2] = self.distance_matrix[
                 range(len(self.distance_matrix)),
@@ -397,7 +395,7 @@ class Analyst:
             self.distance_matrix[
                 range(len(self.space)), range(len(self.space))] = np.inf
             # Finding Nearest Neighbors
-            self._print(u"Forming Alliances (Finding Nearest Neighbors)")
+            self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
             self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
             self.neighbors_dist[:,0] = self.distance_matrix[
                 range(len(self.distance_matrix)),
@@ -405,13 +403,15 @@ class Analyst:
             self.distance_matrix[
                 range(len(self.space)), self.neighbors[:,0]] = np.inf
             # Finding Second-Nearest Neighbors
-            self._print(u"Obfuscating Dynastic Ties (Finding 2nd-Nearest Neighbors)")
+            self._print(u"Obfuscating Dynastic Ties",
+                u"Finding 2nd-Nearest Neighbors")
             self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
             self.neighbors_dist[:,1] = self.distance_matrix[
                 range(len(self.distance_matrix)),
                 self.neighbors[:,1]]
             # Put back the numbers we removed:
-            self._print(u"Resetting the Ship's Computer (Repairing Distance Matrix)")
+            self._print(u"Resetting the Ship's Computer",
+                u"Repairing Distance Matrix")
             self.distance_matrix[
                 range(len(self.space)), self.neighbors[:,0]
             ] = self.neighbors_dist[:,0]
@@ -528,28 +528,69 @@ class Analyst:
             return HubClusterizer(threshold=thresh, nodal=nodal, category=cat)
         # ADD STUFF!!
         else:
-            print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '" + category + u"'!")
+            print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '" + category + u"'! SKIPPING IT.")
             return None
 
+    def add_evaluators(self, *args):
+        # Helper function
+        def rename_evaluator(evaluator):
+            version = 2
+            category = evaluator.CATEGORY
+            while category in self.categories:
+                category = evaluator.CATEGORY + " (" + str(version) + ")"
+            evaluator.CATEGORY = category
+
+        # Add evaluators and categories
+        for e in args:
+            if isinstance(e, str) or isinstance(e, bytes): # If keyword
+                if str(e.lower()) == u"all": # If keyword 'All'
+                    for cat in Analyst.BUILT_IN_CATEGORIES:
+                        evaluator = Analyst.make_default_evaluator(cat)
+                        if evaluator != None:
+                            if evaluator.CATEGORY not in self.categories:
+                                self.categories.append(evaluator.CATEGORY)
+                                self.evaluators.append(evaluator)
+                            else:
+                                self._print("WARNING: Evaluator category '{}' already exists! SKIPPING it.\n".format(evaluator.CATEGORY))
+                else: # If keyword matching a built-in
+                    evaluator = Analyst.make_default_evaluator(e)
+                    if evaluator != None:
+                        if evaluator.CATEGORY in self.categories:
+                            self._print("WARNING: Evaluator category '{}' already exists! RENAMING it.\n".format(evaluator.CATEGORY))
+                            rename_evaluator(evaluator)
+                        self.categories.append(evaluator.CATEGORY)
+                        self.evaluators.append(evaluator)
+            else: # If actual evaluator object
+                if e != None:
+                    if evaluator.CATEGORY in self.categories:
+                        self._print("WARNING: Evaluator category '{}' already exists! RENAMING it.\n".format(evaluator.CATEGORY))
+                        rename_evaluator(evaluator)
+                    self.categories.append(evaluator.CATEGORY)
+                    self.evaluators.append(e)
+
+        # Modify category_lists to match categories
+        diff = len(self.categories) - len(self.category_lists)
+        self.category_lists += np.empty(shape=(diff,0)).tolist()
 
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def _analysis(self):
-        # # NOTE: The built-in algorithms are not included in the loop below
-        # #   because some of them depend on each other, and must be in order.
+    def analysis(self, recalculate=[]):
+        # Won't recalculate any but those whose categories are listed.
+        # Even those it doesn't recalculate, it will still get their data and
+        #   update its own in case it has changed.
 
         # Run the Evaluations:
         for evaluator in self.evaluators:
             try:
                 data_dict, starred, category = evaluator.calculate(
-                    recalculate_all=False,
+                    recalculate_all=False, # Only does those not yet done.
 
                     # NOTE: The rest are the kwargs:
                     embeddings=self.space,        draw_progress=self.auto_print,
-                    strings=self.ix_to_s,         metric_str=self.metric_str,
+                    strings=self.strings,         metric_str=self.metric_str,
                     printer_fn=self._print,       metric_fn=self.metric,
                     as_string_fn=self.as_string,  metric_args=self.metric_args,
                     as_index_fn=self.as_index,    encoder_fn=self.encode,
@@ -585,6 +626,8 @@ class Analyst:
                 traceback.print_exc()
                 print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR INHERIT FROM Evaluator CLASS?"
                     % evaluator.CATEGORY)
+        
+        if self.auto_print: self.print_report()
 
 
     # SPECIFICS INSPECTION:
@@ -603,18 +646,77 @@ class Analyst:
 
     # COMPARATIVE:
 
-    def compare_difference(self, analyst2, simple_diff=False):
+    def _formatit(self, data, width=10, parentheses=False, start_at=0):
+        #if parentheses: w = max(9, width)
+        #else: w = max(7, width)
+        w = max(9, width)
+        result = ""
+        if data is None:
+            result = " " * w
+        elif isinstance(data, str) or isinstance(data, bytes) or parentheses:
+            # Strings or Bytestrings
+            result = " " # For negatives on others
+            if parentheses: result += "(" + str(data) + ")"
+            else: result += data
+            format_str = "{:" + str(w) + "}"
+            result = format_str.format(result)
+            #if len(result) > w:
+            #    result += "\n" + " " * (start_at + w)
+        else:
+            if (abs(data) >= 1e4 and not parentheses) \
+                    or (abs(data) < 1e-4 and data != 0):
+                # Large or Small
+                format_str = "{: " + str(w) + "." + str(w - 7) + "e}"
+                result = format_str.format(data)
+            elif isinstance(data, int):
+                # Integer
+                format_str = "{:< " + str(w) + "d}"
+                result = format_str.format(int(data))
+            else:
+                # Float
+                format_str = "{: " + str(w - 1) + "." \
+                    + str(w - 2 - len(str(int(abs(data))))) + "f}"
+                result = format_str.format(data)
+        return result
+
+    def compare_difference(self, analyst2, w=10, comparator=u"simple"):
         # Prints a full report with three numbers for each property
-        #   instead of one - val_for_A, val_for_B, A_B_compared
-        #   where A_B_compared is A-B if simple_diff, else is A-B/avg(absA,absB)
-        # Also adds double-histogram information from the comparison in self,
-        #   but not in analyst2.
-        self._print(u"Bridging Two Universes")
+        #   instead of one - val_for_A, val_for_B, A_B_compared.
+        # comparator:
+        #   callable (may compare strings, may return ""), or a built-in:
+        #   "simple": A - B
+        #   "weighted": (A - B) / avg(abs(A), abs(B))
+        # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
+        #   Total width will be: (3 + (w + 1)*num_cols + 2 + len(description))
+        # NOTE: Adds double-histogram information from the comparison in self,
+        #   BUT NOT IN analyst2.
+        self._print(u"Bridging Two Universes",
+            u"Building One-to-one Comparison")
         print(u"")
+
+        # Simple difference function:
+        def difference(a, b):
+            if isinstance(a, str) or isinstance(a, bytes) or \
+                    isinstance(b, str) or isinstance(b, bytes): return ""
+            else: return a - b
+        
+        # My own version, which emphasizes numbers further from zero:
+        def weighted_difference(a, b):
+            if isinstance(a, str) or isinstance(a, bytes) or \
+                    isinstance(b, str) or isinstance(b, bytes): return ""
+            else:
+                average = (abs(a) + abs(b))/2.0
+                if average != 0: return (a - b)/average
+                else: return np.nan
+
         if self.description == None: self.description = u"ANALYST 1"
         if analyst2.description == None: desc2 = u"ANALYST 2"
         else: desc2 = analyst2.description
         print(self.description.upper() + u" vs. " + desc2.upper())
+
+        if callable(comparator): comparison = comparator
+        elif comparator.lower() == u"simple": comparison = difference
+        else: comparison = weighted_difference
 
         # Combine and sort the Categories without losing any of them:
         all_categories = []
@@ -669,7 +771,8 @@ class Analyst:
 
             # Then for the combined info from that category:
             for info in all_info:
-                # Check for empty (None) info:
+                # Combine each line of info, checking for None:
+                # comb = [description, var1, var2, comparison, star]
                 info1 = (info_list_1[info_indeces[info][0]] if
                     info_indeces[info][0] != None else None)
                 info2 = (info_list_2[info_indeces[info][1]] if
@@ -682,78 +785,30 @@ class Analyst:
                 elif info2 == None:
                     comb = [info1[0], info1[1], None, u"",
                         u"*" if info1[2] else u" "]
-                # Gather and format the rest:
-                else:
-                    comb = [
-                        info1[0], # Description
-                        info1[1], # var1
-                        info2[1], # var2
-                        u"",       # comparison vars 1 & 2, or combined hist key
-                        u"*" if (info1[2] or info2[2]) else u" "] # Star
-                    # Deal with histogram keys, putting () around them:
+                else: comb = [info1[0], info1[1], info2[1], u"",
+                    u"*" if (info1[2] or info2[2]) else u" "]
+                
+                is_hist = u"Histogram Key" in comb[0]
+
+                # Compute comparison:
+                if comb[1] != None and comb[2] != None:
                     if u"Histogram Key" in comb[0]:
                         # Add a new key for a combined histogram:
-                        self.graph_info.append(("2", info1[1], info2[1]))
-                        comb[1] = u"(" + str(comb[1]) + u")"
-                        comb[2] = u"(" + str(comb[2]) + u")"
-                        comb[3] = u"(" + str(len(self.graph_info) - 1) + u")"
-                # Then if not strings, more formatting:
-                if not (isinstance(comb[1], str) or
-                        isinstance(comb[2], str)):
-                    if comb[1] != None and comb[2] != None and comb:
-                        # Commented versions is just a-b;
-                        #   New version is scaled difference, (a-b)/avg(a,b):
-                        #if comb[1] % 1.0 != 0 and comb[2] % 1.0 != 0:
-                            #comb[3] = "{:<11.8f}".format(comb[1] - comb[2])
-                        #elif "Histogram Key" not in comb[0]:
-                            #comb[3] = comb[1] - comb[2]
-                        # For int or float pairs, not keys or strings or Nones:
-                        if u"Histogram Key" not in comb[0]:
-                            if simple_diff:
-                                comb[3] = u"{:<11.8f}".format(comb[1] - comb[2])
-                            else:
-                                average = (abs(comb[1]) + abs(comb[2]))/2.0
-                                if average != 0: comb[3] = u"{:<11.8f}".format(
-                                    (comb[1] - comb[2])/average)
-                                else: comb[3] = u"nan"
-                    # Format floats differently:
-                    if comb[1] != None and comb[1] % 1.0 != 0:
-                        comb[1] = u"{:<11.8f}".format(comb[1])
-                    if comb[2] != None and comb[2] % 1.0 != 0:
-                        comb[2] = u"{:<11.8f}".format(comb[2])
-                #else: # Add quotes around printed words:
-                #    if isinstance(comb[1], str):
-                #        comb[1] = "\"" + comb[1] + "\""
-                #    if isinstance(comb[2], str):
-                #        comb[2] = "\"" + comb[2] + "\""
+                        self.graph_info.append((u"combo", info1[1], info2[1]))
+                        comb[3] = len(self.graph_info) - 1
+                    else: comb[3] = comparison(comb[1], comb[2])
+                
+                # Formatting:
+                comb[1] = self._formatit(comb[1], w, is_hist, 3)
+                comb[2] = self._formatit(comb[2], w, is_hist, 3+(w+1))
+                comb[3] = self._formatit(comb[3], w, is_hist, 3+(w+1)*2)
 
                 # And finally print a line:
-                print(u"  {} {:<11}  {:<11}  {:<11} {}{}".format(
+                print(u"  {}{} {} {} {} {}".format(
                     comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
-                '''
-                elif isinstance(info1[1], str) or info1[1] % 1.0 == 0:
-                    print("  {} {:<11}  {:<11}  {:<11} {}{}".format(
-                        comb[4],
-                        info1[1],
-                        info2[1],
-                        ("" if (isinstance(info1[1], str)
-                                or info1[1] == None or info2[1] == None) else (
-                            info1[1]-info2[1])),???????????????
-                        comb[4],
-                        info1[0]))
-                else:
-                    print("  {} {:<11.8f}  {:<11.8f}  {:<11.8f} {}{}".format(
-                        comb[4],
-                        info1[1],
-                        info2[1],
-                        (info1[1]-info2[1] if (
-                                info1[1] != None and info2[1] != None)
-                            else ""),???????????????
-                        comb[4],
-                        info1[0]))'''
 
     @staticmethod
-    def compare(ana_list):
+    def compare(digits=10, comparator=u"std", *ana_list):
         # Lists side by side the values for each analyst in the list.
         pass
 
@@ -776,49 +831,31 @@ class Analyst:
             i = len(self.categories)
             self.categories.append(category)
             self.category_lists.append([])
-        self.category_lists[i].append(
-            (description, variable, star))
+        found = False
+        for entry in self.category_lists[i]: # Replace if it exists:
+            if entry[0] == description:
+                entry = (description, variable, star)
+                found = True
+                break # NOTE: will only replace the first. So don't duplicate.
+        if not found: # Add it if it doesn't exist:
+            self.category_lists[i].append((description, variable, star))
 
-    def _print(self, string=u""):
-        if self.auto_print: print(u"\r" + str(string) + u"...")
+    def _print(self, string=u"", report=None):
+        if self.auto_print: print("{:<40}".format(u"\r" + str(string) + u"...")
+            + ("" if report is None else u"(" + report + u")"))
 
-    def print_report(self):
-        self._print(u"Revealing the Grand Plan")
+    def print_report(self, w=10):
+        self._print(u"Revealing the Grand Plan", u"Printing Report")
         print(u"")
         if self.description != None: print(self.description.upper())
         for i, category in enumerate(self.categories):
             print(category + u": ")
             for cat in self.category_lists[i]:
-                #print("\t" + str(cat[1]) + "\t" + str(cat[0]))
-                #print(cat[0],cat[1],sep="\t") #python3
-                if isinstance(cat[1], str) or isinstance(cat[1], bytes) \
-                        or cat[1] % 1.0 == 0:
-                    # Keep strings strings and ints ints... :
-                    print(u"  {} {:<11} {}{}".format(
-                        "*" if cat[2] else " ", # Stars
-                        (u"(" + str(cat[1]) + u")" if u"Histogram Key" in cat[0]
-                            #else ("\"" + cat[1] + "\"" if # Quotes around words
-                            #    isinstance(cat[1], str) else cat[1])),
-                            else cat[1]),
-                        u"*" if cat[2] else u" ", # Stars
-                        cat[0]))
-                else:
-                    # ...But format floats to look uniform:
-                    print(u"  {} {:<11.8f} {}{}".format(
-                        u"*" if cat[2] else u" ", # Stars
-                        cat[1],
-                        u"*" if cat[2] else u" ", # Stars
-                        cat[0]))
-                #cat_new = [
-                #    cat[0],
-                #    ("{:<11.8f}".format(cat[1]) if (
-                #        cat[1] % 1.0 != 0 and not isinstance(cat[1], str)
-                #        ) else (
-                #            "(" + str(cat[1]) + ")" if "Histogram Key" in cat[0]
-                #            else cat[1])),
-                #    "*" if cat[2] else " "]
-                #print("  {} {:<11} {}{}".format(
-                #    cat_new[2], cat_new[1], cat_new[2], cat_new[0]))
+                print(u"  {}{} {}{}".format(
+                    "*" if cat[2] else u" ", # Stars
+                    self._formatit(cat[1], w, u"Histogram Key" in cat[0], 3),
+                    u"*" if cat[2] else u" ", # Stars
+                    cat[0]))
 
 
     #--------------------------------------------------------------------------#
@@ -914,8 +951,7 @@ class Analyst:
                 #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
                 return an
         except Exception as e:
-            print(u"ERROR: Unable to load or deserialize Analyst object from file: '"
-                + name + u"'")
+            print(u"ERROR: Unable to load or deserialize Analyst object from file: '{}'".format(name))
             print(e)
             #raise e
             return None

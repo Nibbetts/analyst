@@ -30,6 +30,7 @@ class HubClusterizer(Clusterizer, object):
         encoder          = kwargs["encoder_fn"]
         evaluator_getter = kwargs["find_evaluator_fn"]
         metric_args      = kwargs["metric_args"]
+        printer          = kwargs["printer_fn"]
 
         # No need to make sure Nodes are computed before Hubs,
         #   since get_nodes ensures this for us, without repeating calculation:
@@ -41,9 +42,8 @@ class HubClusterizer(Clusterizer, object):
 
         # Calculate potential hubs:
         temp_hubs = []
-        for i in tqdm(range(len(space)),
-                desc="Finding Galactic Hubs (Finding Potential Hubs)",
-                disable=(not show_progress)):
+        printer("Finding Galactic Hubs", "Finding Potential Hubs")
+        for i in tqdm(range(len(space)), disable=(not show_progress)):
             temp_hubs.append(Cluster(
                 encoder, metric, nearest=nearest,
                 objects=[strings[i]], nodes=[], auto=False, name=strings[i],
@@ -57,9 +57,8 @@ class HubClusterizer(Clusterizer, object):
 
         # Find the real, neighbor-limited hubs:
         j = 0
-        for h in tqdm(temp_hubs,
-                desc="Erecting Centers of Commerce (Finding Hubs)",
-                disable=(not show_progress)):
+        printer("Erecting Centers of Commerce", "Culling for Actual Hubs")
+        for h in tqdm(temp_hubs, disable=(not show_progress)):
             is_nodal = self.nodal and h.name in s_to_node
             if len(h) >= self.threshold and (is_nodal or not self.nodal):
                 self.clusters.append(h)

@@ -20,18 +20,17 @@ class ExtremityClusterizer(NodeClusterizer, object):
         metric      = kwargs["metric_fn"]
         neighbors   = kwargs["kth_neighbors_ix_fn"]
         metric_args = kwargs["metric_args"]
+        printer     = kwargs["printer_fn"]
 
         # This is an array of indeces for each object's furthest neighbor.
         furthest  = neighbors(-1)
 
         # Compute Extremities:
+        printer("Measuring the Reaches", "Computing Extremities")
         self.clusters = [
             Node(strings[i], strings[furthest[i]],
                 encode, metric, **metric_args)
-            for i in tqdm(
-                range(len(space)),
-                desc="Measuring the Reaches (Computing Extremities)",
-                disable=(not show_progress))
+            for i in tqdm(range(len(space)), disable=(not show_progress))
             if (i == furthest[furthest[i]]
                 and i < furthest[i])]
 

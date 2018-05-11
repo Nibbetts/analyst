@@ -77,7 +77,7 @@ class Spatializer(Evaluator, object):
             nodes = self.node_clusterizer.get_clusters(**kwargs)
         
         # Use the Cluster class to compute the main stats for us:
-        printer("Balancing the Continuum (Computing Common Spatial Stats)")
+        printer("Balancing the Continuum", "Computing Common Spatial Stats")
         cluster = Cluster(encoder, metric, objects, nearest=nearest,
             vectors=space, nodes=nodes, auto=True, **metric_args)
 
@@ -86,7 +86,7 @@ class Spatializer(Evaluator, object):
         if len(space) > 0:
             # Overall Info:
             self.data_dict["Dimensionality"] = len(space[0])
-            printer("Electing a Ruler (Getting Medoid, Std Dev, Skew)")
+            printer("Electing a Ruler", "Getting Medoid, Std Dev, Skew")
             self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
             self.data_dict["Standard Dev"] = cluster.std_dev
             if self.node_clusterizer != None:
@@ -95,7 +95,7 @@ class Spatializer(Evaluator, object):
                 #   reported by the NodeClusterizer.
 
             # Centroid Info:
-            printer("Setting Priorities (Centroid Stats)")
+            printer("Setting Priorities", "Centroid Stats")
             self.data_dict["Centroid Norm"] = cluster.centroid_length
             self._compute_list_stats(cluster.centroid_distances,
                 "Centroid Dist", self.data_dict) # Then re-key one entry:
@@ -105,13 +105,13 @@ class Spatializer(Evaluator, object):
             # kth-Neighbors Distance Info:
             for n in self.neighbors_to_stat:
                 if n == 1:  # Added here because this is an OrderedDict
-                    printer("Building Trade Routes (Nearest Neighbor Stats)")
+                    printer("Building Trade Routes", "Nearest Neighbor Stats")
                     printer("Practicing Diplomacy")
                     self.data_dict["Repulsion - Nearest Dist Avg"] = 0
                 if n == 2:  # For fun
-                    printer("Coming up with Excuses (Second Neighbor Stats)")
+                    printer("Coming up with Excuses", "Second Neighbor Stats")
                 if n == -1: # Added here because this is an OrderedDict
-                    printer("Making Enemies (Furthest Neighbor Stats)")
+                    printer("Making Enemies", "Furthest Neighbor Stats")
                     self.data_dict["Broadness - Furthest Dist Max"] = 0
                 self._compute_list_stats(neighbors_dist(n),
                     str(n) + " Nearest Dist", self.data_dict)
@@ -119,14 +119,14 @@ class Spatializer(Evaluator, object):
             # Some Re-keying for Specificity:
             repulsion = self.data_dict.pop("1 Nearest Dist Avg", None)
             broadness = self.data_dict.pop("-1 Nearest Dist Max", None)
-            printer("Claiming Frontiers (Re-Keying Stuff)")
+            printer("Claiming Frontiers", "Re-Keying Stuff")
             if repulsion is not None:
                 self.data_dict["Repulsion - Nearest Dist Avg"] = repulsion
             if broadness is not None:
                 self.data_dict["Broadness - Furthest Dist Max"] = broadness
 
             # Add stars to things we think are important or more interesting:
-            printer("Counting the Lightyears (Adding Stars)")
+            printer("Counting the Lightyears", "Adding Stars")
             self.add_star("Medoid - Obj Nearest to Centroid")
             self.add_star("Dispersion - Centroid Dist Avg")
             self.add_star("Repulsion - Nearest Dist Avg")

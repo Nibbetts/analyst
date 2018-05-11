@@ -28,22 +28,22 @@ class SupernodeClusterizer(NodeClusterizer, object):
 
         # Compute distance matrix and nearest neighbors for node centroids:
         centroids = [n.centroid for n in self.nodes]
-        printer("Fracturing the Empire (Computing Nodal Distance Matrix)")
+        printer("Fracturing the Empire", "Computing Nodal Distance Matrix")
         node_dist_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 centroids,
                 metric_str if metric_str != None else metric_fn,
                 **metric_args))
-        printer("Establishing a Hierocracy (Computing Nearest Neighbor Nodes)")
+        printer("Establishing a Hierocracy", "Computing Nearest Neighbor Nodes")
         neighbors = np.argmax(node_dist_matrix, axis=1)
             
         # Compute the Supernodes:
+        printer("Ascertaining Universe Filaments", "Finding Supernodes")
         self.clusters = [
             Node(node,
                 self.nodes[neighbors[i]],
                 Node.get_centroid, metric_fn, **metric_args)
             for i, node in enumerate(tqdm(self.nodes,
-                desc="Ascertaining Universe Filaments (Finding Supernodes)",
                 disable=(not show_progress)))
             if (i == neighbors[neighbors[i]]
                 and i < neighbors[i])]
@@ -55,18 +55,19 @@ class SupernodeClusterizer(NodeClusterizer, object):
         printer = kwargs["printer_fn"]
         space = kwargs["embeddings"]
 
-        printer("Measuring their Magnitude (Calculating Supernode Span)")
+        printer("Measuring their Magnitude", "Calculating Supernode Span")
         self.add_generic_node_stats()
 
         if len(self.clusters) > 0:
             # Island Factor
-            printer("Minding the Macrocosm (Calculating Island Factor)")
+            printer("Minding the Macrocosm", "Calculating Island Factor")
             self.data_dict["Island Factor"] = (
                 len(self.clusters)*4.0/float(len(space)))
             self.add_star("Island Factor")
 
             # Hierarchical Factor
-            printer("Deliberating over Dominions (Calculating Hierarchical Factor)")
+            printer("Deliberating over Dominions",
+                "Calculating Hierarchical Factor")
             self.data_dict["Hierarchical Factor"] = (
                 len(self.clusters)*2.0/float(len(self.nodes)))
             self.add_star("Hierarchical Factor")
