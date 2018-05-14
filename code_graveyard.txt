@@ -3,6 +3,156 @@ A Place Where Deprecated Code Goes to Die...
 
 //FROM ANALYST:
 
+            # analogy_algorithms -- list of tuples (callable, "Description").
+            #     Each callable must take word_A, is_to_B, as_C, and must return
+            #     is_to_D.
+            #     NOTE: As this variable contains functions, it will be altered
+            #         to no longer contain functions when an Analyst is pickled.
+            # analogy_sets -- list of tuples: (list_of_quadruples, "Description),
+            #     where each quadruple is a list of four strings, D being the
+            #     correct answer to compare against. Example:
+            #     [
+            #         (
+            #             [
+            #                 ["wordA", "wordB", "wordC", "wordD"],
+            #                 ["wordA", "wordB", "wordC", "wordD"]
+            #             ],
+            #             "Analogy Test Set 1"
+            #         ),
+            #         (
+            #             [
+            #                 ["wordA", "wordB", "wordC", "wordD"],
+            #                 ["wordA", "wordB", "wordC", "wordD"]
+            #             ],
+            #             "Analogy Test Set 2"
+            #         )
+            #     ]
+
+    # Compare this analyst with another, data per data.
+    def compare_difference(self, analyst2, w=10, comparator=u"simple"):
+        # Prints a full report with three numbers for each property
+        #   instead of one - val_for_A, val_for_B, A_B_compared.
+        # comparator:
+        #   callable (not used on strings or None), or a built-in:
+        #   "none" or None: don't print the third column
+        #   "simple": A - B
+        #   "weighted": (A - B) / avg(abs(A), abs(B))
+        # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
+        #   Total width will be: (3 + (w + 1)*num_cols + 2 + len(description))
+        # Returns: a grapher object with double-histogram information
+        #   from the comparison
+        self._print(u"Bridging Two Universes",
+            u"Building One-to-one Comparison")
+        print(u"")
+        
+        # Descriptions to use:
+        if self.description == None: desc = u"ANALYST 1"
+        else: desc = self.description
+        if analyst2.description == None: desc2 = u"ANALYST 2"
+        else: desc2 = analyst2.description
+        print(desc.upper() + u" vs. " + desc2.upper())
+
+        # Comparator:
+        if callable(comparator): comparison = comparator
+        elif comparator == None or comparator.lower() == "none":
+            comparator = None
+            comparison = lambda a, b: ""
+        elif comparator.lower() == u"simple": comparison = lambda a, b: a - b
+        else: comparison = Analyst.weighted_difference
+
+        # Combine and sort the Categories without losing any of them:
+        all_categories = []
+        category_indeces = {}
+        # From left analyst (self):
+        for i, category in enumerate(self.categories):
+            if category not in all_categories:
+                all_categories.append(category)
+                category_indeces[category] = (i, None)
+            else:
+                t = category_indeces[category]
+                if t[0] == None: category_indeces[category] = (i, t[1])
+        # From right analyst (other):
+        for i, category in enumerate(analyst2.categories):
+            if category not in all_categories:
+                all_categories.append(category)
+                category_indeces[category] = (None, i)
+            else:
+                t = category_indeces[category]
+                if t[1] == None: category_indeces[category] = (t[0], i)        
+
+        # Combine and sort the info in each category without losing any:
+        for category in all_categories:
+            print(category + u": ")
+            # Gather info from each:
+            try:
+                info_list_1 = self.category_lists[category_indeces[category][0]]
+            except: info_list_1 = []
+            try:
+                info_list_2 = analyst2.category_lists[
+                    category_indeces[category][1]]
+            except: info_list_2 = []
+
+            all_info = []
+            info_indeces = {}
+            # From left analyst (self):
+            for i, info in enumerate(info_list_1):
+                if info[0] not in all_info:
+                    all_info.append(info[0])
+                    info_indeces[info[0]] = (i, None)
+                else:
+                    t = info_indeces[info[0]]
+                    if t[0] == None: info_indeces[info[0]] = (i, t[1])
+            # From right analyst (other):
+            for i, info in enumerate(info_list_2):
+                if info[0] not in all_info:
+                    all_info.append(info[0])
+                    info_indeces[info[0]] = (None, i)
+                else:
+                    t = info_indeces[info[0]]
+                    if t[1] == None: info_indeces[info[0]] = (t[0], i)    
+
+            # Then for the combined info from that category:
+            for info in all_info:
+                # Combine each line of info, checking for None:
+                # comb = [description, var1, var2, comparison, star]
+                info1 = (info_list_1[info_indeces[info][0]] if
+                    info_indeces[info][0] != None else None)
+                info2 = (info_list_2[info_indeces[info][1]] if
+                    info_indeces[info][1] != None else None)
+                if info1 == info2 == None:
+                    comb = [u"???", None, None, u"", u" "]
+                elif info1 == None:
+                    comb = [info2[0], None, info2[1], u"",
+                        u"*" if info2[2] else u" "]
+                elif info2 == None:
+                    comb = [info1[0], info1[1], None, u"",
+                        u"*" if info1[2] else u" "]
+                else: comb = [info1[0], info1[1], info2[1], u"",
+                    u"*" if (info1[2] or info2[2]) else u" "]
+                
+                is_hist = u"Histogram Key" in comb[0]
+
+                # Compute comparison:
+                if comb[1] != None and comb[2] != None:
+                    if u"Histogram Key" in comb[0]:
+                        # Add a new key for a combined histogram:
+                        self.graph_info.append((u"c", info1[1], info2[1]))
+                        comb[3] = len(self.graph_info) - 1
+                    elif not (isstring(comb[1]) or isstring(comb[2])):
+                        comb[3] = comparison(comb[1], comb[2])
+                
+                # Formatting:
+                comb[1] = Analyst._formatit(comb[1], w, is_hist, 3)
+                comb[2] = Analyst._formatit(comb[2], w, is_hist, 3+(w+1))
+                comb[3] = Analyst._formatit(comb[3], w, is_hist, 3+(w+1)*2)
+
+                # And finally print a line:
+                if comparator == None:
+                    print(u"  {}{} {} {} {}".format(
+                        comb[4], comb[1], comb[2], comb[4], comb[0]))
+                else: print(u"  {}{} {} {} {} {}".format(
+                    comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
+
     # # Nuclei:
     # if "Nuclei" in self.categories:
     #     self.nuclei = clusters.clusterizer.compute_nuclei()

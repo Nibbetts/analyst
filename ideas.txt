@@ -24,6 +24,7 @@ Or if not functtools.partial, then functtools.partialmethod, or simple decorator
 
 Analyses:
 ---------
+- fasttext is not normalized - compare to self normalized!
 - compare before adn after being in an RNN. Norms, and also performance on analogies.
 - find which stats are most indicative of success, then add those into a loss function!!
 - compare google's universal sentence encoder used on words with fastext etc
@@ -40,6 +41,11 @@ universal sentence encoder with one word embeddings
 
 Analyst:
 --------
+- use half of distance matrix
+- use much smaller precision for first run, then recompute first few as candidates
+for nearest neighbors.
+- add amin and amax to allowed names of comparators
+- make category and line getters, for full numerical data, including comparators.
 - decide if multi-comparison needs grapher....
 - make grapher object, and have analyst have it as a data member - analyst's graph
 function just call's its grapher's graph function.

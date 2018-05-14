@@ -22,6 +22,11 @@ from .evaluators import *
 #from test_set_2d import TestSet2D
 
 
+# Basic string type checker, for python 2-3 compatibility:
+def isstring(obj):
+    return isinstance(obj, str) or isinstance(obj, bytes)
+
+
 class Analyst:
     """
         Description:
@@ -155,30 +160,6 @@ class Analyst:
             #         "All" -- will automatically include all of the above.
             #     NOTE: As this variable contains functions, it will be altered
             #         to no longer contain functions when an Analyst is pickled.
-            # analogy_algorithms -- list of tuples (callable, "Description").
-            #     Each callable must take word_A, is_to_B, as_C, and must return
-            #     is_to_D.
-            #     NOTE: As this variable contains functions, it will be altered
-            #         to no longer contain functions when an Analyst is pickled.
-            # analogy_sets -- list of tuples: (list_of_quadruples, "Description),
-            #     where each quadruple is a list of four strings, D being the
-            #     correct answer to compare against. Example:
-            #     [
-            #         (
-            #             [
-            #                 ["wordA", "wordB", "wordC", "wordD"],
-            #                 ["wordA", "wordB", "wordC", "wordD"]
-            #             ],
-            #             "Analogy Test Set 1"
-            #         ),
-            #         (
-            #             [
-            #                 ["wordA", "wordB", "wordC", "wordD"],
-            #                 ["wordA", "wordB", "wordC", "wordD"]
-            #             ],
-            #             "Analogy Test Set 2"
-            #         )
-            #     ]
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
             calculate -- whether or not to run the analysis.
@@ -188,7 +169,8 @@ class Analyst:
 
         self.auto_print = auto_print
         print(u"")
-        self._print(u"Asking the Grand Question", u"What is the Purpose of this Space?")
+        self._print(u"Asking the Grand Question",
+            u"What is the Purpose of this Space?")
         self.description = str(desc)
         
         # Find and store a callable version of the given metric:
@@ -203,7 +185,8 @@ class Analyst:
                     u"test_" + self.metric_str]
             except Exception as e:
                 print(e)
-                raise ValueError(u"FATAL ERROR: %s PARAMETER UNRECOGNIZED AND UNCALLABLE!"
+                raise ValueError(u"FATAL ERROR: %s PARAMETER UNRECOGNIZED "
+                    u"AND UNCALLABLE!"
                     % str(metric))
         self.metric_args = metric_args
 
@@ -212,27 +195,34 @@ class Analyst:
         #   encoder + strings -> vectors; vectors + strings -> decoder.
         #   decoder + vectors -> strings; strings + vectors -> encoder.
         #   strings + vectors -> encoder & decoder.
-        self._print("Enumerating the Dimensions", "Making Internal Converters")
+        self._print(u"Enumerating the Dimensions",
+            u"Making Internal Converters")
         # Find embeddings:
         if embeddings is None:
             if encoder is None or strings is None:
-                raise ValueError(u"FATAL ERROR: Without embeddings, you must give both an encoder and strings!")
+                raise ValueError(u"FATAL ERROR: Without embeddings, you must "
+                    u"give both an encoder and strings!")
             else:
-                self._print(u"Stretching the Fabric of Space and Time", u"Finding Embeddings")
+                self._print(u"Stretching the Fabric of Space and Time",
+                    u"Finding Embeddings")
                 self.space = map(encoder,
                     tqdm(strings, disable=(not self.auto_print)))
         else: self.space = embeddings
+        #
         # Find strings:
         if strings is None:
-            if embeddings is None and decoder is None:
-                raise ValueError(u"FATAL ERROR: Without strings, you must give both a decoder and embeddings!")
+            if embeddings is None or decoder is None:
+                raise ValueError(u"FATAL ERROR: Without strings, you must give "
+                    u"both a decoder and embeddings!")
             else:
-                self._print(u"Naming Stars and Drawing a Star Map", u"Collecting Strings")
+                self._print(u"Naming Stars and Drawing a Star Map",
+                    u"Collecting Strings")
                 self.strings = map(decoder,
                     tqdm(embeddings, disable=(not self.auto_print)))
         else: self.strings = strings
         # Now we have both embeddings and strings.
         assert len(self.space) == len(self.strings)
+        #
         # Make encoder:
         if encoder is None:
             self._print(u"Filling the Void", u"Mapping New Encoder")
@@ -243,18 +233,20 @@ class Analyst:
         else:
             assert callable(encoder)
             self.encode = encoder
+        #
         # Make decoder:
         if decoder is None:
             self._print(u"Mapping the Emptiness", u"Mapping New Decoder")
             self.vec_to_s = {}
             for i in trange(len(self.space), disable=(not self.auto_print)):
-                self.vec_to_s[self.space[i]] = self.strings[i]
-            self.decode = self.vec_to_s.__getitem__
+                self.vec_to_s[str(self.space[i].tolist())] = self.strings[i]
+            #self.decode = self.vec_to_s.__getitem__
+            self.decode = lambda vec: self.vec_to_s[str(vec.tolist())]
         else:
             assert callable(decoder)
             self.decode = decoder
 
-        # Separate Map for quick string indexing:
+        # A separate Map for quick string indexing:
         self.s_to_ix = {}
         self._print(u"Indexing Planets", u"Making String-Index Mappings")
         for ix, s in enumerate(
@@ -296,7 +288,7 @@ class Analyst:
     #   and of course only returns the nearest object.
     def as_index(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, str) or isinstance(obj, bytes):
+            if isstring(obj):
                 return self.s_to_ix[obj]
             try: return self.s_to_ix[self.decode(obj)]
             except: return int(obj)
@@ -305,7 +297,7 @@ class Analyst:
     #
     def as_vector(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, str) or isinstance(obj, bytes):
+            if isstring(obj):
                 return self.encode(obj)
             try: return self.space[obj]
             except: return obj
@@ -314,7 +306,7 @@ class Analyst:
     #
     def as_string(self, obj, in_model=True):
         if in_model:
-            if isinstance(obj, str) or isinstance(obj, bytes):
+            if isstring(obj):
                 return obj
             try: return self.strings[obj]
             except: return self.decode(obj)
@@ -332,7 +324,7 @@ class Analyst:
             if k == 0: return obj
             n = k - 1 if k > 0 else k
             i = self.neighbors_getter()[0][self.as_index(obj)][n]
-            if isinstance(obj, str) or isinstance(obj, bytes):
+            if isstring(obj):
                 return self.strings[i]
             try:
                 int(obj)
@@ -545,7 +537,7 @@ class Analyst:
 
         # Add evaluators and categories
         for e in args:
-            if isinstance(e, str) or isinstance(e, bytes): # If keyword
+            if isstring(e): # If keyword
                 if str(e.lower()) == u"all": # If keyword 'All'
                     for cat in Analyst.BUILT_IN_CATEGORIES:
                         evaluator = Analyst.make_default_evaluator(cat)
@@ -601,6 +593,7 @@ class Analyst:
                     as_index_fn=self.as_index,    encoder_fn=self.encode,
                     as_vector_fn=self.as_vector,  decoder_fn=self.decode,
                     string_ix_map=self.s_to_ix,   exists_fn=self.exists,
+                    is_string_fn=isstring,
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,
@@ -629,7 +622,8 @@ class Analyst:
             except Exception: # as e:
                 #print(e)
                 traceback.print_exc()
-                print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR INHERIT FROM Evaluator CLASS?"
+                print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR "
+                    u"INHERIT FROM Evaluator CLASS?"
                     % evaluator.CATEGORY)
         
         if self.auto_print: self.print_report()
@@ -659,7 +653,7 @@ class Analyst:
         result = ""
         if data is None:
             result = " " * w
-        elif isinstance(data, str) or isinstance(data, bytes) or parentheses:
+        elif isstring(data) or parentheses:
             # Strings or Bytestrings
             result = " " # For negatives on others
             if parentheses: result += "(" + str(data) + ")"
@@ -692,134 +686,6 @@ class Analyst:
         if average != 0: return (a - b)/average
         else: return np.nan
 
-    # Compare this analyst with another, data per data.
-    def compare_difference(self, analyst2, w=10, comparator=u"simple"):
-        # Prints a full report with three numbers for each property
-        #   instead of one - val_for_A, val_for_B, A_B_compared.
-        # comparator:
-        #   callable (not used on strings or None), or a built-in:
-        #   "none" or None: don't print the third column
-        #   "simple": A - B
-        #   "weighted": (A - B) / avg(abs(A), abs(B))
-        # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
-        #   Total width will be: (3 + (w + 1)*num_cols + 2 + len(description))
-        # Returns: a grapher object with double-histogram information
-        #   from the comparison
-        self._print(u"Bridging Two Universes",
-            u"Building One-to-one Comparison")
-        print(u"")
-        
-        # Descriptions to use:
-        if self.description == None: desc = u"ANALYST 1"
-        else: desc = self.description
-        if analyst2.description == None: desc2 = u"ANALYST 2"
-        else: desc2 = analyst2.description
-        print(desc.upper() + u" vs. " + desc2.upper())
-
-        # Comparator:
-        if callable(comparator): comparison = comparator
-        elif comparator == None or comparator.lower() == "none":
-            comparator = None
-            comparison = lambda a, b: ""
-        elif comparator.lower() == u"simple": comparison = lambda a, b: a - b
-        else: comparison = Analyst.weighted_difference
-
-        # Combine and sort the Categories without losing any of them:
-        all_categories = []
-        category_indeces = {}
-        # From left analyst (self):
-        for i, category in enumerate(self.categories):
-            if category not in all_categories:
-                all_categories.append(category)
-                category_indeces[category] = (i, None)
-            else:
-                t = category_indeces[category]
-                if t[0] == None: category_indeces[category] = (i, t[1])
-        # From right analyst (other):
-        for i, category in enumerate(analyst2.categories):
-            if category not in all_categories:
-                all_categories.append(category)
-                category_indeces[category] = (None, i)
-            else:
-                t = category_indeces[category]
-                if t[1] == None: category_indeces[category] = (t[0], i)        
-
-        # Combine and sort the info in each category without losing any:
-        for category in all_categories:
-            print(category + u": ")
-            # Gather info from each:
-            try:
-                info_list_1 = self.category_lists[category_indeces[category][0]]
-            except: info_list_1 = []
-            try:
-                info_list_2 = analyst2.category_lists[
-                    category_indeces[category][1]]
-            except: info_list_2 = []
-
-            all_info = []
-            info_indeces = {}
-            # From left analyst (self):
-            for i, info in enumerate(info_list_1):
-                if info[0] not in all_info:
-                    all_info.append(info[0])
-                    info_indeces[info[0]] = (i, None)
-                else:
-                    t = info_indeces[info[0]]
-                    if t[0] == None: info_indeces[info[0]] = (i, t[1])
-            # From right analyst (other):
-            for i, info in enumerate(info_list_2):
-                if info[0] not in all_info:
-                    all_info.append(info[0])
-                    info_indeces[info[0]] = (None, i)
-                else:
-                    t = info_indeces[info[0]]
-                    if t[1] == None: info_indeces[info[0]] = (t[0], i)    
-
-            # Then for the combined info from that category:
-            for info in all_info:
-                # Combine each line of info, checking for None:
-                # comb = [description, var1, var2, comparison, star]
-                info1 = (info_list_1[info_indeces[info][0]] if
-                    info_indeces[info][0] != None else None)
-                info2 = (info_list_2[info_indeces[info][1]] if
-                    info_indeces[info][1] != None else None)
-                if info1 == info2 == None:
-                    comb = [u"???", None, None, u"", u" "]
-                elif info1 == None:
-                    comb = [info2[0], None, info2[1], u"",
-                        u"*" if info2[2] else u" "]
-                elif info2 == None:
-                    comb = [info1[0], info1[1], None, u"",
-                        u"*" if info1[2] else u" "]
-                else: comb = [info1[0], info1[1], info2[1], u"",
-                    u"*" if (info1[2] or info2[2]) else u" "]
-                
-                is_hist = u"Histogram Key" in comb[0]
-
-                # Compute comparison:
-                if comb[1] != None and comb[2] != None:
-                    if u"Histogram Key" in comb[0]:
-                        # Add a new key for a combined histogram:
-                        self.graph_info.append((u"c", info1[1], info2[1]))
-                        comb[3] = len(self.graph_info) - 1
-                    elif not (isinstance(comb[1], str) or \
-                            isinstance(comb[1], bytes) or \
-                            isinstance(comb[2], str) or \
-                            isinstance(comb[2], bytes)):
-                        comb[3] = comparison(comb[1], comb[2])
-                
-                # Formatting:
-                comb[1] = Analyst._formatit(comb[1], w, is_hist, 3)
-                comb[2] = Analyst._formatit(comb[2], w, is_hist, 3+(w+1))
-                comb[3] = Analyst._formatit(comb[3], w, is_hist, 3+(w+1)*2)
-
-                # And finally print a line:
-                if comparator == None:
-                    print(u"  {}{} {} {} {}".format(
-                        comb[4], comb[1], comb[2], comb[4], comb[0]))
-                else: print(u"  {}{} {} {} {} {}".format(
-                    comb[4], comb[1], comb[2], comb[3], comb[4], comb[0]))
-
     @staticmethod
     def compare(ana_list, w=10, comparators=[u"all"]):
         # Lists side by side the values for each analyst in the list,
@@ -840,8 +706,8 @@ class Analyst:
         # Returns: a grapher object with multi-histogram information from the!!!!!!!!!!!!!!!!!!!!!!!!!!
         #   the comparison.
         assert len(ana_list) > 0
-        ana_list[0]._print(u"Bridging Two Universes",
-            u"Building One-to-one Comparison")
+        ana_list[0]._print(u"Bridging Universes",
+            u"Building Comparison & Report")
         print(u"")
 
         # Descriptions to use:
@@ -883,7 +749,7 @@ class Analyst:
 
         # Column Headers:
         title_string = u"   " + u"{} " * len(ana_list) + u"|" + \
-            "{} " * len(comparisons) + u"  PROPERTY"
+            "{} " * len(comparisons) + u"| PROPERTY"
         titles = descriptions + [c.__name__.upper() for c in comparisons]
         s = 3
         for i, t in enumerate(titles):
@@ -933,8 +799,7 @@ class Analyst:
                 datalist = [values[(a, d)] if (a, d) in values else u"" \
                     for a in range(len(ana_list))]
                 # Comparisons:
-                numbers = filter(lambda a: not isinstance(a, str) \
-                    and not isinstance(a, bytes), datalist)
+                numbers = filter(lambda a: not isstring(a), datalist)
                 if numbers == [] or is_hist:
                     comps = [u""] * len(comparisons)
                 else: comps = [comp(numbers) for comp in comparisons]
@@ -1103,7 +968,8 @@ class Analyst:
                 #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
                 return an
         except Exception as e:
-            print(u"ERROR: Unable to load or deserialize Analyst object from file: '{}'".format(name))
+            print(u"ERROR: Unable to load or deserialize Analyst object "
+                u"from file: '{}'".format(name))
             print(e)
             #raise e
             return None
