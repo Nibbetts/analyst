@@ -11,6 +11,7 @@ apart, then they are dispersed well, as like 6 points across the surface of a ba
 
 Overall:
 --------
+- build in anvaka's visualization
 - decide whether it is better to have it be able to save live objects and continue
 computing, or whether it is better to have it be backwards compatibile by only
 storing pure data. Or fix problem w/ hybrid? OR MAKE NEW INSTANCE IN LOAD FUNCTION!
@@ -24,6 +25,8 @@ Or if not functtools.partial, then functtools.partialmethod, or simple decorator
 
 Analyses:
 ---------
+- on presentable analysis make sure that same words in each space, and or trained
+on same training data, maybe as separate analysis!
 - fasttext is not normalized - compare to self normalized!
 - compare before adn after being in an RNN. Norms, and also performance on analogies.
 - find which stats are most indicative of success, then add those into a loss function!!
@@ -41,9 +44,10 @@ universal sentence encoder with one word embeddings
 
 Analyst:
 --------
-- use half of distance matrix
-- use much smaller precision for first run, then recompute first few as candidates
-for nearest neighbors.
+- list words who are no one's nearest neighbor
+- use half of distance matrix; use much smaller precision for first run, then recompute first few as candidates
+for nearest neighbors. Or use scipy for everything, since it seems to do these?
+- and or make distance matrix getter take a slice object and compute stuff on the spot.
 - add amin and amax to allowed names of comparators
 - make category and line getters, for full numerical data, including comparators.
 - decide if multi-comparison needs grapher....
@@ -111,6 +115,10 @@ Analogical Analyses:
 - make clusterizer, analogist, and analogyRanker subclasses of evaluator.
 
 
+
+EMBEDDING ALGORITHM IDEAS
+-------------------------
+- keep a frequency value for each word, and only shift by weighted amounts as we train.
 
 
 (categories:)

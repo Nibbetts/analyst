@@ -74,12 +74,17 @@ class NodeClusterizer(Clusterizer, object):
                 "Calculating Alignment Factor")
             avg_align = np.mean(
                 [n.alignment for n in self.clusters], axis=0)
-            avg_align /= np.linalg.norm(avg_align)
-            self.data_dict["Alignment Factor"] = (
-                np.mean([
-                    np.abs(sp.distance.cosine(avg_align, n.alignment))
-                    for n in self.clusters]))
-            self.add_star("Alignment Factor")
+                # Note: this only works because all on one side of the space,
+                #   and all are normalized.
+            self.data_dict["Alignment Factor"] = np.linalg.norm(avg_align)
+            # avg_align /= np.linalg.norm(avg_align)
+            # self.data_dict["Alignment Factor"] = \
+            #     np.mean([
+            #         np.abs(np.dot(avg_align, n.alignment) \
+            #             if np.linalg.norm(n.alignment) != 0 else 0.0)
+            #         for n in self.clusters]) \
+            #     if np.linalg.norm(avg_align) != 0 else 0.0
+            # self.add_star("Alignment Factor")
             #   I tend to think this is important.
 
     # No problem adding functions, as well. This one useful for Node inheriters.

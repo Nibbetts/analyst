@@ -1,4 +1,14 @@
+#from __future__ import print_function
+#from __future__ import absolute_import
+#from builtins import str, bytes
+
 if __name__ == "__main__":
+
+    # Install the latest Tensorflow version.
+    #!pip3 install --quiet "tensorflow>=1.7"
+    # Install TF-Hub.
+    #!pip3 install --quiet tensorflow-hub
+    #???? !pip3 install seaborn
 
     import analyst as an
     #from ...scholar.scholar import scholar as sch
@@ -8,6 +18,10 @@ if __name__ == "__main__":
     import pickle as pkl
     import os.path
     import gensim
+    import tensorflow as tf
+    import tensorflow_hub as hub
+
+    MAX_LINES = 1000
 
     def normalize(vec):
         return vec/np.linalg.norm(vec)
@@ -16,70 +30,115 @@ if __name__ == "__main__":
         #return s.angle(vec1, vec2)*180/np.pi
         return sp.distance.cosine(vec1, vec2)*180/np.pi
 
-    def read_text_table(path):
+    def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()
-        numvecs, dim = map(int, lines[0].split(" "))
+        if firstline:
+            numvecs, dim = map(int, lines[0].split(" "))
+        else:
+            numvecs = len(lines) if limit_lines == None \
+                else min(len(lines), limit_lines)
+            dim = len(lines[0].split(" ")) - 1
         strings = []
         embeddings = np.empty(shape=(numvecs, dim))
         for i in tqdm(range(numvecs), desc="Reading " + path):
-            row = lines[i + 1].split(" ")
-            strings.append(row[0])
+            row = lines[i + firstline].split(" ")
+            strings.append(row[0])#str(row[0]))
             embeddings[i] = row[1:]
         return strings, embeddings
 
     # Fasttext:
-    with open("embeddings/fasttext.en.pkl", 'rb') as f:
+    #   ordered by frequency, I think.
+    #   non-normalized.
+    #with open("embeddings/fasttext.en.pkl", 'rb') as f:
+    with open("embeddings/fasttext.en.py2.pkl", 'rb') as f:
         data_ft = pkl.load(f)
-    str_f = data_ft['tokens'][:2000]
-    embed_f = data_ft['vectors'][:2000]
-    embed_fn = map(normalize, embed_f)
-    an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f, auto_print=True,
-        metric=metric, desc="Fasttext Normalized Cosine")
-    print("Success at saving Fasttext Normalized Cosine: "
-        + str(an.Analyst.save(an_fnc,
-        "analyst_project/embeddings/an_fasttext_normalized_cosine")))
+    str_f = data_ft['tokens'][:MAX_LINES]
+    # #str_f = list(map(str, str_f))
+    # embed_f = data_ft['vectors'][:MAX_LINES]
+    # embed_fn = list(map(normalize, embed_f))
+    # an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f, auto_print=True,
+    #     metric=metric, desc="Fasttext Normalized Cosine")
+    # print("Success at saving Fasttext Normalized Cosine: "
+    #     + str(an.Analyst.save(an_fnc,
+    #         "embeddings/an_fasttext_normalized_cosine")))
 
-    # ConceptNet Numberbatch:
-    #if not os.path.isfile("analyst_project/embeddings/an_numberbatch"):
-    str_nb, embed_nb = read_text_table(
-        "embeddings/numberbatch-en-17.06.txt")
-    common_nb = filter(lambda w: w in str_nb, str_f)
-    indeces_nb = map(str_nb.index, common_nb)
-    embed_nb = embed_nb[indeces_nb]
-    an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
-        auto_print=True, desc="ConceptNet Numberbatch")
-    print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
-        "analyst_project/embeddings/an_numberbatch")))
+    # # ConceptNet Numberbatch:
+    # #   alphanumeric order.
+    # #   normalized.
+    # #if not os.path.isfile("embeddings/an_numberbatch"):
+    # str_nb, embed_nb = read_text_table(
+    #     "embeddings/numberbatch-en-17.06.txt", firstline=True)
+    # common_nb = list(filter(lambda w: w in str_nb, str_f))
+    # indeces_nb = list(map(str_nb.index, common_nb))
+    # embed_nb = embed_nb[indeces_nb]
+    # an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
+    #     auto_print=True, desc="ConceptNet Numberbatch")
+    # print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
+    #     "embeddings/an_numberbatch")))
 
     # # Fasttext Normalization Comparison:
     # an_fe = an.Analyst(embeddings=embed_f, strings=str_f, auto_print=True,
     #     metric="euclidean", desc="Fasttext Euclidean")
     # print("Success at saving Fasttext Euclidean: " + str(an.Analyst.save(an_fe,
-    #     "analyst_project/embeddings/an_fasttext_euclidean")))
+    #     "embeddings/an_fasttext_euclidean")))
     # an_fne = an.Analyst(embeddings=embed_fn, strings=str_f, auto_print=True,
     #     metric="euclidean", desc="Fasttext Normalized Euclidean")
     # print("Success at saving Fasttext Normalized Euclidean: "
     #     + str(an.Analyst.save(an_fne,
-    #     "analyst_project/embeddings/an_fasttext_normalized_euclidean")))
+    #     "embeddings/an_fasttext_normalized_euclidean")))
     # an_fc = an.Analyst(embeddings=embed_f, strings=str_f, auto_print=True,
     #     metric=metric, desc="Fasttext Cosine")
     # print("Success at saving Fasttext Cosine: " + str(an.Analyst.save(an_fc,
-    #     "analyst_project/embeddings/an_fasttext_cosine")))
+    #     "embeddings/an_fasttext_cosine")))
 
-    # Word2vec (GoogleNews):
-    model_w = gensim.models.KeyedVectors.load_word2vec_format(
-        'embeddings/GoogleNews-vectors-negative300.bin', binary=True)
-    common_w = filter(lambda w: w in model_w.vocab.keys(), str_f)
-    embed_w = map(model_w.get_vector, common_w)
-    embed_w = map(normalize, embed_w)
-    an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
-        auto_print=True, desc="Word2Vec GoogleNews Normalized")
-    print("Success at saving Word2Vec GoogleNews Normalized: " +
-        str(an.Analyst.save(an_w,
-            "analyst_project/embeddings/an_word2vec_googlenews_normalized")))
+    # # Word2vec (GoogleNews):
+    # #   non-normalized.
+    # #   unordered, from gensim's dict-like structure.
+    # model_w = gensim.models.KeyedVectors.load_word2vec_format(
+    #     'embeddings/GoogleNews-vectors-negative300.bin', binary=True)
+    # #common_w = list(filter(lambda w: w in model_w.vocab.keys() \
+    # #    or bytes(w) in model_w.vocab.keys(), str_f))
+    # common_w = list(filter(lambda w: w in model_w.vocab.keys(), str_f))
+    # embed_w = list(map(model_w.get_vector, common_w))
+    # embed_w = list(map(normalize, embed_w))
+    # an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
+    #     auto_print=True, desc="Word2Vec GoogleNews Normalized")
+    # print("Success at saving Word2Vec GoogleNews Normalized: " +
+    #     str(an.Analyst.save(an_w,
+    #         "embeddings/an_word2vec_googlenews_normalized")))
 
-    
-    
+    # # GloVe:
+    # #   ordered by frequency, I think.
+    # #   non-normalized.
+    # str_g, embed_g = read_text_table(
+    #     "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
+    # embed_g = list(map(normalize, embed_g))
+    # an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
+    #     auto_print=True, desc="GloVe Normalized")
+    # print("Success at saving GloVe Normalized: " + str(an.Analyst.save(an_g,
+    #     "embeddings/an_glove_normalized")))
 
-    an.Analyst.compare([an_fnc, an_fe, an_fne, an_fc])
-    an.Analyst.compare([an_nb, an_fnc, an_w, an_u, an_g])
+    # Universal Sentence Encoder:
+    #   embeddings must be found by hand from things to encode.
+    #   normalized.
+    #   512 dimensions.
+    module_url = "https://tfhub.dev/google/universal-sentence-encoder/1"
+    embed = hub.Module(module_url)
+    tf.logging.set_verbosity(tf.logging.ERROR)
+    with tf.Session() as sess:
+        sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
+        embed_u = sess.run(embed(str_f))
+    an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
+        auto_print=True, desc="Universal Sentence Encoder with words")
+    print("Success at saving Universal Sentence Encoder with words: " +
+        str(an.Analyst.save(
+            an_u, "embeddings/an_universal_sentence_encoder_with_words")))
+
+    an_fnc = an.Analyst.load("embeddings/an_fasttext_normalized_cosine")
+    an_nb = an.Analyst.load("embeddings/an_numberbatch")
+    an_w = an.Analyst.load("embeddings/an_word2vec_googlenews_normalized")
+    an_g = an.Analyst.load("embeddings/an_glove_normalized")
+    # an_u = an.Analyst.load("embeddings/an_universal_sentence_encoder_with_words")
+
+    #an.Analyst.compare([an_fnc, an_fe, an_fne, an_fc])
+    an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])

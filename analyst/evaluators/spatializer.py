@@ -114,11 +114,11 @@ class Spatializer(Evaluator, object):
                     printer("Making Enemies", "Furthest Neighbor Stats")
                     self.data_dict["Broadness - Furthest Dist Max"] = 0
                 self._compute_list_stats(neighbors_dist(n),
-                    str(n) + " Nearest Dist", self.data_dict)
+                    "Nghbr " + str(n) + " Dist", self.data_dict)
 
             # Some Re-keying for Specificity:
-            repulsion = self.data_dict.pop("1 Nearest Dist Avg", None)
-            broadness = self.data_dict.pop("-1 Nearest Dist Max", None)
+            repulsion = self.data_dict.pop("Nghbr 1 Dist Avg", None)
+            broadness = self.data_dict.pop("Nghbr -1 Dist Max", None)
             printer("Claiming Frontiers", "Re-Keying Stuff")
             if repulsion is not None:
                 self.data_dict["Repulsion - Nearest Dist Avg"] = repulsion

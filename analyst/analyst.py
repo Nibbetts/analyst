@@ -653,7 +653,7 @@ class Analyst:
         result = ""
         if data is None:
             result = " " * w
-        elif isstring(data) or parentheses:
+        elif isstring(data) or parentheses or not np.isfinite(data):
             # Strings or Bytestrings
             result = " " # For negatives on others
             if parentheses: result += "(" + str(data) + ")"

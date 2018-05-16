@@ -21,10 +21,14 @@ class Node:
         self.distance = metric(self.vec_a, self.vec_b, **metric_args)
         self.centroid = (self.vec_a + self.vec_b) / 2.0
         self.alignment = self.vec_b - self.vec_a
-        if metric == sp.distance.euclidean:
-            self.alignment /= self.distance
-        else:
+        bisector = np.zeros(shape=len(self.vec_a))
+        bisector[0] = 1 # Creating a one-hot vector to bisect the space
+        if np.dot(self.alignment, bisector) < 0:
+            self.alignment = -self.alignment # Flip vec if in wrong direction.
+        try:
             self.alignment /= np.linalg.norm(self.alignment)
+        except:
+            pass
 
     def __eq__(self, r_node):
         return ((self.a == r_node.a and self.b == r_node.b) or
