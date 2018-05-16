@@ -20,15 +20,18 @@ class Node:
         self.vec_b = encoder(b) # if encoder != None else b
         self.distance = metric(self.vec_a, self.vec_b, **metric_args)
         self.centroid = (self.vec_a + self.vec_b) / 2.0
-        self.alignment = self.vec_b - self.vec_a
+        self.alignment_vec = self.vec_b - self.vec_a
+        self.alignment = 0.0
+        # The method below for finding alignment factor has fail cases,
+        #   so alignment must be finished externally. The code below is then
+        #   not needed, but harms nothing.
         bisector = np.zeros(shape=len(self.vec_a))
         bisector[0] = 1 # Creating a one-hot vector to bisect the space
-        if np.dot(self.alignment, bisector) < 0:
-            self.alignment = -self.alignment # Flip vec if in wrong direction.
-        try:
-            self.alignment /= np.linalg.norm(self.alignment)
-        except:
-            pass
+        if np.dot(self.alignment_vec, bisector) < 0:
+            self.alignment_vec = -self.alignment_vec
+            #   Flip vec if in wrong direction.
+        align_len = np.linalg.norm(self.alignment_vec)
+        if align_len != 0: self.alignment_vec /= align_len
 
     def __eq__(self, r_node):
         return ((self.a == r_node.a and self.b == r_node.b) or

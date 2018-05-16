@@ -25,6 +25,9 @@ Or if not functtools.partial, then functtools.partialmethod, or simple decorator
 
 Analyses:
 ---------
+- check if there are properties associated with length of vectors in non-normalized spaces.
+- check if outliers are longer, and if we need to NOT normalize the spaces to get
+accurate cosine measurements!
 - on presentable analysis make sure that same words in each space, and or trained
 on same training data, maybe as separate analysis!
 - fasttext is not normalized - compare to self normalized!
@@ -44,6 +47,8 @@ universal sentence encoder with one word embeddings
 
 Analyst:
 --------
+- use argpartition to not have to sort all 2million, but just the first 5
+- make getter for data in report; row and category?
 - list words who are no one's nearest neighbor
 - use half of distance matrix; use much smaller precision for first run, then recompute first few as candidates
 for nearest neighbors. Or use scipy for everything, since it seems to do these?
@@ -83,6 +88,7 @@ https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-t
 
 Clusterizers TO DO:
 -------------------
+- cluster by length of vector to test?
 - add norms of words, and average norms etc in clusters and space, for non-normalized spaces.
 - instead of specific stats, allow variety of stats in each cluster, with dict,
 and iterate through in cluterizer that adds info.

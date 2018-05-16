@@ -102,12 +102,12 @@ class Cluster:
 
     def calculate(self):
         if self.vectors is None or self.vectors is []:
-            self.vectors = map(self.encoder, self.objects)
+            self.vectors = np.array([self.encoder(o) for o in self.objects])
 
         #self.centroid = sum(self.vectors) / len(self.vectors)
         self.centroid = np.mean(self.vectors, axis=0)
         self.centroid_length = np.linalg.norm(self.centroid)
-        #self.focus = sum([n.centroid for n in self.nodes]) / len(self.nodes)
+        #self.focus = sum(n.centroid for n in self.nodes) / len(self.nodes)
         if len(self.nodes) != 0:
             self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
             self.skew = self.metric(
@@ -117,8 +117,8 @@ class Cluster:
             self.skew = None
 
         # Calculate Dispersion:
-        #self.dispersion = sum([self.metric(self.centroid, vec)
-        #    for vec in self.vectors]) / len(self.objects)
+        #self.dispersion = sum(self.metric(self.centroid, vec)
+        #    for vec in self.vectors) / len(self.objects)
         self.centroid_distances = [self.metric(
                 self.centroid, vec, **self.metric_args) for vec in self.vectors]
         self.dispersion = np.mean(self.centroid_distances, axis=0)
@@ -127,22 +127,22 @@ class Cluster:
         self.std_dev = np.std(self.vectors)
 
         # Calculate repulsion:
-        #if self.nearest != None: self.repulsion = sum([self.metric(
+        #if self.nearest != None: self.repulsion = sum(self.metric(
         #    v, self.encoder(self.nearest(self.objects[i])))
-        #    for i, v in self.vectors]) / len(self.objects)
+        #    for i, v in self.vectors) / len(self.objects)
         if self.nearest != None:
             self.repulsion = np.mean([self.metric(
                     v, self.encoder(self.nearest(self.objects[i])),
-                    **self.metric_args)
+                    **self.metric_args) \
                 for i, v in enumerate(self.vectors)], axis=0)
         else: self.repulsion = None
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
 
         # Calculate Medoid:
-        self.medoid = self.objects[np.argmin([
+        self.medoid = self.objects[np.argmin(
             self.metric(self.centroid, v, **self.metric_args) \
-            for v in self.vectors])]
+            for v in self.vectors)]
 
 
     def cluster_dist(self, B):

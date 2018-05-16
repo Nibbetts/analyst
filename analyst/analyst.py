@@ -205,8 +205,8 @@ class Analyst:
             else:
                 self._print(u"Stretching the Fabric of Space and Time",
                     u"Finding Embeddings")
-                self.space = map(encoder,
-                    tqdm(strings, disable=(not self.auto_print)))
+                self.space = np.array([encoder(w) for w in
+                    tqdm(strings, disable=(not self.auto_print))])
         else: self.space = embeddings
         #
         # Find strings:
@@ -217,8 +217,8 @@ class Analyst:
             else:
                 self._print(u"Naming Stars and Drawing a Star Map",
                     u"Collecting Strings")
-                self.strings = map(decoder,
-                    tqdm(embeddings, disable=(not self.auto_print)))
+                self.strings = [decoder(v) for v in
+                    tqdm(embeddings, disable=(not self.auto_print))]
         else: self.strings = strings
         # Now we have both embeddings and strings.
         assert len(self.space) == len(self.strings)
@@ -657,7 +657,7 @@ class Analyst:
             # Strings or Bytestrings
             result = " " # For negatives on others
             if parentheses: result += "(" + str(data) + ")"
-            else: result += data
+            else: result += str(data)
             format_str = "{:" + str(w) + "}"
             result = format_str.format(result)
             if len(result) > w:
@@ -799,7 +799,7 @@ class Analyst:
                 datalist = [values[(a, d)] if (a, d) in values else u"" \
                     for a in range(len(ana_list))]
                 # Comparisons:
-                numbers = filter(lambda a: not isstring(a), datalist)
+                numbers = [d for d in datalist if not isstring(d)]
                 if numbers == [] or is_hist:
                     comps = [u""] * len(comparisons)
                 else: comps = [comp(numbers) for comp in comparisons]

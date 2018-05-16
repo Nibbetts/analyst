@@ -107,8 +107,9 @@ class Clusterizer(Evaluator, object):
                 
             nodes = []
             for i, group in enumerate(self.vector_groups):
-                objects = map(decoder, group)
-                nodes = map(s_to_node, objects) if s_to_node != None else []
+                objects = [decoder(v) for v in group]
+                nodes = [s_to_node[o] for o in objects] \
+                    if s_to_node != None else []
                 self.clusters.append(Cluster(encoder, metric, objects,
                     nearest=nearest, vectors=group, nodes=nodes, auto=True,
                     ID=i, name=None, **metric_args))
@@ -124,7 +125,7 @@ class Clusterizer(Evaluator, object):
         #   and self.starred likewise.
         self.data_dict["Count"] = len(self.clusters)
         if len(self.clusters) > 0:
-            self._compute_list_stats(map(len, self.clusters),
+            self._compute_list_stats([len(c) for c in self.clusters],
                 "Population",  self.data_dict)
             self._compute_list_stats([c.centroid_length \
                 for c in self.clusters], "Centroid Norm", self.data_dict)

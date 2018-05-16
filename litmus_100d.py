@@ -33,7 +33,7 @@ if __name__ == "__main__":
             [word + "_JJ" for word in s.get_most_common_words("JJ", 100) if s.exists_in_model(word + "_JJ")]
     print("Number of words:", len(words))
 
-    vectors_real = map(s.model.get_vector, words)
+    vectors_real = [s.model.get_vector(w) for w in words]
     vectors_fake = [normalize(vec) for vec in np.random.random(
         (len(words),len(vectors_real[0])))*2-1] # Allow negatives
 

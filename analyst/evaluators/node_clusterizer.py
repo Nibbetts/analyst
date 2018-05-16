@@ -42,6 +42,14 @@ class NodeClusterizer(Clusterizer, object):
             if (i == nearest[nearest[i]]
                 and i < nearest[i])]
 
+        # Compute the Relative Alignment of each Node:
+        if len(self.clusters) > 1:
+            for node in self.clusters:
+                node.alignment = np.mean([
+                    abs(np.dot(node.alignment_vec, n.alignment_vec)) \
+                    for n in self.clusters if n != node])
+        elif len(self.clusters) == 1: self.clusters[0].alignment = 1.0
+
         # Useful data to store:
         self._string_node_dict = {}
         for node in self.clusters:
@@ -72,20 +80,22 @@ class NodeClusterizer(Clusterizer, object):
             # Alignment Factor
             printer("Musing over Magnetic Moments",
                 "Calculating Alignment Factor")
-            avg_align = np.mean(
-                [n.alignment for n in self.clusters], axis=0)
-                # Note: this only works because all on one side of the space,
-                #   and all are normalized.
-            self.data_dict["Alignment Factor"] = np.linalg.norm(avg_align)
-            # avg_align /= np.linalg.norm(avg_align)
-            # self.data_dict["Alignment Factor"] = \
-            #     np.mean([
-            #         np.abs(np.dot(avg_align, n.alignment) \
-            #             if np.linalg.norm(n.alignment) != 0 else 0.0)
-            #         for n in self.clusters]) \
-            #     if np.linalg.norm(avg_align) != 0 else 0.0
-            # self.add_star("Alignment Factor")
-            #   I tend to think this is important.
+            self.data_dict["Alignment Factor"] = np.mean([
+                n.alignment for n in self.clusters])
+            # avg_align = np.mean(
+            #     [n.alignment_vec for n in self.clusters], axis=0)
+            #     # Note: this only works because all on one side of the space,
+            #     #   and all are normalized.
+            # self.data_dict["Alignment Factor"] = np.linalg.norm(avg_align)
+            # # avg_align /= np.linalg.norm(avg_align)
+            # # self.data_dict["Alignment Factor"] = \
+            # #     np.mean([
+            # #         np.abs(np.dot(avg_align, n.alignment_vec) \
+            # #             if np.linalg.norm(n.alignment_vec) != 0 else 0.0)
+            # #         for n in self.clusters)] \
+            # #     if np.linalg.norm(avg_align) != 0 else 0.0
+            # # self.add_star("Alignment Factor")
+            # #   I tend to think this is important.
 
     # No problem adding functions, as well. This one useful for Node inheriters.
     def add_generic_node_stats(self):
