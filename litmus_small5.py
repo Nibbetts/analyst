@@ -17,24 +17,23 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import pickle as pkl
     import os.path
-    import gensim
-    import tensorflow as tf
-    import tensorflow_hub as hub
+    #import gensim
+    #import tensorflow as tf
+    #import tensorflow_hub as hub
 
-    import tkinter
-    from tkinter import messagebox
+    #import tkinter
+    #from tkinter import messagebox
 
 
-    MAX_LINES = 100000
+    MAX_LINES = 20000
 
     def normalize(vec):
         return vec/np.linalg.norm(vec)
 
-    def metric(vec1, vec2):
-        #return s.angle(vec1, vec2)*180/np.pi
-        return sp.distance.cosine(vec1, vec2)*180/np.pi
+    #metric = "cosine"
+    metric = an.Analyst.angle
 
-    def read_text_table(path, firstline=True, limit_lines=None):
+    '''def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()
         if firstline:
             numvecs, dim = map(int, lines[0].split(" "))
@@ -51,8 +50,8 @@ if __name__ == "__main__":
         return strings, embeddings
  
     # hide main window
-    root = tkinter.Tk()
-    root.withdraw()
+    #root = tkinter.Tk()
+    #root.withdraw()
 
     # Fasttext:
     #   ordered by frequency, I think.
@@ -68,7 +67,7 @@ if __name__ == "__main__":
         metric=metric, desc="Fasttext Normalized Cosine")
     print("Success at saving Fasttext Normalized Cosine: "
         + str(an.Analyst.save(an_fnc,
-            "embeddings/an_fasttext_normalized_cosine")))
+            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized_cosine")))
 
     messagebox.showinfo("Information","Analysis 1 complete!")
 
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
         auto_print=True, desc="ConceptNet Numberbatch")
     print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
-        "embeddings/an_numberbatch")))
+        "saved_analyses/an" + str(MAX_LINES) + "_numberbatch")))
 
     messagebox.showinfo("Information","Analysis 2 complete!")
 
@@ -117,7 +116,8 @@ if __name__ == "__main__":
         auto_print=True, desc="Word2Vec GoogleNews Normalized")
     print("Success at saving Word2Vec GoogleNews Normalized: " +
         str(an.Analyst.save(an_w,
-            "embeddings/an_word2vec_googlenews_normalized")))
+            "saved_analyses/an" + str(MAX_LINES) +
+            "_word2vec_googlenews_normalized")))
 
     messagebox.showinfo("Information","Analysis 3 complete!")
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
         auto_print=True, desc="GloVe Normalized")
     print("Success at saving GloVe Normalized: " + str(an.Analyst.save(an_g,
-        "embeddings/an_glove_normalized")))
+        "saved_analyses/an" + str(MAX_LINES) + "_glove_normalized")))
 
     messagebox.showinfo("Information","Analysis 4 complete!")
 
@@ -148,15 +148,16 @@ if __name__ == "__main__":
         auto_print=True, desc="Universal Sentence Encoder with words")
     print("Success at saving Universal Sentence Encoder with words: " +
         str(an.Analyst.save(
-            an_u, "embeddings/an_universal_sentence_encoder_with_words")))
+            an_u, "saved_analyses/an" + str(MAX_LINES) +
+            "_universal_sentence_encoder_with_words")))
 
-    messagebox.showinfo("Information","Analysis 5 complete!")
+    messagebox.showinfo("Information","Analysis 5 complete!")'''
 
-    # an_fnc = an.Analyst.load("embeddings/an_fasttext_normalized_cosine")
-    # an_nb = an.Analyst.load("embeddings/an_numberbatch")
-    # an_w = an.Analyst.load("embeddings/an_word2vec_googlenews_normalized")
-    # an_g = an.Analyst.load("embeddings/an_glove_normalized")
-    # an_u = an.Analyst.load("embeddings/an_universal_sentence_encoder_with_words")
+    an_fnc = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_fasttext_normalized_cosine")
+    an_nb = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_numberbatch")
+    an_w = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_word2vec_googlenews_normalized")
+    an_g = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_glove_normalized")
+    an_u = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_universal_sentence_encoder_with_words")
 
     #an.Analyst.compare([an_fnc, an_fe, an_fne, an_fc])
     an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])

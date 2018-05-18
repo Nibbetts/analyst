@@ -96,6 +96,7 @@ class Evaluator:
         #   as_vector_fn,               : callable, any of three to vector.
         #   exists_fn,                  : callable, check any of three exists.
         #   is_string_fn,               : callable, True if is str or bytes.
+        #   angle_fn,                   : callable, angle metric.
         #   generic_nearest_fn,         : getter, nearest, keeps same type.
         #   generic_neighbor_k_fn,      : getter, kth neighbor, keeps same type.
         #   kth_neighbors_ix_fn,        : getter, vec. of ix of kth, or all.
@@ -123,7 +124,7 @@ class Evaluator:
             show_progress = kwargs["draw_progress"]
 
             if show_progress:
-                printer("Evaluating " + self.CATEGORY)
+                printer("Thinking Thoughts", "Evaluating " + self.CATEGORY)
 
             self.compute_stats(**kwargs)
 

@@ -134,6 +134,8 @@ class Analyst:
                 accepts any string accepted by scipy.spatial.distance.pdist,
                 or any callable accepting vectors as the first two parameters
                 and returning a scalar. This allows for custom distance metrics.
+            WARNING: custom metrics are orders or magnitude slower than
+                scipy's built-ins!
             evaluators -- FILL IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             # cluster_algorithms -- list of tuples (callable, "Description").
             #     Each callable must take an array-like list of vectors and return
@@ -180,7 +182,9 @@ class Analyst:
             self.metric_str = None
         else:
             try:
-                self.metric_str = str(sp.distance._METRIC_ALIAS[metric])
+                self.metric_str = metric
+                #self.metric_str = str(sp.distance._METRIC_ALIAS[metric])
+                #   Only worked in python2.
                 self.metric = sp.distance._TEST_METRICS[
                     u"test_" + self.metric_str]
             except Exception as e:
@@ -490,6 +494,15 @@ class Analyst:
         if force_creation: 
             return Analyst.make_default_evaluator(str(category))
 
+    # Return the simple angle between two vectors. Can be used as a metric.
+    @staticmethod
+    def angle(vec1, vec2, degrees=True):
+        angle = np.arccos(np.clip(np.dot(
+                vec1 / np.linalg.norm(vec1),
+                vec2 / np.linalg.norm(vec2)),
+            -1.0, 1.0))
+        return angle * 180 / np.pi if degrees else angle
+
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
     #   "Hubs" with no number defaults to "Nodal 4-Hubs".
@@ -593,7 +606,7 @@ class Analyst:
                     as_index_fn=self.as_index,    encoder_fn=self.encode,
                     as_vector_fn=self.as_vector,  decoder_fn=self.decode,
                     string_ix_map=self.s_to_ix,   exists_fn=self.exists,
-                    is_string_fn=isstring,
+                    is_string_fn=isstring,        angle_fn=Analyst.angle,
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,
@@ -623,7 +636,7 @@ class Analyst:
                 #print(e)
                 traceback.print_exc()
                 print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR "
-                    u"INHERIT FROM Evaluator CLASS?"
+                    u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
         
         if self.auto_print: self.print_report()
@@ -740,9 +753,9 @@ class Analyst:
                     comparisons.append(np.std)
                 elif (word == u"avg" or word == u"average") \
                     and np.mean not in comparisons: comparisons.append(np.mean)
-                elif (word == u"max" or word == u"maximum") \
+                elif (word == u"max" or word == u"amax" or word == u"maximum") \
                     and np.max not in comparisons: comparisons.append(np.max)
-                elif (word == u"min" or word == u"minimum") \
+                elif (word == u"min" or word == u"amin" or word == u"minimum") \
                     and np.min not in comparisons: comparisons.append(np.min)
                 elif (word == u"rng" or word == u"range") \
                     and rng not in comparisons: comparisons.append(rng)
@@ -952,7 +965,7 @@ class Analyst:
         try:
             #obj._serialize()
             with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dump(obj, file)#, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
             return True
         except Exception as e:
             print(u"ERROR: Save function expected Analyst object.")

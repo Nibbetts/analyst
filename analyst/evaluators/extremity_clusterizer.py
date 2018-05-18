@@ -42,10 +42,23 @@ class ExtremityClusterizer(NodeClusterizer, object):
 
     # Overriding (because nodes only have two vectors, need different stats)
     def compute_stats(self, **kwargs):
+        space   = kwargs["embeddings"]
+        printer = kwargs["printer_fn"]
+
         self.add_generic_node_stats()
+
+        if len(self.clusters) > 0:
+            # Nodal Factor
+            printer("Placating the Extremists", "Calculating Extremity Factor")
+            self.data_dict["Extremity Factor"] = (
+                len(self.clusters)*2.0/float(len(space)))
+            self.add_star("Extremity Factor")
+            #   I tend to think this is important.
+
         # We can add stars to things we think are important:
         self.add_star("Count")
         self.add_star("Span Min")
         self.add_star("Span Max")
+        self.add_star("Extremity Factor")
         # NOTE: These could also have been added by initializing the object with
-        #   starred=["Count","Span Min","Span Max"]
+        #   starred=["Count","Span Min","Span Max","Extremity Factor"]

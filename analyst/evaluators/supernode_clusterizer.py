@@ -71,3 +71,5 @@ class SupernodeClusterizer(NodeClusterizer, object):
             self.data_dict["Hierarchical Factor"] = (
                 len(self.clusters)*2.0/float(len(self.nodes)))
             self.add_star("Hierarchical Factor")
+        
+        self.add_star("Span Min")

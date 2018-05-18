@@ -11,7 +11,8 @@ apart, then they are dispersed well, as like 6 points across the surface of a ba
 
 Overall:
 --------
-- build in anvaka's visualization
+- build in anvaka's visualization?
+- add functionality to save report to a file
 - decide whether it is better to have it be able to save live objects and continue
 computing, or whether it is better to have it be backwards compatibile by only
 storing pure data. Or fix problem w/ hybrid? OR MAKE NEW INSTANCE IN LOAD FUNCTION!
@@ -47,24 +48,26 @@ universal sentence encoder with one word embeddings
 
 Analyst:
 --------
+DISTANCE AND NEIGHBORS COMPUTATION:
+- use ckdtree, with leafsize = cubed root of space size?
 - use argpartition to not have to sort all 2million, but just the first 5
-- make getter for data in report; row and category?
-- list words who are no one's nearest neighbor
 - use half of distance matrix; use much smaller precision for first run, then recompute first few as candidates
 for nearest neighbors. Or use scipy for everything, since it seems to do these?
 - and or make distance matrix getter take a slice object and compute stuff on the spot.
-- add amin and amax to allowed names of comparators
+- make function to get k neighbors of an object
+- phase in metric_in_model to be used where can. Check if can in nodes/clusters.
+- phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
+OTHER:
+- make getter for data in report; row and category?
+- list words who are no one's nearest neighbor
 - make category and line getters, for full numerical data, including comparators.
 - decide if multi-comparison needs grapher....
 - make grapher object, and have analyst have it as a data member - analyst's graph
 function just call's its grapher's graph function.
 - make delete_evaluator function, and function to make it printable if not?
 - make ability to compare two+ categories side-by-side, like as 2 analysts.
-- make analyst compare2analysts function take a comparator fn or strings.
-- make function to get k neighbors of an object
+- make compare function special for 2, as we had before?
 - continue adding make_default_evaluator options for new evaluators.
-- phase in metric_in_model to be used where can. Check if can in nodes/clusters.
-- phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 - make printer recheck data without recalculating in case things have changed?
 - add functionality to recompute stars and data but not clusters, or give disclaimer/
 warning that changing it won't work.
@@ -76,15 +79,15 @@ Mutual information, Confusion matrix.
 
 Word Group Specific Analysis:
 -----------------------------
-- make second_downstream function? And maybe one that switches
-randomly if dist within epsilon
-- use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
-all other clusters?
-- look into cluster extremities! (strange attractors)
 - make funct to examine a group of given strings thoroughly
+- look into cluster extremities! (strange attractors)
 - standard deviation of vectors from centroids - like dispersion:
 https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-to-vectors
 (This is also for the space as a whole)
+- use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
+all other clusters?
+- make second_downstream function? And maybe one that switches
+randomly if dist within epsilon
 
 Clusterizers TO DO:
 -------------------

@@ -43,8 +43,9 @@ class NodeClusterizer(Clusterizer, object):
                 and i < nearest[i])]
 
         # Compute the Relative Alignment of each Node:
+        printer("Waiting for the Stars to Align", "Computing Node Alignments")
         if len(self.clusters) > 1:
-            for node in self.clusters:
+            for node in tqdm(self.clusters, disable=(not show_progress)):
                 node.alignment = np.mean([
                     abs(np.dot(node.alignment_vec, n.alignment_vec)) \
                     for n in self.clusters if n != node])
@@ -96,6 +97,9 @@ class NodeClusterizer(Clusterizer, object):
             # #     if np.linalg.norm(avg_align) != 0 else 0.0
             # # self.add_star("Alignment Factor")
             # #   I tend to think this is important.
+
+        self.add_star("Span Min")
+        self.add_star("Span Max")
 
     # No problem adding functions, as well. This one useful for Node inheriters.
     def add_generic_node_stats(self):

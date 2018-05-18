@@ -70,4 +70,9 @@ class HubClusterizer(Clusterizer, object):
     # Even though we have already filled in self.clusters, we needn't override
     #   vectors_to_clusters which does so, since it checks for this.
 
-    # Needn't override compute_stats, since generic cluster stats OK for hubs.
+    def compute_stats(self, **kwargs):
+        # Run the basic stats first:
+        super(HubClusterizer, self).compute_stats(**kwargs)
+
+        # Then add our own:
+        #!!!!add uniformity of density, by comparing hub dispersion range to space dispersion range, and maybe ln or sqrt to invert relationship?
