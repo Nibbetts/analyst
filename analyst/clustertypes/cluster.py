@@ -143,6 +143,8 @@ class Cluster:
         self.medoid = self.objects[np.argmin(
             self.metric(self.centroid, v, **self.metric_args) \
             for v in self.vectors)]
+        self.medoid_dist = self.metric(
+            self.medoid, self.centroid, **self.metric_args)
 
 
     def cluster_dist(self, B):

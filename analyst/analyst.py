@@ -644,17 +644,17 @@ class Analyst:
 
     # SPECIFICS INSPECTION:
 
-    def graph(self, hist_key, bins=16):
+    def graph(self, hist_key, bins=16, **kwargs):
         """
             Description: creates a histogram according to key printed in report.
-            NOTE: Keys/Information from comparisons made are accessible only in
-                the analyst which was leftward when the comparison was made.
         """
-
         #in self.graph_info, singles are directly the list of data, while
         #   comparison graphs are tuples:
         #       ("2", datalist_from_self, datalist_from_other)
-        pass
+        x = self.graph_info[hist_key]
+        if isstring(x[0]): x = x[1:]
+        plt.hist(x, bins=bins, **kwargs)
+        plt.show()
 
     # COMPARATIVE:
 
@@ -694,13 +694,40 @@ class Analyst:
     
     # My own diff function, which emphasizes numbers further from zero:
     @staticmethod
-    def weighted_difference(a, b):
+    def weighted_diff(l):#(a,b):
+        a = max(l)
+        b = min(l)
         average = (abs(a) + abs(b))/2.0
         if average != 0: return (a - b)/average
         else: return np.nan
 
+    # My own comparison, which emphasizes range properties of a list;
+    # how unevenly distributed, in a way:
+    #   positive -> highly differing min and max
+    #   near zero -> more evenly distributed (ex: when min is half of max)
+    #   negative -> highly similar min and max
+    # All are scale invariant; differences emphasized relative to scale.
     @staticmethod
-    def compare(ana_list, w=10, comparators=[u"all"]):
+    def curiosity(l):
+        # range/abs(min) = (max-min)/abs(min) = max/abs(min) - sign(min)
+        # Then a natural log.
+        m = min(l)
+        rng = max(l) - m
+        if rng == 0: return -np.inf
+        absm = abs(m)
+        if absm == 0: return np.inf
+        return np.log(rng/float(absm))
+
+    # My own function which spikes when there is a value which is very different
+    #   and sticks out from the rest.
+    @staticmethod
+    def odd_one_out(l):
+        vals = [Analyst.curiosity(l[:skip] + l[skip+1:]) \
+            for skip in range(len(l))]
+        return max(vals) - min(vals)
+
+    @staticmethod
+    def compare(ana_list, w=10, comparators=[u"default"]):
         # Lists side by side the values for each analyst in the list,
         #   as well as a column for each comparator, run on that stat.
         # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
@@ -710,11 +737,15 @@ class Analyst:
         #   callable (Takes list of available values; does NOT need to handle
         #       strings or None), or a built-in:
         #   "all": all builtins
+        #   "default:" includes range, curiosity, and odd_one_out
         #   "std": standard deviation across the stat
         #   "avg" or "average": average across the stat
         #   "max" or "maximum": maximum value
         #   "min" or "minimum": minimum value
         #   "rng" or "range": max value minus min value
+        #   "weighted_diff": accentuates numbers far from zero
+        #   "curiosity": accentuates differences and uniformity
+        #   "odd_one_out": spikes when one value differs largely from others
         # ana_list: a list of analysts. Kinda thought that was clear... :)
         # Returns: a grapher object with multi-histogram information from the!!!!!!!!!!!!!!!!!!!!!!!!!!
         #   the comparison.
@@ -739,16 +770,19 @@ class Analyst:
         # Comparator:
         comparisons = []
         def rng(l): return np.max(l) - np.min(l)
+        defaults = [rng, Analyst.weighted_diff,
+            Analyst.curiosity, Analyst.odd_one_out]
+        all_builtins = [np.std, np.mean, np.max, np.min] + defaults
         for i, c in enumerate(comparators):
             if callable(c): comparisons.append(c)
             else: 
                 word = c.lower()
                 if word == u"all":
-                    if np.std not in comparisons: comparisons.append(np.std)
-                    if np.mean not in comparisons: comparisons.append(np.mean)
-                    if np.max not in comparisons: comparisons.append(np.max)
-                    if np.min not in comparisons: comparisons.append(np.min)
-                    if rng not in comparisons: comparisons.append(rng)
+                    for f in all_builtins:
+                        if f not in comparisons: comparisons.append(f)
+                elif word == u"default" or word == u"defaults":
+                    for f in defaults:
+                        if f not in comparisons: comparisons.append(f)
                 elif word == u"std" and np.std not in comparisons:
                     comparisons.append(np.std)
                 elif (word == u"avg" or word == u"average") \
@@ -759,6 +793,12 @@ class Analyst:
                     and np.min not in comparisons: comparisons.append(np.min)
                 elif (word == u"rng" or word == u"range") \
                     and rng not in comparisons: comparisons.append(rng)
+                elif word == u"weighted_diff" and Analyst.weighted_diff not in \
+                    comparisons: comparisons.append(Analyst.weighted_diff)
+                elif word == u"curiosity" and Analyst.curiosity not in \
+                    comparisons: comparisons.append(Analyst.curiosity)
+                elif word == u"odd_one_out" and Analyst.odd_one_out not in \
+                    comparisons: comparisons.append(Analyst.odd_one_out)
 
         # Column Headers:
         title_string = u"   " + u"{} " * len(ana_list) + u"|" + \

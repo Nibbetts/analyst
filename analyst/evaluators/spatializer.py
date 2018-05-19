@@ -88,6 +88,7 @@ class Spatializer(Evaluator, object):
             self.data_dict["Dimensionality"] = len(space[0])
             printer("Electing a Ruler", "Getting Medoid, Std Dev, Skew")
             self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
+            self.data_dict["Dist from Medoid to Centroid"] = cluster.medoid_dist
             self.data_dict["Standard Dev"] = cluster.std_dev
             if self.node_clusterizer != None:
                 self.data_dict["Skew"] = cluster.skew
