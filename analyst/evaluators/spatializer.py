@@ -81,25 +81,25 @@ class Spatializer(Evaluator, object):
         cluster = Cluster(encoder, metric, objects, nearest=nearest,
             vectors=space, nodes=nodes, auto=True, **metric_args)
 
-        # Compute the rest and add all stats to data_dict:
         self.data_dict["Count"] = len(space)
         if len(space) > 0:
             # Overall Info:
             self.data_dict["Dimensionality"] = len(space[0])
-            printer("Electing a Ruler", "Getting Medoid, Std Dev, Skew")
+            printer("Electing a Ruler", "Getting Medoid, Etc.")
             self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
-            self.data_dict["Dist from Medoid to Centroid"] = cluster.medoid_dist
-            self.data_dict["Standard Dev"] = cluster.std_dev
-            if self.node_clusterizer != None:
-                self.data_dict["Skew"] = cluster.skew
-                # Note: not bothering with numbers of nodes etc, since that is
-                #   reported by the NodeClusterizer.
+            medoid_dist = self.data_dict.pop("Medoid Dist")
+            self.data_dict["Medoid Dist to Centroid"] = medoid_dist
+            
+            for (key, value) in cluster.stats_dict:
+                self.data_dict[key] = value
 
             # Centroid Info:
             printer("Setting Priorities", "Centroid Stats")
-            self.data_dict["Centroid Norm"] = cluster.centroid_length
             self._compute_list_stats(cluster.centroid_distances,
-                "Centroid Dist", self.data_dict) # Then re-key one entry:
+                "Centroid Dist", self.data_dict)
+            self._compute_list_stats(cluster.norms, "Norms", self.data_dict)
+            
+            # Then re-key one entry:
             dispersion = self.data_dict.pop("Centroid Dist Avg")
             self.data_dict["Dispersion - Centroid Dist Avg"] = dispersion
 

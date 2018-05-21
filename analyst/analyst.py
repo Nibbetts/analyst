@@ -18,14 +18,116 @@ import traceback
 
 # Own files:
 from .evaluators import *
+from .simulation import *
 #import evaluators
 #from test_set_2d import TestSet2D
 
 
-# Basic string type checker, for python 2-3 compatibility:
+
+#--------------------------------------------------------------------------#
+# General Functions                                                        #
+#--------------------------------------------------------------------------#
+
 def isstring(obj):
+    '''Basic string type checker, for python 2-3 compatibility.'''
     return isinstance(obj, str) or isinstance(obj, bytes)
 
+def _file_extension(f_name):
+    '''Appends missing file extension, or keeps original.'''
+    return str(f_name) if u"." in str(f_name) else f_name + u".dill"
+
+def save(analyst, file_name=None):
+    '''Function for saving Analyst objects only.'''
+    return analyst.save(file_name)
+
+def load(f_name, print_report=False):
+    '''Function for loading Analyst objects only.
+        NOTE: Since we save with highest protocol, you will not be able
+        to load an Analyst into python 2 if saved from python 3.
+        This may also help prevent string encoding incompatibilities.'''
+    name = _file_extension(f_name)
+    try:
+        with open(name, 'rb') as file:
+            an = pickle.load(file)
+            #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
+            an.analysis(print_report=print_report, recalculate=[])
+            return an
+    except Exception as e:
+        print(u"ERROR: Unable to load or deserialize Analyst object "
+            u"from file: '{}'".format(name))
+        print(e)
+        #raise e
+        return None
+
+def unsave(file_name):
+    '''Remove an existing dill file.
+        Will add file extension '.dill' if none given.
+        Careful, this is irreversible and works on any file!'''
+    f_name = _file_extension(file_name)
+    try:
+        os.remove(f_name)
+        return True
+    except:
+        return False
+
+
+
+#--------------------------------------------------------------------------#
+# Metrics and Measurements                                                 #
+#--------------------------------------------------------------------------#
+
+def angle(vec1, vec2, degrees=True):
+    '''Returns: scalar (a float) representing the angle between two vectors.
+        Can be used as a metric.
+        Default is degrees, since cosine dist is more common than radians.'''
+    angle = np.arccos(np.clip(np.dot(
+            vec1 / np.linalg.norm(vec1),
+            vec2 / np.linalg.norm(vec2)),
+        -1.0, 1.0))
+    return angle * 180 / np.pi if degrees else angle
+
+def weighted_diff(l):#(a,b):
+    '''A comparison function which emphasizes numbers further from zero.
+        l: array-like.
+        returns: a float representing how different numbers in l are.'''
+    a = np.max(l)
+    b = np.min(l)
+    average = (np.abs(a) + np.abs(b))/2.0
+    if average != 0: return (a - b)/average
+    else: return np.nan
+
+def curiosity(l):
+    '''A comparison function which emphasizes range properties of a list;
+        in a way, how unevenly distributed they are:
+            positive -> highly differing min and max
+            near zero -> more evenly distributed (ex: when min is half of max)
+            negative -> highly similar min and max
+        All are scale invariant; differences emphasized relative to scale.
+        l: array-like.
+        returns: a float representing how different numbers in l are.'''
+    # range/abs(min) = (max-min)/abs(min) = max/abs(min) - sign(min)
+    # Then a natural log.
+    m = np.min(l)
+    rng = np.max(l) - m
+    if rng == 0: return -np.inf
+    absm = np.abs(m)
+    if absm == 0: return np.inf
+    return np.log(rng/float(absm))
+
+def odd_one_out(l):
+    '''A comparison function which spikes when there is a value which is very
+        different and sticks out from the rest.
+        l: array-like.
+        returns: a float representing how oddly one value in l sticks out.'''
+    vals = [curiosity(l[:skip] + l[skip+1:]) \
+        for skip in range(len(l))]
+    return np.max(vals) - np.min(vals)
+
+
+
+#------------------------------------------------------------------------------#
+# Analyst Class                                                                #
+#------------------------------------------------------------------------------#
 
 class Analyst:
     """
@@ -174,6 +276,7 @@ class Analyst:
         self._print(u"Asking the Grand Question",
             u"What is the Purpose of this Space?")
         self.description = str(desc)
+        self.file_name = None
         
         # Find and store a callable version of the given metric:
         self._print(u"Laying the Laws of Physics", u"Setting the Metric")
@@ -273,7 +376,8 @@ class Analyst:
 
         # Run Analyses:
         if calculate:
-            self.analysis()
+            self.analysis(
+                print_report=self.auto_print, auto_save=False, recalculate=[])
 
 
     # Generic type converters & tools for inputs and outputs:
@@ -494,15 +598,6 @@ class Analyst:
         if force_creation: 
             return Analyst.make_default_evaluator(str(category))
 
-    # Return the simple angle between two vectors. Can be used as a metric.
-    @staticmethod
-    def angle(vec1, vec2, degrees=True):
-        angle = np.arccos(np.clip(np.dot(
-                vec1 / np.linalg.norm(vec1),
-                vec2 / np.linalg.norm(vec2)),
-            -1.0, 1.0))
-        return angle * 180 / np.pi if degrees else angle
-
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
     #   "Hubs" with no number defaults to "Nodal 4-Hubs".
@@ -587,7 +682,7 @@ class Analyst:
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def analysis(self, recalculate=[]):
+    def analysis(self, print_report, auto_save=True, recalculate=[]):
         # Won't recalculate any but those whose categories are listed.
         # Even those it doesn't recalculate, it will still get their data and
         #   update its own in case it has changed.
@@ -596,7 +691,8 @@ class Analyst:
         for evaluator in self.evaluators:
             try:
                 data_dict, starred, category = evaluator.calculate(
-                    recalculate_all=False, # Only does those not yet done.
+                    recalculate_all=evaluator.CATEGORY in recalculate,
+                    #   Only does those not yet done.
 
                     # NOTE: The rest are the kwargs:
                     embeddings=self.space,        draw_progress=self.auto_print,
@@ -606,7 +702,7 @@ class Analyst:
                     as_index_fn=self.as_index,    encoder_fn=self.encode,
                     as_vector_fn=self.as_vector,  decoder_fn=self.decode,
                     string_ix_map=self.s_to_ix,   exists_fn=self.exists,
-                    is_string_fn=isstring,        angle_fn=Analyst.angle,
+                    is_string_fn=isstring,        angle_fn=angle,
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,
@@ -619,7 +715,7 @@ class Analyst:
                     downstream_fn=self.downstream,
                     evaluator_list=self.evaluators,
                     find_evaluator_fn=self.find_evaluator,
-                    simulate_cluster_fn=Analyst.simulate_cluster)
+                    simulate_cluster_fn=simulate_cluster)
 
                 # The below compatibilities should be unnecessary because both
                 #   keys and starred come from same source, thus same version.
@@ -639,22 +735,29 @@ class Analyst:
                     u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
         
-        if self.auto_print: self.print_report()
+        if auto_save:
+            if self.file_name != None: self.save()
+            else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
+                "ONCE; NO FILENAME.")
+        if print_report: self.print_report()
 
 
     # SPECIFICS INSPECTION:
 
-    def graph(self, hist_key, bins=16, **kwargs):
+    def graph(self, hist_key, bins=64, **kwargs):
         """
             Description: creates a histogram according to key printed in report.
         """
-        #in self.graph_info, singles are directly the list of data, while
-        #   comparison graphs are tuples:
-        #       ("2", datalist_from_self, datalist_from_other)
-        x = self.graph_info[hist_key]
-        if isstring(x[0]): x = x[1:]
+        # self.graph_info[hist_key] == 
+        #   ([analyst_descriptions], category, description, [datasets])
+        x = self.graph_info[hist_key][3]
         plt.hist(x, bins=bins, **kwargs)
+        plt.legend(self.graph_info[hist_key][0])
+        plt.xlabel(self.graph_info[hist_key][2])
+        plt.ylabel("Occurrences")
+        plt.title(self.graph_info[hist_key][1])
         plt.show()
+
 
     # COMPARATIVE:
 
@@ -691,40 +794,6 @@ class Analyst:
                     + str(w - 2 - len(str(int(abs(data))))) + "f}"
                 result = format_str.format(data)
         return result
-    
-    # My own diff function, which emphasizes numbers further from zero:
-    @staticmethod
-    def weighted_diff(l):#(a,b):
-        a = max(l)
-        b = min(l)
-        average = (abs(a) + abs(b))/2.0
-        if average != 0: return (a - b)/average
-        else: return np.nan
-
-    # My own comparison, which emphasizes range properties of a list;
-    # how unevenly distributed, in a way:
-    #   positive -> highly differing min and max
-    #   near zero -> more evenly distributed (ex: when min is half of max)
-    #   negative -> highly similar min and max
-    # All are scale invariant; differences emphasized relative to scale.
-    @staticmethod
-    def curiosity(l):
-        # range/abs(min) = (max-min)/abs(min) = max/abs(min) - sign(min)
-        # Then a natural log.
-        m = min(l)
-        rng = max(l) - m
-        if rng == 0: return -np.inf
-        absm = abs(m)
-        if absm == 0: return np.inf
-        return np.log(rng/float(absm))
-
-    # My own function which spikes when there is a value which is very different
-    #   and sticks out from the rest.
-    @staticmethod
-    def odd_one_out(l):
-        vals = [Analyst.curiosity(l[:skip] + l[skip+1:]) \
-            for skip in range(len(l))]
-        return max(vals) - min(vals)
 
     @staticmethod
     def compare(ana_list, w=10, comparators=[u"default"]):
@@ -770,8 +839,7 @@ class Analyst:
         # Comparator:
         comparisons = []
         def rng(l): return np.max(l) - np.min(l)
-        defaults = [rng, Analyst.weighted_diff,
-            Analyst.curiosity, Analyst.odd_one_out]
+        defaults = [rng, weighted_diff, curiosity, odd_one_out]
         all_builtins = [np.std, np.mean, np.max, np.min] + defaults
         for i, c in enumerate(comparators):
             if callable(c): comparisons.append(c)
@@ -793,12 +861,12 @@ class Analyst:
                     and np.min not in comparisons: comparisons.append(np.min)
                 elif (word == u"rng" or word == u"range") \
                     and rng not in comparisons: comparisons.append(rng)
-                elif word == u"weighted_diff" and Analyst.weighted_diff not in \
-                    comparisons: comparisons.append(Analyst.weighted_diff)
-                elif word == u"curiosity" and Analyst.curiosity not in \
-                    comparisons: comparisons.append(Analyst.curiosity)
-                elif word == u"odd_one_out" and Analyst.odd_one_out not in \
-                    comparisons: comparisons.append(Analyst.odd_one_out)
+                elif word == u"weighted_diff" and weighted_diff not in \
+                    comparisons: comparisons.append(weighted_diff)
+                elif word == u"curiosity" and curiosity not in comparisons:
+                    comparisons.append(curiosity)
+                elif word == u"odd_one_out" and odd_one_out not in comparisons:
+                    comparisons.append(odd_one_out)
 
         # Column Headers:
         title_string = u"   " + u"{} " * len(ana_list) + u"|" + \
@@ -884,7 +952,7 @@ class Analyst:
 
 
     #--------------------------------------------------------------------------#
-    # Information Gathering and Reporting Functions                            #
+    # Information Gathering, Reporting, and Saving Functions                   #
     #--------------------------------------------------------------------------#
 
     def _add_info(self, var, category, description, star=False):
@@ -892,8 +960,12 @@ class Analyst:
         #variable = None
         #i = None
         if u"Histogram Key" in description:
-            variable = len(self.graph_info)
-            self.graph_info.append(var)
+            data = ([self.description], category, description, [var])
+            try:
+                variable = self.graph_info.index(data)
+            except:
+                variable = len(self.graph_info)
+                self.graph_info.append(data)
         else: variable = var
         try:
             i = self.categories.index(category)
@@ -927,112 +999,16 @@ class Analyst:
                     u"*" if cat[2] else u" ", # Stars
                     cat[0]))
 
-
-    #--------------------------------------------------------------------------#
-    # Simulation:                                                              #
-    #--------------------------------------------------------------------------#
-
-    @staticmethod
-    def simulate_space(parameters):
-        '''
-        parameters:
-            A list of lists, each of which follows the format:
-                ["space_type", "cluster_type", num_clusters, space_radius,
-                    space_dims (cluster_min_pop, cluster_max_pop),
-                    (cluster_min_radius, cluster_max_radius),
-                    cluster_occupied_dims, cluster_total_dims, randomize_dims,
-                    noise, normalize]
-
-                Types: (used for both cluster and space)
-                    "shell" (circle if occupied_dims==2)
-                    "ball"
-                    "radial" (like ball only random direction and radius instead
-                        of x,y,z,... Ends up concentrated in center.)
-                    "cube" (random x,y,z,... but in plane or hypercube instead
-                        of ball)
-                    "even" (attempts amorphous semi-uniformity of distances btw.
-                        points)
-                    "grid" (attempts a gridlike uniformity)
-                    "pairs" (generates points in pairs of close repulsion --
-                        forces excessive node generation)
-                    "line" (generates points in lines)
-                    "snake" (generate points in curvy lines)
-                    "oval" (like radial, but randomly varies size of each axis
-                        within allowed radius sizes)
-                    "hierarchy" (attempts to recursively make closer and closer
-                        pairs of groupings.)
-
-            NOTE: Multiple lists in the parameters can be used to fill the space
-                    with varied types of data.
-                occupied dimensions must be <= total dimensions.
-                min_num <= max_num.
-                randomize_dims: boolean.
-                    If false, will use same set of dims for each cluster.
-                noise: a float; how much to randomly vary locations.
-                normalize: boolean. If true will afterward scale all vectors
-                    to unit length of 1, creating a hypersphere.
-
-        returns:
-            A new analyst object, and
-            A list of the clusters used to create the space before clustering
-                was recalculated, for comparison. This will be different if
-                clusters overlapped.
-        '''
-        pass
-        #note, need to make it create a generic identity function for
-        #   encode/decode. or use indeces.
-
-    @staticmethod
-    def simulate_cluster(type, population, radius, occupied_dims,
-        total_dims, randomize_dims=True, noise=0, normalize=False):
-        # Same usage as the cluster parameters in simulate_space().
-        # NOTE: when this function is called by simulate_space(), normalize
-        #   is never True here. That would be done after the fact,
-        #   on the whole simulated space, not on any one cluster.
-        pass
-
-
-    #--------------------------------------------------------------------------#
-    # General Functions:                                                       #
-    #--------------------------------------------------------------------------#
-
-    @staticmethod
-    def _file_extension(f_name):
-        return str(f_name) if u"." in str(f_name) else f_name + u".dill"
-
-    @staticmethod
-    def save(obj, f_name):
+    def save(self, file_name=None):
         try:
+            f_name = self.file_name if file_name is None else file_name
             #obj._serialize()
-            with open(Analyst._file_extension(f_name), 'wb') as file:
-                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
+            with open(_file_extension(f_name), 'wb') as f:
+                pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            self.file_name = f_name
             return True
         except Exception as e:
-            print(u"ERROR: Save function expected Analyst object.")
             print(e)
-            return False
-
-    @staticmethod
-    def load(f_name):
-        name = Analyst._file_extension(f_name)
-        try:
-            with open(name, 'rb') as file:
-                an = pickle.load(file)
-                #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
-                return an
-        except Exception as e:
-            print(u"ERROR: Unable to load or deserialize Analyst object "
-                u"from file: '{}'".format(name))
-            print(e)
-            #raise e
-            return None
-
-    @staticmethod
-    def unsave(f_name):
-        try:
-            os.remove(Analyst._file_extension(f_name))
-            return True
-        except:
             return False
 
 
@@ -1045,4 +1021,5 @@ class Analyst:
 if __name__ == "__main__":
     #import TestSet2D
 
-    raise Exception("Analyst script behabior not defined.")
+    raise Exception("USAGE ERROR: analyst module script behabior not defined. "
+        "Should be imported as a package.")

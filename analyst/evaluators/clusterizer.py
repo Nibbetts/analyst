@@ -124,22 +124,12 @@ class Clusterizer(Evaluator, object):
         # POST: self.data_dict will contain whatever you want reported,
         #   and self.starred likewise.
         self.data_dict["Count"] = len(self.clusters)
+        
         if len(self.clusters) > 0:
-            self._compute_list_stats([len(c) for c in self.clusters],
-                "Population",  self.data_dict)
-            self._compute_list_stats([c.centroid_length \
-                for c in self.clusters], "Centroid Norm", self.data_dict)
-            self._compute_list_stats([c.dispersion for c in self.clusters],
-                "Dispersion",  self.data_dict)
-            self._compute_list_stats([c.std_dev    for c in self.clusters],
-                "Standard Dev", self.data_dict)
-            self._compute_list_stats([c.repulsion  for c in self.clusters],
-                "Repulsion",   self.data_dict)
-            if self.node_clusterizer != None:
-                self._compute_list_stats([c.skew       for c in self.clusters],
-                    "Skew",        self.data_dict)
-                self._compute_list_stats([len(c.nodes) for c in self.clusters],
-                    "Node Count",  self.data_dict)
+            for key in self.clusters[0].keys():
+                self._compute_list_stats(
+                    [c.stats_dict[key] for c in self.clusters],
+                    key, self.data_dict)
 
 
     # The Analyst will call this function, which pulls it all together.

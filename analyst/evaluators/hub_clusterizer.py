@@ -46,8 +46,7 @@ class HubClusterizer(Clusterizer, object):
         for i in tqdm(range(len(space)), disable=(not show_progress)):
             temp_hubs.append(Cluster(
                 encoder, metric, nearest=nearest,
-                objects=[strings[i]], nodes=[], auto=False, name=strings[i],
-                **metric_args))
+                objects=[strings[i]], nodes=[], auto=False, **metric_args))
                 # Its name is the original object's decoded string.
             for index, neighbor in enumerate(neighbors):
                 if neighbor == i:

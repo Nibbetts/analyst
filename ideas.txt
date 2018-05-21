@@ -18,6 +18,7 @@ computing, or whether it is better to have it be backwards compatibile by only
 storing pure data. Or fix problem w/ hybrid? OR MAKE NEW INSTANCE IN LOAD FUNCTION!
 - fix all to work in python3 - check if evaluator kwargs need to be unicode,
 particularly if run and save in python 2, then go to 3 to run again.
+!Protocol level won't allow this?
 - test imports
 - documentation
 - update metric_args to use a partial function instead, from functtools?
@@ -49,17 +50,17 @@ for nearest neighbors. Or use scipy for everything, since it seems to do these?
 - phase in metric_in_model to be used where can. Check if can in nodes/clusters.
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 OTHER:
-- make getter for data in report; row and category?
+- add in_frequency_order=False and frequencies=[] to analyst, complete with tests on that.
 - list words who are no one's nearest neighbor
+- make getter for data in report; row and category? Ability to print to file!
 - make category and line getters, for full numerical data, including comparators.
 - decide if multi-comparison needs grapher....
 - make grapher object, and have analyst have it as a data member - analyst's graph
 function just call's its grapher's graph function.
 - make delete_evaluator function, and function to make it printable if not?
+or make it so that adding, when not a category for it, won't replace it?
 - make ability to compare two+ categories side-by-side, like as 2 analysts.
-- make compare function special for 2, as we had before?
 - continue adding make_default_evaluator options for new evaluators.
-- make printer recheck data without recalculating in case things have changed?
 - add functionality to recompute stars and data but not clusters, or give disclaimer/
 warning that changing it won't work.
 - evaluation indicators to test validity of an algorithm?
@@ -70,9 +71,10 @@ Mutual information, Confusion matrix.
 
 Word Group Specific Analysis:
 -----------------------------
-- make funct to examine a group of given strings thoroughly
+- make funct to examine a group of given strings thoroughly - makes a cluster.
+adds it to where?
 - look into cluster extremities! (strange attractors)
-- standard deviation of vectors from centroids - like dispersion:
+- check if correct standard deviation of vectors from centroids - like dispersion:
 https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-to-vectors
 (This is also for the space as a whole)
 - use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
@@ -84,9 +86,6 @@ Clusterizers TO DO:
 -------------------
 - add ability to keep specifically non-nodal hubs - both - for branching studies.
 - cluster by length of vector to test?
-- add norms of words, and average norms etc in clusters and space, for non-normalized spaces.
-- instead of specific stats, allow variety of stats in each cluster, with dict,
-and iterate through in cluterizer that adds info.
 - Spatial
     - include Local Outlier Factor, Local Reachability Density.
     Perhaps in separate clusterizer?
@@ -108,12 +107,13 @@ Thus hubs have a mathematical basis.
 and partition the rest into those.
 - give specific example use cases for clusters, such as having a custom clustering
 algorithm which builds clusters stemmed from color words. include as example
-- check that we're only printing what we should - particularly with nodes?
+- check that we're only printing what we should - particularly with dependent
+clusterizers unlisted in evaluators/categories
 
 Analogical Analyses:
 --------------------
 - EVERYTHING
-- make clusterizer, analogist, and analogyRanker subclasses of evaluator.
+- make analogist, and analogyRanker subclasses of evaluator.
 
 
 

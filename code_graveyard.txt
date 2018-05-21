@@ -1,6 +1,49 @@
 A Place Where Deprecated Code Goes to Die...
 --------------------------------------------------------------------------------    
 
+// FROM SPATIALIZER
+        # Compute the rest and add all stats to data_dict:
+        self.data_dict["Count"] = len(space)
+        if len(space) > 0:
+            # Overall Info:
+            self.data_dict["Dimensionality"] = len(space[0])
+            printer("Electing a Ruler", "Getting Medoid, Std Dev, Skew")
+            self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
+            self.data_dict["Dist from Medoid to Centroid"] = cluster.medoid_dist
+            self.data_dict["Standard Dev"] = cluster.std_dev
+            if self.node_clusterizer != None:
+                self.data_dict["Skew"] = cluster.skew
+                # Note: not bothering with numbers of nodes etc, since that is
+                #   reported by the NodeClusterizer.
+
+            # Centroid Info:
+            printer("Setting Priorities", "Centroid Stats")
+            self.data_dict["Centroid Norm"] = cluster.centroid_norm
+            self._compute_list_stats(cluster.centroid_distances,
+                "Centroid Dist", self.data_dict) # Then re-key one entry:
+            dispersion = self.data_dict.pop("Centroid Dist Avg")
+            self.data_dict["Dispersion - Centroid Dist Avg"] = dispersion
+
+// FROM CLUSTERIZER
+        self.data_dict["Count"] = len(self.clusters)
+        if len(self.clusters) > 0:
+            self._compute_list_stats([len(c) for c in self.clusters],
+                "Population",  self.data_dict)
+            self._compute_list_stats([c.centroid_norm \
+                for c in self.clusters], "Centroid Norm", self.data_dict)
+            self._compute_list_stats([c.dispersion for c in self.clusters],
+                "Dispersion",  self.data_dict)
+            self._compute_list_stats([c.std_dev    for c in self.clusters],
+                "Standard Dev", self.data_dict)
+            self._compute_list_stats([c.repulsion  for c in self.clusters],
+                "Repulsion",   self.data_dict)
+            if self.node_clusterizer != None:
+                self._compute_list_stats([c.skew       for c in self.clusters],
+                    "Skew",        self.data_dict)
+                self._compute_list_stats([len(c.nodes) for c in self.clusters],
+                    "Node Count",  self.data_dict)
+
+
 //FROM ANALYST:
 
             # analogy_algorithms -- list of tuples (callable, "Description").

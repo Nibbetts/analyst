@@ -47,6 +47,9 @@ class Node:
     def __str__(self):
         return "Node(" + str(self.a) + ", " + str(self.b) + ")"
 
+    def __repr__(self):
+        return str(self)
+
     # This function exists to allow the creation of nodes of nodes - supernodes;
     #   Where get_centroid becomes the encoder passed in.
     #   ie: supernode_1 = Node(node_1, node_2, Node.get_centroid, node_1.metric)

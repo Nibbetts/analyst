@@ -1,5 +1,5 @@
 import numpy as np
-#import node
+from collections import OrderedDict
 
 class Cluster:
 
@@ -26,6 +26,11 @@ class Cluster:
             name: only for convenience in identifying clusters externally.
             metric_args: additional arguments to the metric function.
                 Use like **kwargs is used.
+
+        Usage:
+            Inside an evaluator, if you want to make a cluster store more or
+            different kinds of data, put these data inside of self.stats_dict.
+            Clusterizers automatically find meta-stats on these values.
         """
         self.ID = ID
         self.name = name
@@ -37,17 +42,20 @@ class Cluster:
         self.nodes = nodes
         self.auto = auto
         self.metric_args = metric_args
-
-        # self.vectors = []
         # self.centroid = []
-        # self.centroid_length = 0
         # self.centroid_distances = []
+        # self.focus = []
+        # self.medoid = None
+        # self.norms = []
+
+        self.stats_dict = OrderedDict()
+        # self.centroid_norm = 0
+        # self.cardinality = len(self.objects)
         # self.dispersion = 0
         # self.std_dev = 0
         # self.repulsion = 0
-        # self.focus = []
         # self.skew = 0
-        # self.medoid = None
+        # self.norm_range = 0
 
         if self.auto: self.calculate()
 
@@ -66,30 +74,44 @@ class Cluster:
             auto=self.auto & B.auto, ID=None, name=None, **self.metric_args)
 
     def __len__(self):
+        # Cardinality
         return len(self.objects)
 
     def __getitem__(self, index):
         return self.objects[index]
 
     def __str__(self):
-        # Cardinality
-        return "Cluster(" \
-            +  "\n\tID:            " + str(self.ID) \
-            + ",\n\tname:          " + str(self.name) \
-            + ",\n\tmedoid:        " + str(self.medoid) \
-            + ",\n\tcentroid norm: " + str(self.centroid_length) \
-            + ",\n\tcardinality:   " + str(len(self.objects)) \
-            + ",\n\tdispersion:    " + str(self.dispersion) \
-            + ",\n\tstdandard dev: " + str(self.std_dev) \
-            + ",\n\trepulsion:     " + str(self.repulsion) \
-            + ",\n\tskew:          " + str(self.skew) \
-            + ",\n\tnodes:         " + str([str(node) for node in self.nodes]) \
-            + ",\n\tobjects:       " + str([str(o) for o in self.objects]) +" )"
-        #if len(self.objects) > 0:
-        #    result += str(self.objects[0])
-        #    for obj in self.objects[1:]:
-        #        result += ", " + str(obj)
-        #return result + " )"
+        max_length = max(max(), max())
+        format_str = "{<" + str(max_length + 2) + "}:"
+        def line(key, value, comma=True):
+            c = "," if comma else ""
+            return c + "\n\t" + format_str.format(key) + str(value)
+
+        result = "Cluster(" \
+            + line("ID",         self.ID, comma=False) \
+            + line("Name",       self.name) \
+            + line("Medoid",     self.medoid)
+        for (key, value) in self.stats_dict.items():
+            if key != "Norm Range": result += line(key, value)
+        result = result \
+            + line("Dispersion",       np.mean(self.centroid_distances)) \
+            + line("Centr Dist Min",   np.min(self.centroid_distances)) \
+            + line("Centr Dist Max",   np.max(self.centroid_distances)) \
+            + line("Centr Dist Range", np.max(self.centroid_distances) -
+                np.min(self.centroid_distances)) \
+            + line("Centr Dist Std",   np.std(self.centroid_distances)) \
+            + line("Norm Avg",   np.mean(self.norms)) \
+            + line("Norm Min",   np.min(self.norms)) \
+            + line("Norm Max",   np.max(self.norms)) \
+            + line("Norm Range", self.stats_dict["Norm Range"]) \
+            + line("Norm Std",   np.std(self.norms)) \
+            + line("Nodes",      [str(node) for node in self.nodes]) \
+            + line("Objects",    [str(o) for o in self.objects]) + "\n)"
+
+        return result
+
+    def __repr__(self):
+        return str(self)
 
     def add_objects(self, obj_list):
         self.objects += obj_list
@@ -104,47 +126,57 @@ class Cluster:
         if self.vectors is None or self.vectors is []:
             self.vectors = np.array([self.encoder(o) for o in self.objects])
 
-        #self.centroid = sum(self.vectors) / len(self.vectors)
-        self.centroid = np.mean(self.vectors, axis=0)
-        self.centroid_length = np.linalg.norm(self.centroid)
-        #self.focus = sum(n.centroid for n in self.nodes) / len(self.nodes)
-        if len(self.nodes) != 0:
-            self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
-            self.skew = self.metric(
-                self.centroid, self.focus, **self.metric_args)
-        else:
-            self.focus = None
-            self.skew = None
+        self.stats_dict["Population"] = len(self.objects)
+        if len(self.objects) > 0:
+            #self.centroid = sum(self.vectors) / len(self.vectors)
+            self.centroid = np.mean(self.vectors, axis=0)
+            self.stats_dict["Centroid Norm"] = np.linalg.norm(self.centroid)
 
-        # Calculate Dispersion:
-        #self.dispersion = sum(self.metric(self.centroid, vec)
-        #    for vec in self.vectors) / len(self.objects)
-        self.centroid_distances = [self.metric(
+            # Calculate Dispersion:
+            #self.dispersion = sum(self.metric(self.centroid, vec)
+            #    for vec in self.vectors) / len(self.objects)
+            self.centroid_distances = [self.metric(
                 self.centroid, vec, **self.metric_args) for vec in self.vectors]
-        self.dispersion = np.mean(self.centroid_distances, axis=0)
+            self.stats_dict["Dispersion"] = np.mean(
+                self.centroid_distances, axis=0)
 
-        # Calculate Standard Deviation:
-        self.std_dev = np.std(self.vectors)
+            # Calculate Medoid:
+            self.medoid = self.objects[np.argmin(
+                self.metric(self.centroid, v, **self.metric_args) \
+                for v in self.vectors)]
+            self.stats_dict["Medoid Dist"] = self.metric(
+                self.medoid, self.centroid, **self.metric_args)
 
-        # Calculate repulsion:
-        #if self.nearest != None: self.repulsion = sum(self.metric(
-        #    v, self.encoder(self.nearest(self.objects[i])))
-        #    for i, v in self.vectors) / len(self.objects)
-        if self.nearest != None:
-            self.repulsion = np.mean([self.metric(
-                    v, self.encoder(self.nearest(self.objects[i])),
-                    **self.metric_args) \
-                for i, v in enumerate(self.vectors)], axis=0)
-        else: self.repulsion = None
+            # Calculate Standard Deviation:
+            self.stats_dict["Standard Dev"] = np.std(self.vectors)
+
+            #self.focus = sum(n.centroid for n in self.nodes) / len(self.nodes)
+            if len(self.nodes) != 0:
+                self.stats_dict["Node Count"] = len(self.nodes)
+                self.focus = np.mean([n.centroid for n in self.nodes], axis=0)
+                self.stats_dict["Skew"] = self.metric(
+                    self.centroid, self.focus, **self.metric_args)
+            else:
+                self.focus = None
+                # NOTE: Macro stats are run on stats_dict items, so stats_dict
+                #   should NEVER include None! Simply do not add it.
+
+            # Calculate repulsion:
             # NOTE: if objects are placed in clusters different from their
             #   nearest neighbor, this will include a few phony values.
+            #if self.nearest != None: self.repulsion = sum(self.metric(
+            #    v, self.encoder(self.nearest(self.objects[i])))
+            #    for i, v in self.vectors) / len(self.objects)
+            if self.nearest != None:
+                self.stats_dict["Repulsion"] = np.mean([self.metric(
+                        v, self.encoder(self.nearest(self.objects[i])),
+                        **self.metric_args) \
+                    for i, v in enumerate(self.vectors)], axis=0)
 
-        # Calculate Medoid:
-        self.medoid = self.objects[np.argmin(
-            self.metric(self.centroid, v, **self.metric_args) \
-            for v in self.vectors)]
-        self.medoid_dist = self.metric(
-            self.medoid, self.centroid, **self.metric_args)
+            # Norm Stats:
+            self.norms = [np.linalg.norm(v) for v in self.vectors]
+            self.stats_dict["Norm Range"] = \
+                np.max(self.norms) - np.min(self.norms)
 
 
     def cluster_dist(self, B):
@@ -167,9 +199,3 @@ class Cluster:
     #    self.metric = metric
     #    self.encoder = encoder
     #    self.decoder = decoder
-
-    #def get_centroid(self, cluster_name):
-    #    return self.centroid
-
-    #def get_dispersion(self, cluster_name):
-    #    return self.dispersion
