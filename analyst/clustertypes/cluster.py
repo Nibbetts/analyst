@@ -97,7 +97,7 @@ class Cluster:
             + line("Dispersion",       np.mean(self.centroid_distances)) \
             + line("Centr Dist Min",   np.min(self.centroid_distances)) \
             + line("Centr Dist Max",   np.max(self.centroid_distances)) \
-            + line("Centr Dist Range", np.max(self.centroid_distances) -
+            + line("Centr Dist Range", np.max(self.centroid_distances) - # ADD CENTROID NORM???
                 np.min(self.centroid_distances)) \
             + line("Centr Dist Std",   np.std(self.centroid_distances)) \
             + line("Norm Avg",   np.mean(self.norms)) \

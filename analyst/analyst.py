@@ -15,6 +15,7 @@ import os
 #from sys import version_info
 #import multiprocessing
 import traceback
+from collections import OrderedDict
 
 # Own files:
 from .evaluators import *
@@ -571,13 +572,13 @@ class Analyst:
     #   equality checks. Maybe most efficient for indeces?
     def downstream(self, obj, start_neighbor_k=0, give_path=False):
         path = None
-        if give_path: path=[]
+        path=[]
         current = self.neighbor_k(obj, start_neighbor_k, in_model=True)
         while current not in path: # More efficient than overhead for a set?
-            if give_path: path.append(current)
+            path.append(current)
             current = self.nearest(current)
         if give_path: return path
-        else: return current
+        else: return tuple(path[-2:]) # Right one is furthest downstream.
 
     # Superfast metric function for objects within the model only, using dicts.
     # Note: generic types.
@@ -796,7 +797,7 @@ class Analyst:
         return result
 
     @staticmethod
-    def compare(ana_list, w=10, comparators=[u"default"]):
+    def compare(ana_list, w=10, comparators=[u"default"], report_path=None):
         # Lists side by side the values for each analyst in the list,
         #   as well as a column for each comparator, run on that stat.
         # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
@@ -816,12 +817,16 @@ class Analyst:
         #   "curiosity": accentuates differences and uniformity
         #   "odd_one_out": spikes when one value differs largely from others
         # ana_list: a list of analysts. Kinda thought that was clear... :)
-        # Returns: a grapher object with multi-histogram information from the!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # report_path: file path to save report to.
+        # Returns: an ordered stat_dict keyed to tuples (Category, Description),
+        #   and a grapher object with multi-histogram information from TODO !!!!!!!!!!!!!!!!!!!!!!!!!!
         #   the comparison.
         assert len(ana_list) > 0
         ana_list[0]._print(u"Bridging Universes",
             u"Building Comparison & Report")
         print(u"")
+        result = u""
+        stat_dict = OrderedDict()
 
         # Descriptions to use:
         title = u"Comparison:"
@@ -834,7 +839,7 @@ class Analyst:
                 title += " " + a.description.upper()
                 descriptions.append(a.description.upper())
             if i < len(ana_list) - 1: title += ","
-        print(title)
+        result += title + u"\n"
 
         # Comparator:
         comparisons = []
@@ -877,7 +882,7 @@ class Analyst:
             titles[i] = Analyst._formatit(t, w, False, s)
             s += w + 1
             if i == len(ana_list): s += 1
-        print(title_string.format(*titles))
+        result += title_string.format(*titles) + u"\n"
 
         # Line Template:
         line_string = u"  {}" + u"{} " * len(ana_list) + u"|" + \
@@ -885,8 +890,8 @@ class Analyst:
         #graphs = []
 
         # Helper function; All the work to print one category:
-        def print_category(c):
-            print(c + u":")
+        def get_category(c):
+            string = c + u":\n"
             # Get the information from this category in each Analyst:
             category_lists = []
             for a in ana_list:
@@ -938,16 +943,27 @@ class Analyst:
                     s += w + 1
                     if i == len(ana_list): s += 1
                 star = u"*" if stars[d] else u" "
+                stat_dict[(c, desc)] = data
                 data = [star] + data + [star, desc]
-                print(line_string.format(*data))
+                string += line_string.format(*data) + u"\n"
+            
+            return string
 
-        # Put it all together - Loop through and print each category in order:
+        # Put it all together - loop through cats in order and build result:
         categories = []
         for a in ana_list:
             for c in a.categories:
                 if c not in categories:
                     categories.append(c)
-                    print_category(c)
+                    result += get_category(c)
+                    
+        # Print report, save file:
+        print(result)
+        if report_path != None:
+            with open(report_path, 'w') as f:
+                f.write(result)
+            
+        return stat_dict #,grapher # TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
@@ -986,18 +1002,40 @@ class Analyst:
         if self.auto_print: print("{:<40}".format(u"\r" + str(string) + u"...")
             + ("" if report is None else u"(" + report + u")"))
 
-    def print_report(self, w=10):
+    def print_report(self, w=10, report_path=None, auto_print=True):
         self._print(u"Revealing the Grand Plan", u"Printing Report")
         print(u"")
-        if self.description != None: print(self.description.upper())
+        result = ""
+        stat_dict = OrderedDict()
+
+        if self.description != None: result += self.description.upper() + u"\n"
         for i, category in enumerate(self.categories):
-            print(category + u": ")
+            result += category + u":\n"
             for cat in self.category_lists[i]:
-                print(u"  {}{} {}{}".format(
+                stat_dict[(category, cat[0])] = cat[1]
+                result += u"  {}{} {}{}".format(
                     "*" if cat[2] else u" ", # Stars
                     Analyst._formatit(cat[1], w, u"Histogram Key" in cat[0], 3),
                     u"*" if cat[2] else u" ", # Stars
-                    cat[0]))
+                    cat[0]) + u"\n"
+
+        if auto_print: print(result)
+        if report_path != None:
+            with open(report_path, 'w') as f:
+                f.write(result)
+        
+        return stat_dict #, grapher TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    def get_category_stats(self, category, stat_dict=None):
+        # Retrieve a dict containing only stats from desired category, such that
+        #   new_d["Description"] == value
+        # Works on multi-analyst stat_dicts as well.
+        d = self.print_report(auto_print=False) \
+            if stat_dict == None else stat_dict
+        new_d = OrderedDict()
+        for k in d.keys():
+            if k[0] == category: new_d[k[1]] = d[k]
+        return new_d
 
     def save(self, file_name=None):
         try:

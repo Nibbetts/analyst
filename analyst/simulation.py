@@ -47,7 +47,7 @@ def simulate_space(parameters):
             was recalculated, for comparison. This will be different if
             clusters overlapped.
     '''
-    pass
+    raise NotImplementedError()
     #note, need to make it create a generic identity function for
     #   encode/decode. or use indeces.
 
@@ -58,4 +58,4 @@ def simulate_cluster(type, population, radius, occupied_dims,
     # NOTE: when this function is called by simulate_space(), normalize
     #   is never True here. That would be done after the fact,
     #   on the whole simulated space, not on any one cluster.
-    pass
+    raise NotImplementedError()

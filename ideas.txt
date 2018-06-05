@@ -1,18 +1,6 @@
-nate@hatch:~/Projects/analyst$ python
->>> import analyst
->>> a = analyst.Analyst.load("/home/nate/Projects/an_scholar4000_real.dill")
-
-
-
-
-There aren't regions in the space, per se. If things are often around 90 degrees
-apart, then they are dispersed well, as like 6 points across the surface of a ball.
-
-
 Overall:
 --------
 - build in anvaka's visualization?
-- add functionality to save report to a file
 - decide whether it is better to have it be able to save live objects and continue
 computing, or whether it is better to have it be backwards compatibile by only
 storing pure data. Or fix problem w/ hybrid? OR MAKE NEW INSTANCE IN LOAD FUNCTION!
@@ -25,6 +13,7 @@ particularly if run and save in python 2, then go to 3 to run again.
 Fix problem where metric_args doesn't work on non-scipy-builtins.
 Sholdn't interfere with scipy because of metric_str? Use update_wrapper, python3 book pg 145.
 Or if not functtools.partial, then functtools.partialmethod, or simple decorator.
+- use built-in print function's file-handler to output to file?
 
 Analyses:
 ---------
@@ -50,10 +39,9 @@ for nearest neighbors. Or use scipy for everything, since it seems to do these?
 - phase in metric_in_model to be used where can. Check if can in nodes/clusters.
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 OTHER:
+- make metric function which works on words instead of just vectors.
 - add in_frequency_order=False and frequencies=[] to analyst, complete with tests on that.
 - list words who are no one's nearest neighbor
-- make getter for data in report; row and category? Ability to print to file!
-- make category and line getters, for full numerical data, including comparators.
 - decide if multi-comparison needs grapher....
 - make grapher object, and have analyst have it as a data member - analyst's graph
 function just call's its grapher's graph function.
@@ -71,6 +59,8 @@ Mutual information, Confusion matrix.
 
 Word Group Specific Analysis:
 -----------------------------
+- make it so clusters only compute at start what is needed for report - other
+info can come in an inspection function! not printed when cluster printed.
 - make funct to examine a group of given strings thoroughly - makes a cluster.
 adds it to where?
 - look into cluster extremities! (strange attractors)

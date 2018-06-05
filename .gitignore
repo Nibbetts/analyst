@@ -5,3 +5,5 @@ embeddings/*
 *.pyc
 *.py~
 *__pycache__*
+universal_dialog*
+test_*

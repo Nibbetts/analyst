@@ -34,21 +34,27 @@ class Node:
         if align_len != 0: self.alignment_vec /= align_len
 
     def __eq__(self, r_node):
-        return ((self.a == r_node.a and self.b == r_node.b) or
-                (self.b == r_node.a and self.a == r_node.b))
+        # Works on lists and tuples, as well, if only 2 elements.
+        if len(r_node) != 2: return False
+        return ((self.a == r_node[0] and self.b == r_node[1]) or
+                (self.b == r_node[1] and self.a == r_node[0]))
 
     def __getitem__(self, index):
         if index == 0: return self.a
         elif index == 1: return self.b
         else: raise ValueError("Index out of bounds of Node")
 
-    # __len__ not defined so as not to confuse, because cannot return float.
+    def __len__(self):
+        return 2 # NOT distance between! __len__ can't return a float.
 
     def __str__(self):
         return "Node(" + str(self.a) + ", " + str(self.b) + ")"
 
     def __repr__(self):
         return str(self)
+
+    def __hash__(self):
+        return hash(str(tuple(sorted((self.a, self.b)))))
 
     # This function exists to allow the creation of nodes of nodes - supernodes;
     #   Where get_centroid becomes the encoder passed in.

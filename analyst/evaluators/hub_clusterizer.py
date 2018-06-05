@@ -46,7 +46,8 @@ class HubClusterizer(Clusterizer, object):
         for i in tqdm(range(len(space)), disable=(not show_progress)):
             temp_hubs.append(Cluster(
                 encoder, metric, nearest=nearest,
-                objects=[strings[i]], nodes=[], auto=False, **metric_args))
+                objects=[strings[i]], nodes=[], auto=False, name=strings[i],
+                **metric_args))
                 # Its name is the original object's decoded string.
             for index, neighbor in enumerate(neighbors):
                 if neighbor == i:
@@ -73,5 +74,6 @@ class HubClusterizer(Clusterizer, object):
         # Run the basic stats first:
         super(HubClusterizer, self).compute_stats(**kwargs)
 
+        # TODO:
         # Then add our own:
         #!!!!add uniformity of density, by comparing hub dispersion range to space dispersion range, and maybe ln or sqrt to invert relationship?
