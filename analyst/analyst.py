@@ -732,8 +732,8 @@ class Analyst:
             except Exception: # as e:
                 #print(e)
                 traceback.print_exc()
-                print(u"ERROR IN CALCULATION OF %s. DOES YOUR EVALUATOR "
-                    u"INHERIT FROM AN Evaluator CLASS?"
+                print(u"ERROR IN CALCULATION OF %s."# DOES YOUR EVALUATOR "
+                    #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
         
         if auto_save:

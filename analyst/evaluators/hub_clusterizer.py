@@ -36,7 +36,7 @@ class HubClusterizer(Clusterizer, object):
         #   since get_nodes ensures this for us, without repeating calculation:
         self.node_clusterizer = evaluator_getter(self.node_category,
             force_creation=self.nodal)
-        s_to_node = self.node_clusterizer.get_string_node_dict() \
+        s_to_node = self.node_clusterizer.get_string_node_dict(**kwargs) \
             if self.node_clusterizer != None else None
         neighbors = neighbors_fn(1)
 

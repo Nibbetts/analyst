@@ -13,7 +13,9 @@ class Node:
             metric_args -- additional arguments for the metric function.
                 Use like **kwargs is used.
         """
-        assert a != b # Objects in a node must be different.
+        #assert a != b # We require there to be no duplicate objects!
+        if a == b: print("WARNING: DUPLICATE OBJECTS SUSPECTED IN SPACE. "
+            "SOME OPERATIONS MAY BE IMPERFECT DUE TO INDECES / MAPPINGS.")
         self.a = a
         self.b = b
         self.vec_a = encoder(a) # if encoder != None else a

@@ -141,11 +141,12 @@ class Cluster:
                 self.centroid_distances, axis=0)
 
             # Calculate Medoid:
-            self.medoid = self.objects[np.argmin(
+            medoid_i = np.argmin(
                 self.metric(self.centroid, v, **self.metric_args) \
-                for v in self.vectors)]
+                for v in self.vectors)
+            self.medoid = self.objects[medoid_i]
             self.stats_dict["Medoid Dist"] = self.metric(
-                self.medoid, self.centroid, **self.metric_args)
+                self.vectors[medoid_i], self.centroid, **self.metric_args)
 
             # Calculate Standard Deviation:
             self.stats_dict["Standard Dev"] = np.std(self.vectors)

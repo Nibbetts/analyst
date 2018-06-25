@@ -87,11 +87,13 @@ class Spatializer(Evaluator, object):
             self.data_dict["Dimensionality"] = len(space[0])
             printer("Electing a Ruler", "Getting Medoid, Etc.")
             self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
-            medoid_dist = self.data_dict.pop("Medoid Dist")
-            self.data_dict["Medoid Dist to Centroid"] = medoid_dist
+            #medoid_dist = self.data_dict.pop("Medoid Dist")
+            #self.data_dict["Medoid Dist to Centroid"] = medoid_dist
+            self.data_dict["Medoid Dist to Centroid"] = \
+                cluster.stats_dict["Medoid Dist"]
             
-            for (key, value) in cluster.stats_dict:
-                self.data_dict[key] = value
+            for key in cluster.stats_dict:
+                self.data_dict[key] = cluster.stats_dict[key]
 
             # Centroid Info:
             printer("Setting Priorities", "Centroid Stats")

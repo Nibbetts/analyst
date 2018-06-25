@@ -126,7 +126,7 @@ class Clusterizer(Evaluator, object):
         self.data_dict["Count"] = len(self.clusters)
         
         if len(self.clusters) > 0:
-            for key in self.clusters[0].keys():
+            for key in self.clusters[0].stats_dict.keys():
                 self._compute_list_stats(
                     [c.stats_dict[key] for c in self.clusters],
                     key, self.data_dict)

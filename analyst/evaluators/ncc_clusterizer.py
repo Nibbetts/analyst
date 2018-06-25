@@ -2,7 +2,7 @@ from tqdm import tqdm
 
 from ..clustertypes.cluster import Cluster
 from .clusterizer import Clusterizer
-
+"""
 class NCCClusterizer(Clusterizer, object):
 
     def __init__(self, category="NCC", starred=None,
@@ -72,3 +72,5 @@ class NCCClusterizer(Clusterizer, object):
 
         # Then add our own:
         #!!!!add uniformity of density, by comparing hub dispersion range to space dispersion range, and maybe ln or sqrt to invert relationship?
+
+"""
