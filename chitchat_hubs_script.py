@@ -22,7 +22,7 @@ if __name__ == "__main__":
     #import tensorflow_hub as hub
 
 
-    MAX_LINES = 50000
+    MAX_LINES = 20000
 
     #def normalize(vec):
     #    return vec/np.linalg.norm(vec)

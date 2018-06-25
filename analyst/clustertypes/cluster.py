@@ -81,8 +81,8 @@ class Cluster:
         return self.objects[index]
 
     def __str__(self):
-        max_length = max(max(), max())
-        format_str = "{<" + str(max_length + 2) + "}:"
+        max_length = 16#max(max(), max()) # TODO
+        format_str = "{:<" + str(max_length + 2) + "}:"
         def line(key, value, comma=True):
             c = "," if comma else ""
             return c + "\n\t" + format_str.format(key) + str(value)

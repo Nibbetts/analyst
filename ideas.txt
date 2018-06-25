@@ -1,5 +1,6 @@
 Overall:
 --------
+- print out metric with report
 - build in anvaka's visualization?
 - decide whether it is better to have it be able to save live objects and continue
 computing, or whether it is better to have it be backwards compatibile by only

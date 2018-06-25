@@ -51,7 +51,8 @@ def load(f_name, print_report=False):
         with open(name, 'rb') as file:
             an = pickle.load(file)
             #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
-            an.analysis(print_report=print_report, recalculate=[])
+            an.analysis(
+                print_report=print_report, auto_save=False, recalculate=[])
             return an
     except Exception as e:
         print(u"ERROR: Unable to load or deserialize Analyst object "
@@ -683,7 +684,7 @@ class Analyst:
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def analysis(self, print_report, auto_save=True, recalculate=[]):
+    def analysis(self, print_report, auto_save=False, recalculate=[]):
         # Won't recalculate any but those whose categories are listed.
         # Even those it doesn't recalculate, it will still get their data and
         #   update its own in case it has changed.

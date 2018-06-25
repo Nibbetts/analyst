@@ -1,10 +1,13 @@
 saved_analyses/*
-embeddings/*
+embeddings/*.txt
+embeddings/*.bin
+embeddings/*.pkl
+embeddings/*.h5
 *.pkl
 *.dill
 *.pyc
 *.py~
 *__pycache__*
-universal_dialog*
-test_*
-chitchat_*
+#universal_dialog*
+#test_*
+#chitchat_*
