@@ -1,0 +1,15 @@
+3M ABSTRACT - Analyzing and Improving Embedding Spaces
+Nathan Tibbetts
+	Word embedding spaces, like those produced by the Word2Vec algorithm, have been shown to be an effective method of representing common knowledge for autonomous agents, allowing them to reason about the world and make decisions - but frequent faults in its reasoning have led us to seek methods of improving Word2Vec. Subsequent efforts to develop new analogy algorithms revealed gaps in our current understanding of embedding spaces, motivating the need for an effective method of quantitatively characterizing them, as well as comparing their relative performances as we ultimately develop new training algorithms. Thus, my current research has been in building a toolset to analyze, quantify, and compare both the innate mathematical properties of embedding spaces and their performances on analogies.
+
+
+
+Possible Presentation Text:
+
+	My current research project is in designing a piece of software we call Analyst, a program to measure and compare embedding spaces to help us know how to improve them.
+	Word or sentence level embedding spaces are collections of strings represented as vectors in a high dimensional space, where the vectors have been trained by some algorithm to represent the relatedness of the strings they represent.
+	Such embedding spaces have been found to be useful in analogical reasoning, common sense knowledge extraction, and action affordance given a situation, allowing autonomous agents to be capable of some basic reasoning about the world around them. Unfortunately these systems aren't perfect, and common problems such as ambiguous word senses and noise in training data often cause analogies to fail, creating errors and strange behaviors in all such reasoning systems.
+	We want to fix these problems, and to be able to design better embedding spaces - but to do that we have to be able to quantitatively define their characteristics and structure, score their performance, and compare them numerically so we can see when we make improvements, and in what areas.
+	If we can improve the quality of our embedding spaces, we can improve the quality of analogical reasoning capable by computers. If we can improve that, then our autonomous agents get smarter, because they can better reason about the world around them and make rational interpretations and decisions.
+	That's why we are designing Analyst, a program to measure and compare these embedding spaces on a detailed and massive scale, quantifying their properties, scoring their performance on analogical reasoning, allowing us the ability to inspect details of the spaces we're working with, and comparing the results of multiple analyses against each other.
+	Thank you.

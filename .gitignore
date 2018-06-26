@@ -1,5 +1,6 @@
 saved_analyses/*
 embeddings/*.txt
+!embeddings/useful_embeddings.txt
 embeddings/*.bin
 embeddings/*.pkl
 embeddings/*.h5
@@ -8,6 +9,4 @@ embeddings/*.h5
 *.pyc
 *.py~
 *__pycache__*
-#universal_dialog*
-#test_*
-#chitchat_*
+#experiments

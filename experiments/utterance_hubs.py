@@ -71,13 +71,14 @@ def run_analyst(lines, pts, tag="utterance_hubs", save=True):
         metric=METRIC,
         auto_print=True,
         desc=tag + "_" + str(MAX_LINES),
-        #evaluators=["Nodal 4-Hubs"],
+        evaluators=["Nodal 4-Hubs"],
         calculate=True
     )
 
     if save:
         # Save a copy of the analyst:
-        analyst_file = tag + "_" + str(MAX_LINES) + "_analyst"
+        analyst_file = "experiments/" + tag + "_" + str(len(a.strings)) \
+            + "_analyst"
         print("Success at saving Utterance Hubs: " +
             str(an.Analyst.save(a, analyst_file)))
 
@@ -119,7 +120,7 @@ def report(analyst_inst, hubs, ordering, tag="utterance_hubs", save=True):
             report += "\n\t" + u
 
     if save:
-        file_name = tag + "_" + str(MAX_LINES) + \
+        file_name = "experiments/" + tag + "_" + str(denom) + \
             "_sortedreport_" + ordering + ".txt"
         with open(file_name, 'w') as f:
             f.write(report)
@@ -142,7 +143,10 @@ def utterance_hubs_from_file(input_file, tag="utterance_hubs"):
 
 # SCRIPT BEHAVIOR:
 #   Example:
-#       python3 utterance_hubs.py utterances_filename [output_tag] [max_lines]
+#       Run this command from the analyst_project directory:
+#           "python3 experiments/utterance_hubs.py input_utterances_path
+#           [output_tag] [max_lines]"
+#       And it will save to the experiments directory.
 #   NOTE: if output_tag is undefined, will default to "utterance_hubs".
 #       We use a tag instead of a name because multiple files are generated.
 #       max_lines defaults to 20,000. Will work on up to 50,000 but cannot save.

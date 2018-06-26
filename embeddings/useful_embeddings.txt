@@ -1,0 +1,5 @@
+fasttext.en.pkl
+glove.6B.300d.txt
+GoogleNews-vectors-negative300.bin
+numberbatch-en-17.06.txt
+#and the universal sentence encoder, 512 dimensions
