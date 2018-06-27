@@ -90,7 +90,7 @@ class Clusterizer(Evaluator, object):
             metric_args    = kwargs["metric_args"]
 
             # It is acceptable and useful to make one clusterizer depend on
-            #   results from another. It is a BAD idea to try to make two
+            #   results from another. It is a VERY BAD idea to try to make two
             #   depend on each other!
             self.node_clusterizer = find_evaluator(
                 self.node_category, force_creation=False)

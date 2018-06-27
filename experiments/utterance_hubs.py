@@ -10,9 +10,6 @@
 # REQUIRES TENSORFLOW HUB:
 #   ~$ pip3 install --quiet tensorflow-hub
 #
-# MAY NOT BE REQUIRED, TRY WITHOUT FIRST:
-#   ~$ pip3 install seaborn
-#
 # TENSORFLOW HUB OR ANALYST MAY HAVE OTHER REQUIREMENTS,
 # Try and see what it complains about.
 # ------------------------------------------------------
@@ -70,7 +67,7 @@ def run_analyst(lines, pts, tag="utterance_hubs", save=True):
         strings=lines[:MAX_LINES],
         metric=METRIC,
         auto_print=True,
-        desc=tag + "_" + str(MAX_LINES),
+        desc=tag + "_" + str(len(lines)),
         evaluators=["Nodal 4-Hubs"],
         calculate=True
     )
@@ -99,7 +96,9 @@ def get_ordered_hubs(analyst_inst, ordering="population"):
     else:
         raise ValueError("Unrecognized parameter '" + str(ordering) + "'!")
 
-    return np.array(hubs)[order]
+    return np.array(hubs)[order] # NOTE: This will break if all are same size,
+    #   because it will convert the cluster objects themselves into rows
+    #   of a 2D array.
 
 # Make and save report:
 def report(analyst_inst, hubs, ordering, tag="utterance_hubs", save=True):

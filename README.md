@@ -8,7 +8,8 @@ numpy: numerical computing
 scipy: for its distance metrics  
 matplotlib: plotting and graphing  
 tqdm: progress bars  
-dill: pickling and loading, allows for unusual data members  
+dill: pickling and loading, allows for unusual data members
+tkinter? (sudo apt-get install python3-tk)
 
 Each of these should be accessible through the pip package manager:
 ```bash
