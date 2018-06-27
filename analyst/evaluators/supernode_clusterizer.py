@@ -29,6 +29,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
         # Compute distance matrix and nearest neighbors for node centroids:
         centroids = [n.centroid for n in self.nodes]
         printer("Fracturing the Empire", "Computing Nodal Distance Matrix")
+        # TODO: the following won't work if more than like 50000 nodes!
         node_dist_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 centroids,

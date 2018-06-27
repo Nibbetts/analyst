@@ -5,5 +5,6 @@ from .node_clusterizer import *
 from .extremity_clusterizer import *
 from .supernode_clusterizer import *
 from .hub_clusterizer import *
+from .nucleus_clusterizer import *
 from .spatializer import *
 from .analogizer import *

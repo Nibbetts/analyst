@@ -60,17 +60,26 @@ class Cluster:
         if self.auto: self.calculate()
 
     def __iadd__(self, B):
-        self.objects += B.objects # Both must be python lists,
+        self.objects = list(set(self.objects + B.objects))
+        # Both must be python lists,
         #   UNLESS USE np.hstack() or np.concatenate(),
         #   then change add_objects and add_nodes functions as well!
-        self.nodes += B.nodes
-        if self.auto: self.calculate()
+        self.nodes = list(set(self.nodes + B.nodes))
+        # Auto-calculation is dependent on the one being added to:
+        #if self.auto | B.auto: self.calculate()
+        self.vectors = None
+        if self.auto:
+            self.calculate()
+
+        return self
 
     def __add__(self, B):
         return Cluster(
             self.encoder, self.metric, nearest=self.nearest,
-            vectors=np.vstack((self.vectors, B.vectors)),
-            objects=self.objects + B.objects, nodes=self.nodes + B.nodes,
+            vectors=None,
+            objects=list(set(self.objects + B.objects)),
+            nodes=list(set(self.nodes + B.nodes)),
+            # Both must be auto for it to calculate:
             auto=self.auto & B.auto, ID=None, name=None, **self.metric_args)
 
     def __len__(self):

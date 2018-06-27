@@ -13,13 +13,13 @@ if __name__ == "__main__":
     import os.path
 
 
-    MAX_LINES = 20000
+    MAX_LINES = 1000
 
     def normalize(vec):
         return vec/np.linalg.norm(vec)
 
-    #metric = "cosine"
-    metric = an.Analyst.angle
+    metric = "cosine"
+    #metric = an.angle
 
     def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()

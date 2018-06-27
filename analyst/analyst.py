@@ -628,6 +628,8 @@ class Analyst:
                 cat = u"Nodal 4-Hubs"
             else: cat = category
             return HubClusterizer(threshold=thresh, nodal=nodal, category=cat)
+        elif cat == u"nuclei":
+            return NucleusClusterizer()
         # ADD STUFF!!
         else:
             print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '"

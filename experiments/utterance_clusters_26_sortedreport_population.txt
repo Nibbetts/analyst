@@ -1,5 +1,5 @@
 Number of Utterances: 26
-Number of Hubs: 2
+Number of Clusters: 2
 Metric: cosine
 
 Hub:        0
@@ -15,7 +15,7 @@ Sample Utterances:
 
 Hub:        1
 Percentage: %19.23076923076923
-Dispersion: 0.10988750457763671
+Dispersion: 0.10988749265670776
 Sample Utterances:
 	are you there?
 	are you there
