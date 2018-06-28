@@ -10,3 +10,4 @@ embeddings/*.h5
 *.py~
 *__pycache__*
 #experiments
+*utterance_*.txt

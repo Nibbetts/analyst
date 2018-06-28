@@ -112,7 +112,7 @@ def report(analyst_inst, clusters, ordering, tag=TAG, save=True):
     report += "\nNumber of Clusters: " + str(len(clusters))
     report += "\nMetric: " + METRIC
     for i, c in enumerate(clusters):
-        report += "\n\nHub:        " + str(i)#, c.name)
+        report += "\n\nCluster:    " + str(i)#, c.name)
         report += "\nPercentage: %" + str(100.0 * len(c) / float(denom))
         report += "\nDispersion: " + str(c.stats_dict["Dispersion"])
         

@@ -378,6 +378,7 @@ class Analyst:
 
         # Run Analyses:
         if calculate:
+            self._add_info(self.metric_str, "Spatial", "Distance Metric")
             self.analysis(
                 print_report=self.auto_print, auto_save=False, recalculate=[])
 

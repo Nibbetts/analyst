@@ -47,9 +47,17 @@ if __name__ == "__main__":
     str_f = list(map(str, str_f))
     embed_f = data_ft['vectors'][:MAX_LINES]
     embed_fn = np.array([normalize(v) for v in embed_f])
-    an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f, auto_print=True,
-        metric=metric, desc="Fasttext Normalized Cosine")
+    anag = an.evaluators.analogizer.Analogizer(
+        analogies_path="/mnt/pccfs/backed_up/zac/zac_desktop/zac_docs/Corpora/"
+            "subcorp_analogy_storage/analogy_subcorp5_family_relations")
+    an_fnc = an.Analyst(
+        embeddings=embed_fn,
+        strings=str_f,
+        auto_print=True,
+        metric=metric,
+        desc="Fasttext Normalized Cosine",
+        evaluators=[u"All", anag])
     print("Success at saving Fasttext Normalized Cosine: "
-        + str(an.Analyst.save(an_fnc,
-            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized_cosine")))
+        + str(an.Analyst.save(an_fnc, "saved_analyses/an" + str(MAX_LINES) + \
+             "_fasttext_normalized_cosine")))
 

@@ -1,7 +1,15 @@
 from abc import abstractmethod
+from tqdm import tqdm
+import numpy as np
 
 from .evaluator import Evaluator
 
+
+# DEFAULTS:
+WORD_ANALOGY_SEP = '\n'
+WORD_ITEM_SEP = ' '
+SENTENCE_ANALOGY_SEP = '\n\n'
+SENTENCE_ITEM_SEP = '\n'
 
 class Analogizer(Evaluator, object):
     """
@@ -22,8 +30,9 @@ class Analogizer(Evaluator, object):
         one for each algorithm.
     """
 
-    def __init__(self, category, starred=None,
-            analogies_path=None, analogies=None):
+    def __init__(self, category="Mikolov Analogies", starred=None,
+            analogies_path=None, analogies=None, analogy_vectors=None,
+            analogy_sep=WORD_ANALOGY_SEP, item_sep=WORD_ITEM_SEP):
         super(Analogizer, self).__init__(category=category, starred=starred)
         #   To inherit, must call parent init.
         self.file_name = analogies_path
@@ -36,21 +45,94 @@ class Analogizer(Evaluator, object):
         #   List of lists of words, or equivalent functional structure.
         #   Inner lists, for basic usage, will be of length 4, a:b::c:d.
         #   This will be None if reading from a file.
+        self.analogy_sep = analogy_sep
+        #   Separator for analogies (groups of 4 items, a:b::c:d)
+        #   These separators can be multiple symbols, ie: "\n\n".
+        self.analogy_vectors = analogy_vectors
+        #   list of lists of vectors, representing analogy items, to replace
+        #   other options, but I assume this will almost never be used.
+        self.item_sep = item_sep
+        #   Separator for items in an analogy group.
+        # Notice that by default this class assumes this is a word-embedding
+        #   space, but this can be easily changed when initializing it by using
+        #   other separators. (And there are built-ins for sentence-embeddings.)
         # self.CATEGORY = category       # See parent.
         # self.data_dict = OrderedDict() # See parent.
         # self.starred = []              # See parent.
         # self.calculated = False        # See parent.
 
-    # OVERRIDEABLE
-    def compute_stats(self, **kwargs):
-        # This is where you do your analogical run.
-        # kwargs: see parent.
-        # POST: self.data_dict, self.starred will be filled in.
-        pass
+        #assert analogies_path is not None or analogies is not None \
+        #    or analogy_vectors is not None
 
     # OVERRIDEABLE
-    def analogy(self, **kwargs):
-        pass
+    def compute_stats(self, **kwargs):
+        # This is where you do your analogical run, scoring each analogy
+        #   and generating data based on these.
+        # kwargs: see parent.
+        # POST: self.data_dict, self.starred will be filled in.
+
+        # This particular implementation is a simple scoring, counting the
+        #   number of correct results and dividing by number of analogies,
+        #   Though we will also give some distance stats.
+
+        show_progress = kwargs["draw_progress"]
+        printer       = kwargs["printer_fn"]
+        metric        = kwargs["metric_fn"]
+
+        printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
+        answers, vectors = zip(*[
+            self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
+                disable=(not show_progress))])
+
+        correct = np.array(answers) == [a[3] for a in self.analogies]
+        score = np.sum(correct) / float(len(self.analogies))
+        distances = np.array([metric(group[3], vectors[i]) \
+            for i, group in enumerate(self.analogy_vectors)])
+        lengths = np.array([metric(group[2], vectors[i]) \
+            for i, group in enumerate(self.analogy_vectors)])
+
+        self.data_dict["Analogy Count"] = len(self.analogies)
+        self.data_dict["Dropped Count"] = self.dropped
+        self.data_dict["Accuracy"] = score
+
+        # Distance from point found to answer point
+        self._compute_list_stats(distances,
+            "Dist All from Answer", self.data_dict)
+        self._compute_list_stats(distances[np.nonzero(correct)],
+            "Dist for Correct", self.data_dict)
+        self._compute_list_stats(distances[np.nonzero(1 - correct)],
+            "Dist for Incorrect", self.data_dict)
+
+        # Distance from c to d; the length of the analogy vector
+        self._compute_list_stats(lengths,
+            "Analogy Length", self.data_dict)
+        self._compute_list_stats(lengths[np.nonzero(correct)],
+            "Length Correct", self.data_dict)
+        self._compute_list_stats(lengths[np.nonzero(1 - correct)],
+            "Length Incorrect", self.data_dict)
+
+    # OVERRIDEABLE
+    def analogy(self, string_a, string_b, string_c, **kwargs):
+        # string_a, string_b, and string_c are the given analogy items.
+        #   string_d is not given.
+        # RETURNS: vector approximation for d, and string approximation for d.
+        #   Both are returned since some analogy algorithms may not naively
+        #   choose the nearest possible decode, and the scoring is done in
+        #   compute_stats.
+
+        # This particular implementation is a simple, Mikolov-type analogy.
+
+        encode   = kwargs["encoder_fn"]
+        stringit = kwargs["as_string_fn"]
+        # NOTE: we use as_string because the decoder only works on known objs!
+
+        a = encode(string_a)
+        b = encode(string_b)
+        c = encode(string_c)
+        d = b - a + c # our nearest guess for what d is
+
+        return stringit(d, in_model=False), d
+
 
     # The Analyst will call this function, which pulls it all together.
     #   You shouldn't have to override this function:
@@ -58,14 +140,25 @@ class Analogizer(Evaluator, object):
         if not self.calculated or recalculate_all:
             if kwargs == {}:
                 print("NOT YET CALCULATED AND NO KWARGS GIVEN!")
-            printer = kwargs["printer_fn"]
-            show_progress = kwargs["show_progress"]
+            printer       = kwargs["printer_fn"]
+            show_progress = kwargs["draw_progress"]
+            decode        = kwargs["decoder_fn"]
+            encode        = kwargs["encoder_fn"]
 
             if show_progress:
                 printer("Evaluating " + self.CATEGORY)
 
             if self.analogies is None:
-                self._read_analogies_file(printer)
+                if self.analogy_vectors is None:
+                    # This is the expected usage - through a file.
+                    self.analogies, self.analogy_vectors, self.dropped = \
+                        self.read_analogies_file(**kwargs)
+                else: self.analogies = [ # Assumes given strings all valid!
+                    [decode(item) for item in a] for a in self.analogy_vectors]
+            elif self.analogy_vectors is None:
+                self.analogy_vectors = [ # Assumes given vectors all valid!
+                    [encode(item) for item in a] for a in self.analogies]
+
             self.compute_stats(**kwargs)
 
             # Override default stars if user gave any:
@@ -80,14 +173,58 @@ class Analogizer(Evaluator, object):
         return self.data_dict, self.starred, self.CATEGORY
 
     # MAY BE OVERRIDDEN IF NEEDED
-    def _read_analogies_file(self, printer_fn):
+    def read_analogies_file(self, **kwargs):
         # File reader function.
+        # It works on sentence analogies too, with double-line sep for groups,
+        #   for example: analogy_sep='\n\n' and item_sep='\n',
+        #   values for which there are declared constants.
+        # Automatically strips whitespace from items after breaking up the file.
+
+        printer_fn = kwargs["printer_fn"]
+        encode     = kwargs["encoder_fn"]
+
+        # Force input if no corpus found:
+        if self.file_name is None:
+            print("")
+            self.file_name = input("PLEASE INPUT THE ANALOGY CORPUS PATH: ")
+
+        # Process the file
         printer_fn("Reading the Writing on the Wall", "Reading Analogy Corpus")
         with open(self.file_name, 'r') as f:
-            lines = f.readlines()
-        self.analogies = [line.split() for line in lines]
-        pre_size = len(self.analogies)
-        self.analogies = [a for a in self.analogies if len(a) == 4]
-        if len(self.analogies) < pre_size:
-            print("WARNING: analogies of length != 4 have been dropped!")
-            
+            #lines = f.readlines()
+            whole = f.read()
+        analogies = whole.split(self.analogy_sep)
+        analogies = [group.split(self.item_sep) for group in analogies]
+        analogies = [[item.strip() for item in a] for a in analogies]
+
+        # Certify each is length 4:
+        pre_size = len(analogies)
+        # Remove empty strings that may have arisen from incorrect numbers
+        #   of separators between things.
+        for i, a in enumerate(analogies):
+            for j, item in enumerate(a):
+                if item == "": del analogies[i][j]
+        # Remove those still not of length 4:
+        analogies = [a for a in analogies if len(a) == 4]
+        if len(analogies) < pre_size:
+            # Potential problems are printed outright, so not shushed when
+            #   auto_print is False.
+            print("WARNING: %d ANALOGIES OF LENGTH != 4 WERE DROPPED!" %
+                (pre_size - len(analogies)))
+
+        # Certify each contains only encodable strings:
+        vectors = []
+        valid_analogies = []
+        for a in analogies:
+            try:
+                vectors.append([encode(item) for item in a])
+                valid_analogies.append(a)
+            except:
+                pass
+        if len(valid_analogies) < len(analogies):
+            print("WARNING: %d UNENCODEABLE ANALOGIES WERE DROPPED!" %
+                (len(analogies) - len(valid_analogies)))
+
+        dropped = pre_size - len(valid_analogies)
+
+        return valid_analogies, vectors, dropped
