@@ -26,12 +26,12 @@ class Analogizer(Evaluator, object):
             analogies_path=None, analogies=None):
         super(Analogizer, self).__init__(category=category, starred=starred)
         #   To inherit, must call parent init.
-        self.filename = analogies_path
+        self.file_name = analogies_path
         #   Path to find test set file, formatted typically with each analogy
         #   being a line, with four words a:b::c:d separated by spaces.
         #   This will of course be used differently for sentence level
-        #   embeddings. Either this or analogies should be filled in. (If both
-        #   are, only analogies will be used.)
+        #   embeddings. Either this or analogies parameter should be filled in.
+        #   (If both are, only analogies will be used, not the path.)
         self.analogies = analogies
         #   List of lists of words, or equivalent functional structure.
         #   Inner lists, for basic usage, will be of length 4, a:b::c:d.
@@ -64,7 +64,8 @@ class Analogizer(Evaluator, object):
             if show_progress:
                 printer("Evaluating " + self.CATEGORY)
 
-            self._read_analogies_file(printer)
+            if self.analogies is None:
+                self._read_analogies_file(printer)
             self.compute_stats(**kwargs)
 
             # Override default stars if user gave any:
@@ -81,4 +82,12 @@ class Analogizer(Evaluator, object):
     # MAY BE OVERRIDDEN IF NEEDED
     def _read_analogies_file(self, printer_fn):
         # File reader function.
-        pass
+        printer_fn("Reading the Writing on the Wall", "Reading Analogy Corpus")
+        with open(self.file_name, 'r') as f:
+            lines = f.readlines()
+        self.analogies = [line.split() for line in lines]
+        pre_size = len(self.analogies)
+        self.analogies = [a for a in self.analogies if len(a) == 4]
+        if len(self.analogies) < pre_size:
+            print("WARNING: analogies of length != 4 have been dropped!")
+            

@@ -40,6 +40,8 @@ for nearest neighbors. Or use scipy for everything, since it seems to do these?
 - phase in metric_in_model to be used where can. Check if can in nodes/clusters.
 - phase out 1,2,f and make K neighbor calculator. change asserts to reflect it.
 OTHER:
+- make function to compare clustering algorithms in a given analyst
+(can be done in post-processing of text until this becomes relevant)
 - make metric function which works on words instead of just vectors.
 - add in_frequency_order=False and frequencies=[] to analyst, complete with tests on that.
 - list words who are no one's nearest neighbor
