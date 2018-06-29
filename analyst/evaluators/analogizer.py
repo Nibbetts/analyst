@@ -80,9 +80,11 @@ class Analogizer(Evaluator, object):
         metric        = kwargs["metric_fn"]
 
         printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
-        answers, vectors = zip(*[
+        data = list(zip(*[
             self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
-                disable=(not show_progress))])
+                disable=(not show_progress))]))
+        answers = data[0]
+        vectors = data[1]
 
         correct = np.array(answers) == [a[3] for a in self.analogies]
         score = np.sum(correct) / float(len(self.analogies))
@@ -119,6 +121,9 @@ class Analogizer(Evaluator, object):
         #   Both are returned since some analogy algorithms may not naively
         #   choose the nearest possible decode, and the scoring is done in
         #   compute_stats.
+        # NOTE: Overridden versions could return more data for stat gathering;
+        #   to use them, you may want to override compute_stats also, optionally
+        #   calling the parent function as you do.
 
         # This particular implementation is a simple, Mikolov-type analogy.
 
