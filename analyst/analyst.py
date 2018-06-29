@@ -128,6 +128,169 @@ def odd_one_out(l):
 
 
 #------------------------------------------------------------------------------#
+# Distances Class                                                              #
+#------------------------------------------------------------------------------#
+
+class Distances:
+    """
+        A class for distance and neighbor operations on a vector space,
+        since in very large spaces we cannot simply find a distance matrix,
+        unless you have huge amounts of ram on hand.
+    """
+    def __init__(self, embeddings, metric_str, metric_fn, print_fn,
+            auto_print=True, make_distance_matrix=False, **metric_args):
+        self.space = embeddings
+        self.metric_str = metric_str
+        self.metric = metric_fn
+        self._print = print_fn
+        self.auto_print = auto_print
+        self.matrix = make_distance_matrix
+        self.metric_args = metric_args
+
+        self.neighbors = None
+        self.neighbors_dist = None
+        self.distance_matrix = None
+        self.calculated = not self.matrix
+
+    # Gets the kth neighbor of obj. Negatives for furthest, 0 for self, positive
+    #   for nearest. If not in_model, 0 is nearest.
+    # Takes and returns objects in index form.
+    # Ensures neighbors will be calculated before, without being recalculated.
+    def neighbor_k(self, index, k):
+        assert -1 <= k <= 2
+        if k == 0: return index
+        n = k - 1 if k > 0 else k
+        return self.neighbors_getter()[0][index][n]
+
+    def nearest(self, index):
+        return self.neighbor_k(index, 1)
+
+    # Distance and Neighbor Computation:
+    def distance_matrix_getter(self):
+        # Allows us to only have to compute the distance matrix once, if needed.
+        # Makes use of scipy in the fastest way possible. Any metric string
+        #   recognized by scipy will work, or any valid function.
+        #   For speed, prefer to use string, if one exists for desired metric.
+        if self.distance_matrix == None:
+            # Distance Matrix Calculation
+            self._print(u"Acquainting the Species",
+                u"Computing Distance Matrix")
+            self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
+                self.space,
+                self.metric_str if self.metric_str != None else self.metric,
+                **self.metric_args))
+        return self.distance_matrix
+
+    def neighbors_getter(self):
+        # Allows us to only have to compute neighbors etc once, if needed.
+        if self.neighbors is None: # Must use 'is' here, else elementwise!
+            # Need distance matrix filled in:
+            self.distance_matrix_getter()
+
+            # Initialize Empty Arrays:
+            self.neighbors = np.empty((len(self.space),3), dtype=np.uint64)
+                # Indeces correspond to indeces of vectors in the space.
+                #   For each:
+                #   [index of nearest, index of 2nd-nearest, index of furthest]
+            self.neighbors_dist = np.empty(
+                (len(self.space),3))
+                # Same format as above, except distances to those indexed above.
+
+            # Finding Furthest Neighbors
+            self._print(u"Misconstruing Relations",
+                u"Finding Furthest Neighbors")
+            self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,2] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,2]]
+            self.distance_matrix[
+                range(len(self.space)), range(len(self.space))] = np.inf
+            # Finding Nearest Neighbors
+            self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
+            self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,0] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,0]]
+            self.distance_matrix[
+                range(len(self.space)), self.neighbors[:,0]] = np.inf
+            # Finding Second-Nearest Neighbors
+            self._print(u"Obfuscating Dynastic Ties",
+                u"Finding 2nd-Nearest Neighbors")
+            self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
+            self.neighbors_dist[:,1] = self.distance_matrix[
+                range(len(self.distance_matrix)),
+                self.neighbors[:,1]]
+            # Put back the numbers we removed:
+            self._print(u"Resetting the Ship's Computer",
+                u"Repairing Distance Matrix")
+            self.distance_matrix[
+                range(len(self.space)), self.neighbors[:,0]
+            ] = self.neighbors_dist[:,0]
+            self.distance_matrix[
+                range(len(self.space)), range(len(self.space))] = 0.0
+
+        return self.neighbors, self.neighbors_dist
+
+    def arbitrary_vector_dist(self, vector):
+        # Takes a vector not in the model and finds its distance to every obj
+        #   in the model, taking advantage of scipy's optimizations.
+        # NOTE: results are not stored, so recomputes every time.
+        return sp.distance.cdist(
+                np.atleast_2d(vector), self.space,
+                self.metric_str if self.metric_str != None else self.metric,
+                **self.metric_args
+            ).squeeze()
+            
+    def arbitrary_vector_neighbors(self, vector):
+        # Takes a vector not in the model and finds its distance to every obj
+        #   in the model, returning a 1D array of indeces (not vectors!)
+        # Includes an extra optimization for the common case
+        #   that metric is cosine similarity.
+        # NOTE: results are not stored, so recomputes every time.
+        if self.metric_str != u"cosine":
+            return np.argsort(self.arbitrary_vector_dist(vector))
+        else:
+            distances = np.dot(self.space, np.array([vector]).T.squeeze())
+            return distances.argsort()[::-1]
+
+    def arbitrary_vector_nearest(self, vector):
+        # Takes in a vector and returns the index of the nearest object in the
+        # space. If given something in the space, will return it back as index,
+        # because that is the nearest.
+        
+        # Note that if not in_model, we require obj to be a vector.
+        if self.metric_str != u"cosine":
+            return self.space[np.argmin(self.arbitrary_vector_dist(vector))]
+        else: # Optimization for cosine similarity:
+            return self.space[np.argmax(np.dot(
+                self.space, np.array([vector]).T.squeeze()))]
+
+    # These return the kth neighbor of all objects in the space, index-to-
+    #   index | distance, respectively.
+    #   Use negative for furthest, 0 for self, positive for nearest.
+    #   Default None will return the whole matrix.
+    def kth_neighbors(self, k=None):
+        if k == None: return self.neighbors_getter()[0]
+        assert -1 <= k <= 2
+        if k == 0: return range(len(self.space))
+        n = k - 1 if k > 0 else k
+        return self.neighbors_getter()[0][:,n]
+
+    def kth_neighbors_dist(self, k=None):
+        if k == None: return self.neighbors_getter()[1]
+        assert -1 <= k <= 2
+        if k == 0: return np.zeros((len(self.space)), dtype=np.uint64)
+        n = k - 1 if k > 0 else k
+        return self.neighbors_getter()[1][:,n]
+
+    # Superfast metric function for objects within the model only, using dicts.
+    # Note: generic types.
+    def metric_in_model(self, index1, index2):
+        return self.distance_matrix_getter()[index1, index2]
+
+
+
+#------------------------------------------------------------------------------#
 # Analyst Class                                                                #
 #------------------------------------------------------------------------------#
 
@@ -223,7 +386,8 @@ class Analyst:
 
     def __init__(self, embeddings=None, strings=None,
         encoder=None, decoder=None, metric=u"cosine", evaluators=[u"All"],
-        auto_print=True, desc=None, calculate=True, **metric_args):
+        auto_print=True, desc=None, calculate=True, make_distance_matrix=False,
+        **metric_args):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -364,17 +528,21 @@ class Analyst:
         # NOTE: I'm not making vec_to_ix because I assume that the length of the
         #   vectors makes it more efficient to use s_to_ix[decode(vec)].
 
-        # These are explained in the neighbors and distance matrix getters:
-        self.distance_matrix = None
-        self.neighbors = None
-        self.neighbors_dist = None
-
         # Data
         self.graph_info = []
         self.categories = []
         self.evaluators = []
         self.category_lists = []
         self.add_evaluators(*evaluators)
+        
+        self.D = Distances(
+            embeddings=self.space,
+            metric_str=self.metric_str,
+            metric_fn=self.metric,
+            print_fn=self._print,
+            auto_print=self.auto_print,
+            make_distance_matrix=make_distance_matrix,
+            **self.metric_args)
 
         # Run Analyses:
         if calculate:
@@ -425,16 +593,20 @@ class Analyst:
             return self.decode(self.nearest(obj, in_model=False))
 
 
+    # Superfast metric function for objects within the model only, using dicts.
+    # Note: generic types.
+    def metric_in_model(self, obj1, obj2):
+        return self.D.metric_in_model(
+            self.as_index(obj1, in_model=True),
+            self.as_index(obj2, in_model=True))
+
     # Gets the kth neighbor of obj. Negatives for furthest, 0 for self, positive
     #   for nearest. If not in_model, 0 is nearest.
     # Attempts to return the same type given, ie: index, string, or vector.
     # Ensures neighbors will be calculated before, without being recalculated.
     def neighbor_k(self, obj, k, in_model=True):
         if in_model:
-            assert -1 <= k <= 2
-            if k == 0: return obj
-            n = k - 1 if k > 0 else k
-            i = self.neighbors_getter()[0][self.as_index(obj)][n]
+            i = self.D.neighbor_k(self.as_index(obj), k)
             if isstring(obj):
                 return self.strings[i]
             try:
@@ -443,125 +615,14 @@ class Analyst:
             except: return self.space[i]
         else:
             # Note that if not in_model, we require obj to be a vector.
-            self.space[self.arbitrary_vector_neighbors(obj)[k]]
-    #
+            self.space[self.D.arbitrary_vector_neighbors(obj)[k]]
+
     def nearest(self, obj, in_model=True):
         if in_model:
-            return self.neighbor_k(obj, 1)
+            return self.neighbor_k(obj, 1, in_model=True)
         else:
             # Note that if not in_model, we require obj to be a vector.
-            if self.metric_str != u"cosine":
-                return self.space[np.argmin(self.arbitrary_vector_dist(obj))]
-            else: # Optimization for cosine similarity:
-                return self.space[np.argmax(np.dot(
-                    self.space, np.array([obj]).T.squeeze()))]
-
-
-    # Distance and Neighbor Computation:
-    def distance_matrix_getter(self):
-        # Allows us to only have to compute the distance matrix once, if needed.
-        # Makes use of scipy in the fastest way possible. Any metric string
-        #   recognized by scipy will work, or any valid function.
-        #   For speed, prefer to use string, if one exists for desired metric.
-        if self.distance_matrix == None:
-            # Distance Matrix Calculation
-            self._print(u"Acquainting the Species",
-                u"Computing Distance Matrix")
-            self.distance_matrix = sp.distance.squareform(sp.distance.pdist(
-                self.space,
-                self.metric_str if self.metric_str != None else self.metric,
-                **self.metric_args))
-        return self.distance_matrix
-
-    def neighbors_getter(self):
-        # Allows us to only have to compute neighbors etc once, if needed.
-        if self.neighbors is None: # Must use 'is' here, else elementwise!
-            # Need distance matrix filled in:
-            self.distance_matrix_getter()
-
-            # Initialize Empty Arrays:
-            self.neighbors = np.empty((len(self.space),3), dtype=np.uint64)
-                # Indeces correspond to indeces of vectors in the space.
-                #   For each:
-                #   [index of nearest, index of 2nd-nearest, index of furthest]
-            self.neighbors_dist = np.empty(
-                (len(self.space),3))
-                # Same format as above, except distances to those indexed above.
-
-            # Finding Furthest Neighbors
-            self._print(u"Misconstruing Relations",
-                u"Finding Furthest Neighbors")
-            self.neighbors[:,2] = np.argmax(self.distance_matrix, axis=1)
-            self.neighbors_dist[:,2] = self.distance_matrix[
-                range(len(self.distance_matrix)),
-                self.neighbors[:,2]]
-            self.distance_matrix[
-                range(len(self.space)), range(len(self.space))] = np.inf
-            # Finding Nearest Neighbors
-            self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
-            self.neighbors[:,0] = np.argmin(self.distance_matrix, axis=1)
-            self.neighbors_dist[:,0] = self.distance_matrix[
-                range(len(self.distance_matrix)),
-                self.neighbors[:,0]]
-            self.distance_matrix[
-                range(len(self.space)), self.neighbors[:,0]] = np.inf
-            # Finding Second-Nearest Neighbors
-            self._print(u"Obfuscating Dynastic Ties",
-                u"Finding 2nd-Nearest Neighbors")
-            self.neighbors[:,1] = np.argmin(self.distance_matrix, axis=1)
-            self.neighbors_dist[:,1] = self.distance_matrix[
-                range(len(self.distance_matrix)),
-                self.neighbors[:,1]]
-            # Put back the numbers we removed:
-            self._print(u"Resetting the Ship's Computer",
-                u"Repairing Distance Matrix")
-            self.distance_matrix[
-                range(len(self.space)), self.neighbors[:,0]
-            ] = self.neighbors_dist[:,0]
-            self.distance_matrix[
-                range(len(self.space)), range(len(self.space))] = 0.0
-
-        return self.neighbors, self.neighbors_dist
-
-    def arbitrary_vector_dist(self, vector):
-        # Takes a vector not in the model and finds its distance to every obj
-        #   in the model, taking advantage of scipy's optimizations.
-        # NOTE: results are not stored, so recomputes every time.
-        return sp.distance.cdist(
-                np.atleast_2d(vector), self.space,
-                self.metric_str if self.metric_str != None else self.metric,
-                **self.metric_args
-            ).squeeze()
-            
-    def arbitrary_vector_neighbors(self, vector):
-        # Takes a vector not in the model and finds its distance to every obj
-        #   in the model, returning a 1D array of indeces (not vectors!)
-        # Includes an extra optimization for the common case
-        #   that metric is cosine similarity.
-        # NOTE: results are not stored, so recomputes every time.
-        if self.metric_str != u"cosine":
-            return np.argsort(self.arbitrary_vector_dist(vector))
-        else:
-            distances = np.dot(self.space, np.array([vector]).T.squeeze())
-            return distances.argsort()[::-1]
-
-    # These return the kth neighbor of all objects in the space, index-to-
-    #   index | distance, respectively.
-    #   Use negative for furthest, 0 for self, positive for nearest.
-    #   Default None will return the whole matrix.
-    def kth_neighbors(self, k=None):
-        if k == None: return self.neighbors_getter()[0]
-        assert -1 <= k <= 2
-        if k == 0: return range(len(self.space))
-        n = k - 1 if k > 0 else k
-        return self.neighbors_getter()[0][:,n]
-
-    def kth_neighbors_dist(self, k=None):
-        if k == None: return self.neighbors_getter()[1]
-        assert -1 <= k <= 2
-        if k == 0: return np.zeros((len(self.space)), dtype=np.uint64)
-        n = k - 1 if k > 0 else k
-        return self.neighbors_getter()[1][:,n]
+            return self.D.arbitrary_vector_nearest(obj)
 
     # Computes the downstream nearest neighbor, and lists the path if asked,
     #   starting from obj's kth-nearest neighbor,
@@ -581,13 +642,6 @@ class Analyst:
             current = self.nearest(current)
         if give_path: return path
         else: return tuple(path[-2:]) # Right one is furthest downstream.
-
-    # Superfast metric function for objects within the model only, using dicts.
-    # Note: generic types.
-    def metric_in_model(self, obj1, obj2):
-        return self.distance_matrix_getter()[
-            self.as_index(obj1, in_model=True),
-            self.as_index(obj2, in_model=True)]
 
 
     # NOTE: This function does NOT force the evaluator to pre-calculate!
@@ -711,12 +765,12 @@ class Analyst:
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,
-                    kth_neighbors_ix_fn=self.kth_neighbors,
-                    kth_neighbors_dist_fn=self.kth_neighbors_dist,
-                    distance_matrix_getter_fn=self.distance_matrix_getter,
-                    arbitrary_dist_fn=self.arbitrary_vector_dist,
-                    arbitrary_neighbors_fn=self.arbitrary_vector_neighbors,
-                    metric_in_model_fn=self.metric_in_model,
+                    kth_neighbors_ix_fn=self.D.kth_neighbors,
+                    kth_neighbors_dist_fn=self.D.kth_neighbors_dist,
+                    distance_matrix_getter_fn=self.D.distance_matrix_getter,
+                    arbitrary_dist_fn=self.D.arbitrary_vector_dist,
+                    arbitrary_neighbors_fn=self.D.arbitrary_vector_neighbors,
+                    metric_in_model_fn=self.D.metric_in_model,
                     downstream_fn=self.downstream,
                     evaluator_list=self.evaluators,
                     find_evaluator_fn=self.find_evaluator,
