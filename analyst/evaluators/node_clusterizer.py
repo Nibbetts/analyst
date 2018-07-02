@@ -26,7 +26,7 @@ class NodeClusterizer(Clusterizer, object):
             self, space, show_progress=True, **kwargs):
         strings     = kwargs["strings"]
         encode      = kwargs["encoder_fn"]
-        metric      = kwargs["metric_fn"]
+        metric      = kwargs["metric_in_model_fn"]
         neighbors   = kwargs["kth_neighbors_ix_fn"]
         metric_args = kwargs["metric_args"]
         printer     = kwargs["printer_fn"]

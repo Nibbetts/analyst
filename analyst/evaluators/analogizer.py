@@ -77,7 +77,7 @@ class Analogizer(Evaluator, object):
 
         show_progress = kwargs["draw_progress"]
         printer       = kwargs["printer_fn"]
-        metric        = kwargs["metric_fn"]
+        metric        = kwargs["metric_in_model_fn"]
 
         printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
         data = list(zip(*[

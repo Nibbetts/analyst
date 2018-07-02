@@ -17,7 +17,7 @@ class ExtremityClusterizer(NodeClusterizer, object):
         #   of data from the analyst to save on computation/programming time:
         strings     = kwargs["strings"]
         encode      = kwargs["encoder_fn"]
-        metric      = kwargs["metric_fn"]
+        metric      = kwargs["metric_in_model_fn"]
         neighbors   = kwargs["kth_neighbors_ix_fn"]
         metric_args = kwargs["metric_args"]
         printer     = kwargs["printer_fn"]

@@ -15,7 +15,7 @@ class NucleusClusterizer(Clusterizer, object):
 
     def compute_clusters(
             self, space, show_progress=True, **kwargs):
-        metric_fn        = kwargs["metric_fn"]
+        metric           = kwargs["metric_fn"]
         evaluator_getter = kwargs["find_evaluator_fn"]
         printer          = kwargs["printer_fn"]
         #metric_args      = kwargs["metric_args"]
@@ -37,9 +37,9 @@ class NucleusClusterizer(Clusterizer, object):
                         hubs[i].stats_dict["Dispersion"],
                         hubs[j].stats_dict["Dispersion"])
                 # Currently either from nodes or from centroids will work:
-                if metric_fn(hubs[i].nodes[0].centroid,
+                if metric(hubs[i].nodes[0].centroid,
                             hubs[j].nodes[0].centroid) <= threshold \
-                        or metric_fn(hubs[i].centroid, hubs[j].centroid) \
+                        or metric(hubs[i].centroid, hubs[j].centroid) \
                         <= threshold:
                     # if we've already added one of the hubs to a cluster:
                     if i in hi_to_ni:

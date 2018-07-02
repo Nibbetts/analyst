@@ -80,7 +80,9 @@ class Evaluator:
     def calculate(self, recalculate_all=False, **kwargs):
         # recalculate_all: whether or not to force it to recompute everything.
         #   Should be rarely, if ever, needed.
+
         # Available kwargs (always given in case needed):
+        #
         #   embeddings,                 : 2D matrix, the whole vector space.
         #   draw_progress,              : bool, whether user wants printouts.
         #   strings,                    : list, objects in space, indeces match.
@@ -97,18 +99,25 @@ class Evaluator:
         #   exists_fn,                  : callable, check any of three exists.
         #   is_string_fn,               : callable, True if is str or bytes.
         #   angle_fn,                   : callable, angle metric.
+        #
+        #   metric_in_model_fn,         : getter, fast metric for in-model.
+        
         #   generic_nearest_fn,         : getter, nearest, keeps same type.
         #   generic_neighbor_k_fn,      : getter, kth neighbor, keeps same type.
         #   kth_neighbors_ix_fn,        : getter, vec. of ix of kth, or all.
         #   kth_neighbors_dist_fn,      : getter, vec. of dist of kth, or all.
-        #   distance_matrix_getter_fn,  : getter, for the whole distance matrix.
         #   arbitrary_dist_fn,          : callable, dist to each obj in space.
         #   arbitrary_neighbors_fn,     : callable, all ix ordered by proximity.
-        #   metric_in_model_fn,         : getter, fast metric for in-model.
+        #   distances_from_ix_fn,       : callable, dist from one to all; SLOW?
+        #   neighbors_of_ix_fn,         : callable, all neighbors of ix; SLOW.
+        #   condensed_dist_matrix,      : 1D array of distances, if computed.
+        #   condensed_ix_fn,            : callable, convert ix to condensed.
+        #
         #   downstream_fn,              : callable, nearest-neighbor chain.
         #   evaluator_list,             : list, all evaluators the Analyst has.
         #   find_evaluator_fn,          : getter, finds evaluator by category.
         #   simulate_cluster_fn.        : callable, Analyst's cluster simulator.
+
         # NOTE: Generic functions (non-type-specific) will be slower than
         #   direct mapping or indexing, so avoid them en masse.
         # NOTE: for details on the above, see their definitions in the Analyst.

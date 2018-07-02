@@ -16,7 +16,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
     def compute_clusters(self, space, show_progress=True, **kwargs):
         printer            = kwargs["printer_fn"]
         metric_str         = kwargs["metric_str"]
-        metric_fn          = kwargs["metric_fn"]
+        metric             = kwargs["metric_fn"]
         clusterizer_getter = kwargs["find_evaluator_fn"]
         metric_args        = kwargs["metric_args"]
 
@@ -33,7 +33,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
         node_dist_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 centroids,
-                metric_str if metric_str != None else metric_fn,
+                metric_str if metric_str != None else metric,
                 **metric_args))
         printer("Establishing a Hierocracy", "Computing Nearest Neighbor Nodes")
         neighbors = np.argmax(node_dist_matrix, axis=1)
@@ -43,7 +43,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
         self.clusters = [
             Node(node,
                 self.nodes[neighbors[i]],
-                Node.get_centroid, metric_fn, **metric_args)
+                Node.get_centroid, metric, **metric_args)
             for i, node in enumerate(tqdm(self.nodes,
                 disable=(not show_progress)))
             if (i == neighbors[neighbors[i]]
