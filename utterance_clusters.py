@@ -30,7 +30,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 
-MAX_LINES = 200
+MAX_LINES = 100000
 METRIC = "cosine"
 TAG = "utterance_clusters"
 CLUSTERS_TYPE = "Nuclei"

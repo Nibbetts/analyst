@@ -192,8 +192,8 @@ class Distances:
         if 1 in self.make_kth_neighbors:
             self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
 
-        # Filling in neighbors - this will take a long time...
-        for i in range(len(self.space)):
+        # Filling in neighbors - this may take a long time...
+        for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
             d = self.distances_from(i)
             ordering = np.argpartition(d, self.make_kth_neighbors)
             for j in self.make_kth_neighbors:
