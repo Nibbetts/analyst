@@ -114,8 +114,8 @@ class Cluster:
             + line("Norm Max",   np.max(self.norms)) \
             + line("Norm Range", self.stats_dict["Norm Range"]) \
             + line("Norm Std",   np.std(self.norms)) \
-            + line("Nodes",      [str(node) for node in self.nodes]) \
-            + line("Objects",    [str(o) for o in self.objects]) + "\n)"
+            + line("Nodes",      [str(node) for node in sorted(self.nodes)]) \
+            + line("Objects",    [str(o) for o in sorted(self.objects)]) + "\n)"
 
         return result
 

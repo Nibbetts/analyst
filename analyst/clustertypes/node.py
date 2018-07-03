@@ -18,8 +18,9 @@ class Node:
             "SOME OPERATIONS MAY BE IMPERFECT DUE TO INDECES / MAPPINGS.")
         self.a = a
         self.b = b
-        self.vec_a = encoder(a) # if encoder != None else a
-        self.vec_b = encoder(b) # if encoder != None else b
+        if self.a > self.b: self.a, self.b = self.b, self.a # Sort self
+        self.vec_a = encoder(self.a) # if encoder != None else a
+        self.vec_b = encoder(self.b) # if encoder != None else b
         self.distance = metric(self.vec_a, self.vec_b, **metric_args)
         self.centroid = (self.vec_a + self.vec_b) / 2.0
         self.alignment_vec = self.vec_b - self.vec_a
@@ -57,6 +58,9 @@ class Node:
 
     def __hash__(self):
         return hash(str(tuple(sorted((self.a, self.b)))))
+
+    def __lt__(self, other): # used for sorting.
+        return self.a < other.a
 
     # This function exists to allow the creation of nodes of nodes - supernodes;
     #   Where get_centroid becomes the encoder passed in.

@@ -55,11 +55,11 @@ if __name__ == "__main__":
         strings=str_f,
         auto_print=True,
         metric=metric,
-        desc="Fasttext Normalized Cosine",
+        desc="Fasttext Normalized Cosine New",
         evaluators=[u"All", anag])
     print("Success at saving Fasttext Normalized Cosine: "
         + str(an.Analyst.save(an_fnc, "saved_analyses/an" + str(MAX_LINES) + \
-             "_fasttext_normalized_cosine")))
+             "_fasttext_normalized_cosine_new")))
 
     #print(an_fnc.find_evaluator("Nuclei").get_clusters())
     

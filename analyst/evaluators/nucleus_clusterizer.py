@@ -80,7 +80,11 @@ class NucleusClusterizer(Clusterizer, object):
                 new.stats_dict["Hub Count"] = 1
                 self.clusters.append(new)
         # Remove duplicate clusters from conglomeration algorithm:
-        self.clusters = list(set(self.clusters))
+        self.clusters = list(set(self.clusters)) # changes order
+        # filtered = []
+        # for c in self.clusters:
+        #     if c not in filtered: filtered.append(c)
+        # self.clusters = filtered
 
         # Compute cluster stats:
         #   (not done when added, since conglomeration is iterative)

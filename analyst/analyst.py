@@ -149,7 +149,9 @@ class Distances:
         self.auto_print = auto_print
         self.metric_args = metric_args
         self.make_kth_neighbors = [ # Convert all k to positive
-            k if k >= 0 else k + len(self.space) for k in make_kth_neighbors]
+            k if k >= 0 else k + len(self.space) for k in make_kth_neighbors \
+            if k != 0] # Drop zero. Zeroth-nearest neighbor is self, except for
+                       #    objects not in the space.
         # Note the default is to not assume the user needs neighbors at all,
         #   but the Analyst overrides this, giving [-1, 1, 2]. See Analyst.
 
@@ -1144,6 +1146,7 @@ class Analyst:
     def save(self, file_name=None):
         try:
             f_name = self.file_name if file_name is None else file_name
+            if f_name is None: f_name = self.description
             #obj._serialize()
             with open(_file_extension(f_name), 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
