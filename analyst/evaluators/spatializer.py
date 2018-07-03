@@ -34,11 +34,13 @@ class Spatializer(Evaluator, object):
     """
 
     def __init__(self, category="Spatial", node_category="Nodes", starred=None,
-            neighbors_to_stat=[1,2,-1]):
+            neighbors_to_stat=None):
         super(Spatializer, self).__init__(category=category, starred=starred)
         #   To inherit, must call parent init.
         self.node_category = node_category
         self.neighbors_to_stat = neighbors_to_stat
+        #   Can override the automatic behavior to stat all neighbors computed.
+
         # PARENT MEMBERS WE NEED:
         # self.CATEGORY
         # self.data_dict
@@ -50,15 +52,17 @@ class Spatializer(Evaluator, object):
     def compute_stats(self, **kwargs):
         # kwargs: see Evaluator class.
         # POST: self.data_dict, self.starred filled in.
-        encoder        = kwargs["encoder_fn"]
-        metric         = kwargs["metric_fn"]
-        nearest        = kwargs["generic_nearest_fn"]
-        printer        = kwargs["printer_fn"]
-        find_evaluator = kwargs["find_evaluator_fn"]
-        metric_args    = kwargs["metric_args"]
-        objects        = kwargs["strings"]
-        space          = kwargs["embeddings"]
-        neighbors_dist = kwargs["kth_neighbors_dist_fn"]
+        encoder           = kwargs["encoder_fn"]
+        metric            = kwargs["metric_fn"]
+        nearest           = kwargs["generic_nearest_fn"]
+        printer           = kwargs["printer_fn"]
+        find_evaluator    = kwargs["find_evaluator_fn"]
+        metric_args       = kwargs["metric_args"]
+        objects           = kwargs["strings"]
+        space             = kwargs["embeddings"]
+        neighbors_dist    = kwargs["kth_neighbors_dist_fn"]
+        neighbors_to_stat = kwargs["make_kth_neighbors"] \
+            if self.neighbors_to_stat is None else self.neighbors_to_stat
 
         # It is acceptable and useful to make one clusterizer depend on
         #   results from another. It is a BAD idea to try to make two
@@ -106,7 +110,7 @@ class Spatializer(Evaluator, object):
             self.data_dict["Dispersion - Centroid Dist Avg"] = dispersion
 
             # kth-Neighbors Distance Info:
-            for n in self.neighbors_to_stat:
+            for n in neighbors_to_stat:
                 if n == 1:  # Added here because this is an OrderedDict
                     printer("Building Trade Routes", "Nearest Neighbor Stats")
                     printer("Practicing Diplomacy")

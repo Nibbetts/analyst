@@ -181,9 +181,9 @@ class Distances:
             u"Allocating Space for Neighbor Matrices")
         for k in self.make_kth_neighbors: # Allocate empty arrays
             self.neighbors[k] = np.empty(len(self.space), dtype=np.uint64)
-            self.neighbors_dist[k] = np.empty(len(self.space), dtype=np.uint64)
+            self.neighbors_dist[k] = np.empty(len(self.space), dtype=np.float64)
 
-        if -1 in self.make_kth_neighbors: # Print stuff
+        if -1 in make_kth_neighbors: # Print stuff
             self._print(u"Misconstruing Relations")
         if 2 in self.make_kth_neighbors:
             self._print(u"Obfuscating Dynastic Ties")
@@ -618,7 +618,8 @@ class Analyst:
             return self.decode(self.nearest(obj, in_model=False))
 
 
-    # Superfast metric function for objects within the model only, using dicts.
+    # Superfast metric function IF DISTANCE MATRIX COMPUTED,
+    #   for objects within the model only.
     # Note: generic types.
     def metric_in_model(self, obj1, obj2):
         return self.D.metric_in_model(
@@ -802,7 +803,7 @@ class Analyst:
                     string_ix_map=self.s_to_ix,   exists_fn=self.exists,
                     is_string_fn=isstring,        angle_fn=angle,
 
-                    metric_in_model_fn=self.D.metric_in_model,
+                    metric_in_model_fn=self.metric_in_model,
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,
@@ -818,6 +819,7 @@ class Analyst:
                     downstream_fn=self.downstream,
                     evaluator_list=self.evaluators,
                     find_evaluator_fn=self.find_evaluator,
+                    make_kth_neighbors=self.make_kth_neighbors,
                     simulate_cluster_fn=simulate_cluster)
 
                 # The below compatibilities should be unnecessary because both

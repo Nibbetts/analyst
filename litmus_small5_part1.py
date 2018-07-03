@@ -61,3 +61,5 @@ if __name__ == "__main__":
         + str(an.Analyst.save(an_fnc, "saved_analyses/an" + str(MAX_LINES) + \
              "_fasttext_normalized_cosine")))
 
+    #print(an_fnc.find_evaluator("Nuclei").get_clusters())
+    

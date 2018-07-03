@@ -13,8 +13,7 @@ class NucleusClusterizer(Clusterizer, object):
 
         self.hub_category = hub_category
 
-    def compute_clusters(
-            self, space, show_progress=True, **kwargs):
+    def compute_clusters(self, space, show_progress=True, **kwargs):
         metric           = kwargs["metric_fn"]
         evaluator_getter = kwargs["find_evaluator_fn"]
         printer          = kwargs["printer_fn"]

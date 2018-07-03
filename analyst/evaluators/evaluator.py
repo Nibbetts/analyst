@@ -116,6 +116,7 @@ class Evaluator:
         #   downstream_fn,              : callable, nearest-neighbor chain.
         #   evaluator_list,             : list, all evaluators the Analyst has.
         #   find_evaluator_fn,          : getter, finds evaluator by category.
+        #   make_kth_neighbors,         : list, k's for neighbors to compute.
         #   simulate_cluster_fn.        : callable, Analyst's cluster simulator.
 
         # NOTE: Generic functions (non-type-specific) will be slower than
