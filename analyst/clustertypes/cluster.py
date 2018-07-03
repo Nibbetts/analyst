@@ -150,9 +150,9 @@ class Cluster:
                 self.centroid_distances, axis=0)
 
             # Calculate Medoid:
-            medoid_i = np.argmin(
+            medoid_i = np.argmin([
                 self.metric(self.centroid, v, **self.metric_args) \
-                for v in self.vectors)
+                for v in self.vectors])
             self.medoid = self.objects[medoid_i]
             self.stats_dict["Medoid Dist"] = self.metric(
                 self.vectors[medoid_i], self.centroid, **self.metric_args)

@@ -43,16 +43,19 @@ class NucleusClusterizer(Clusterizer, object):
                     # if we've already added one of the hubs to a cluster:
                     if i in hi_to_ni:
                         # if we've actually already added both:
-                        if j in hi_to_ni and (hi_to_ni[i] != hi_to_ni[j]):
-                            # combine them, delete the 2nd, re-key the dict
-                            self.clusters[hi_to_ni[i]] += \
-                                self.clusters[hi_to_ni[j]]
-                            self.clusters[hi_to_ni[i]].stats_dict["Hub Count"] \
-                                += self.clusters[hi_to_ni[j]] \
-                                .stats_dict["Hub Count"]
-                            self.clusters[hi_to_ni[j]] = \
-                                self.clusters[hi_to_ni[i]]
-                            #hi_to_ni[j] = hi_to_ni[i]
+                        if j in hi_to_ni:
+                            # if not already combined, else we don't care:
+                            if hi_to_ni[i] != hi_to_ni[j]:
+                                # combine them, delete the 2nd, re-key the dict
+                                self.clusters[hi_to_ni[i]] += \
+                                    self.clusters[hi_to_ni[j]]
+                                self.clusters[hi_to_ni[i]] \
+                                    .stats_dict["Hub Count"] \
+                                    += self.clusters[hi_to_ni[j]] \
+                                    .stats_dict["Hub Count"]
+                                self.clusters[hi_to_ni[j]] = \
+                                    self.clusters[hi_to_ni[i]]
+                                #hi_to_ni[j] = hi_to_ni[i]
                         # else if only added the first:
                         else: # add the second
                             hi_to_ni[j] = hi_to_ni[i]
@@ -80,7 +83,7 @@ class NucleusClusterizer(Clusterizer, object):
                 new.stats_dict["Hub Count"] = 1
                 self.clusters.append(new)
         # Remove duplicate clusters from conglomeration algorithm:
-        self.clusters = list(set(self.clusters)) # changes order
+        self.clusters = list(set(self.clusters)) # changes order, but OK, else:
         # filtered = []
         # for c in self.clusters:
         #     if c not in filtered: filtered.append(c)

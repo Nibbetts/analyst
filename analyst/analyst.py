@@ -1146,7 +1146,8 @@ class Analyst:
     def save(self, file_name=None):
         try:
             f_name = self.file_name if file_name is None else file_name
-            if f_name is None: f_name = self.description
+            if f_name is None:
+                f_name = self.description
             #obj._serialize()
             with open(_file_extension(f_name), 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
