@@ -17,6 +17,7 @@ import os
 #import multiprocessing
 import traceback
 from collections import OrderedDict
+#import ray
 
 # Own files:
 from .evaluators import *
@@ -141,6 +142,7 @@ class Distances:
     def __init__(self, embeddings, metric_str, metric_fn, print_fn,
             auto_print=True, make_distance_matrix=False,
             make_kth_neighbors=[], **metric_args):
+        # NOTE: Distance matrix calculation is not parallelized.
         
         self.space = embeddings
         self.metric_str = metric_str
@@ -148,6 +150,7 @@ class Distances:
         self._print = print_fn
         self.auto_print = auto_print
         self.metric_args = metric_args
+        self.make_distance_matrix = make_distance_matrix
         self.make_kth_neighbors = [ # Convert all k to positive
             k if k >= 0 else k + len(self.space) for k in make_kth_neighbors \
             if k != 0] # Drop zero. Zeroth-nearest neighbor is self, except for
@@ -155,14 +158,26 @@ class Distances:
         # Note the default is to not assume the user needs neighbors at all,
         #   but the Analyst overrides this, giving [-1, 1, 2]. See Analyst.
 
+        self.distance_matrix = None
+        self.neighbors = None
+        self.neighbors_dist = None
+
+        # NOTE: The Distances class conveniently delays computation of distance
+        #   matrix and all the requested neighbors until they are requested
+        #   for the first time, in case there are no default evaluators and
+        #   no others need them, since some clustering algorithms have it
+        #   built-in to recompute all of this internally.
+
+    # Compute distance matrix if not already done and am supposed to:
+    def get_distance_matrix(self):       
         # DISTANCE MATRIX CALCULATION, OR NOT:
         #   Any metric string recognized by scipy will work, or any valid
         #   function. However, any function, including scipy's, will be FAR
         #   slower than putting in the string representation of a recognized
         #   scipy function, so that scipy knows exactly what it is.
-        self.distance_matrix = None
+        # NOTE: This is a condensed distance matrix. Use condensed_index.
 
-        if make_distance_matrix:
+        if self.make_distance_matrix and self.distance_matrix is None:
             try:
                 self._print(u"Acquainting the Species",
                     u"Computing Distance Matrix")
@@ -170,35 +185,15 @@ class Distances:
                     self.space,
                     self.metric_str if self.metric_str != None else self.metric,
                     **self.metric_args)
+                return self.distance_matrix
                 # Note that our distance matrix is actually a condensed one, or
                 #   a distance vector, so we have to use some special indexing.
                 #   Converting to squareform would take ~twice as much memory.
-            except: pass # NOTE: catching a memory error probably won't work!
-
-        # NEIGHBOR CALCULATIONS:
-        self.neighbors = {} # dicts keyed to the k we're told to calculate
-        self.neighbors_dist = {}
-
-        self._print(u"Setting the Ship's Computer",
-            u"Allocating Space for Neighbor Matrices")
-        for k in self.make_kth_neighbors: # Allocate empty arrays
-            self.neighbors[k] = np.empty(len(self.space), dtype=np.uint64)
-            self.neighbors_dist[k] = np.empty(len(self.space), dtype=np.float64)
-
-        if -1 in make_kth_neighbors: # Print stuff
-            self._print(u"Misconstruing Relations")
-        if 2 in self.make_kth_neighbors:
-            self._print(u"Obfuscating Dynastic Ties")
-        if 1 in self.make_kth_neighbors:
-            self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
-
-        # Filling in neighbors - this may take a long time...
-        for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
-            d = self.distances_from(i)
-            ordering = np.argpartition(d, self.make_kth_neighbors)
-            for j in self.make_kth_neighbors:
-                self.neighbors[j][i] = ordering[j]
-                self.neighbors_dist[j][i] = d[ordering[j]]
+            except: # NOTE: catching a memory error probably won't work!
+                print("FAILED TO MAKE DISTANCE MATRIX; "
+                    "PROBABLY NOT ENOUGH MEMORY!")
+                self.make_distance_matrix = False
+        return None # If failed or if not supposed to make distance matrix
 
     # Convert indeces to condensed distance vector index:
     def condensed_index(self, i, j):
@@ -209,8 +204,9 @@ class Distances:
     # Fast metric that takes advantage of distance matrix if we have one:
     def metric_in_model(self, i, j):
         if i == j: return 0.0
-        if self.distance_matrix is not None:
-            return self.distance_matrix[self.condensed_index(i, j)]
+        d = self.get_distance_matrix()
+        if d is not None:
+            return d[self.condensed_index(i, j)]
         else:
             return self.metric(self.space[i], self.space[j], **self.metric_args)
 
@@ -218,11 +214,12 @@ class Distances:
     def distances_from(self, index):
         # Won't take more than one at a time, because a request for all of them
         #   could cause memory problems. Also then sp.squareform(sp.pdist(...))
-        #   would be more efficient than this if you need it anyway.
-        if self.distance_matrix is not None:
+        #   would be more efficient than this if you need all of them anyway.
+        d = self.get_distance_matrix()
+        if d is not None:
             indeces = [self.condensed_index(index, j) \
                 for j in range(len(self.space))]
-            distances = self.distance_matrix[indeces]
+            distances = d[indeces]
             #distances[np.nonzero(indeces < 0)[0]] = 0.
             distances[index] = 0.
             return distances
@@ -239,11 +236,9 @@ class Distances:
     # NOTE: Be sparing in using this on k not included from the start, as these
     #   will be heavy calculations because they are not stored!
     def neighbor_k(self, index, k):
-        if k == 0: return index
-        if k < 0: k += len(self.space) # Convert all k to positive
-        if k in self.make_kth_neighbors:
-            return self.neighbors[k][index]
-        else:
+        try:
+            return self.kth_neighbors(k)[index]
+        except:
             d = self.distances_from(index)
             return np.argpartition(d, k)[k]
 
@@ -300,12 +295,45 @@ class Distances:
         if k == 0: return range(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
         assert k in self.make_kth_neighbors
+
+        # NEIGHBOR CALCULATIONS if haven't before:
+        if self.neighbors is None:
+
+            self.neighbors = {} # dicts keyed to the k we're told to calculate
+            self.neighbors_dist = {}
+
+            self._print(u"Setting the Ship's Computer",
+                u"Allocating Space for Neighbor Matrices")
+            for k in self.make_kth_neighbors: # Allocate empty arrays
+                self.neighbors[k] = np.empty(len(self.space), dtype=np.uint64)
+                self.neighbors_dist[k] = np.empty(len(self.space), dtype=np.float64)
+
+            if -1 in self.make_kth_neighbors: # Print stuff
+                self._print(u"Misconstruing Relations")
+            if 2 in self.make_kth_neighbors:
+                self._print(u"Obfuscating Dynastic Ties")
+            if 1 in self.make_kth_neighbors:
+                self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
+
+            # Filling in neighbors - this may take a long time...
+            for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
+                d = self.distances_from(i)
+                ordering = np.argpartition(d, self.make_kth_neighbors)
+                for j in self.make_kth_neighbors:
+                    self.neighbors[j][i] = ordering[j]
+                    self.neighbors_dist[j][i] = d[ordering[j]]
+
         return self.neighbors[k]
 
     def kth_neighbors_dist(self, k):
         if k == 0: return np.zeros(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
         assert k in self.make_kth_neighbors
+
+        # Compute neighbors if haven't before:
+        if self.neighbors_dist is None:
+            self.kth_neighbors(k)
+
         return self.neighbors_dist[k]
 
 
@@ -460,6 +488,7 @@ class Analyst:
                 than the alternative. Beware, this is an n^2 / 2 algorithm for
                 memory, meaning that a vocabulary of 100,000 will try to store
                 approx. 5,000,000,000 floats, plus some overhead. Do the math.
+                NOTE: Distance matrix calculation is not parallelized.
             make_kth_neighbors -- a list of which neighbors to store. Memory
                 taken will be relative to len*n, so many neighbors for each
                 object in the space. Built-ins require [-1, 1, 2], which are
@@ -815,7 +844,7 @@ class Analyst:
                     arbitrary_neighbors_fn=self.D.neighbors_of_arbitrary,
                     distances_from_ix_fn=self.D.distances_from,
                     neighbors_of_ix_fn=self.D.neighbors_of,
-                    condensed_dist_matrix=self.D.distance_matrix,
+                    condensed_dist_matrix_fn=self.D.get_distance_matrix,
                     condensed_ix_fn=self.D.condensed_index,
 
                     downstream_fn=self.downstream,

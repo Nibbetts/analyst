@@ -110,7 +110,7 @@ class Evaluator:
         #   arbitrary_neighbors_fn,     : callable, all ix ordered by proximity.
         #   distances_from_ix_fn,       : callable, dist from one to all; SLOW?
         #   neighbors_of_ix_fn,         : callable, all neighbors of ix; SLOW.
-        #   condensed_dist_matrix,      : 1D array of distances, if computed.
+        #   condensed_dist_matrix_fn,   : getter, 1D array of dist, if computed.
         #   condensed_ix_fn,            : callable, convert ix to condensed.
         #
         #   downstream_fn,              : callable, nearest-neighbor chain.
