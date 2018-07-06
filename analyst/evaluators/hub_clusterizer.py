@@ -1,4 +1,6 @@
 from tqdm import tqdm
+import ray
+import psutil
 
 from ..clustertypes.cluster import Cluster
 from .clusterizer import Clusterizer
@@ -41,19 +43,54 @@ class HubClusterizer(Clusterizer, object):
         neighbors = neighbors_fn(1)
 
         # Calculate potential hubs:
-        temp_hubs = []
+
+        # PARALLELIZATION:
         printer("Finding Galactic Hubs", "Finding Potential Hubs")
-        for i in tqdm(range(len(space)), disable=(not show_progress)):
-            temp_hubs.append(Cluster(
-                encoder, metric, nearest=nearest,
-                objects=[strings[i]], nodes=[], auto=False, name=strings[i],
-                **metric_args))
-                # Its name is the original object's decoded string.
+
+        try: ray.init()
+        except: pass
+
+        @ray.remote
+        def find_hub(i, strings, neighbors):
+            objects = [strings[i]]
             for index, neighbor in enumerate(neighbors):
                 if neighbor == i:
-                    temp_hubs[i].add_objects([strings[index]])
+                    objects.append(strings[index])
                 # The 0th index in the hub's list of objects is also
-                #   it's original object (is included in hub).
+                #   its original object (is included in hub).
+            return objects
+
+        strings_id = ray.put(strings)
+        neighbors_id = ray.put(neighbors)
+
+        cpus = psutil.cpu_count()
+        remaining_ids = [find_hub.remote(i, strings_id, neighbors_id) for i in
+            range(min(len(space), cpus))]
+
+        temp_hubs = []
+        for i in tqdm(range(len(space)), disable=not show_progress):
+            ready_ids, remaining_ids = ray.wait(remaining_ids)
+            objects = ray.get(ready_ids[0])
+            if i + cpus < len(space):
+                remaining_ids.append(find_hub.remote(
+                    i + cpus, strings_id, neighbors_id))
+            temp_hubs.append(Cluster(
+                encoder, metric, objects, nearest=nearest, nodes=[],
+                auto=False, name=objects[0], **metric_args))
+
+        # NON-PARALLELIZED:
+        # temp_hubs = []
+        # for i in tqdm(range(len(space)), disable=(not show_progress)):
+        #     temp_hubs.append(Cluster(
+        #         encoder, metric, nearest=nearest,
+        #         objects=[strings[i]], nodes=[], auto=False, name=strings[i],
+        #         **metric_args))
+        #         # Its name is the original object's decoded string.
+        #     for index, neighbor in enumerate(neighbors):
+        #         if neighbor == i:
+        #             temp_hubs[i].add_objects([strings[index]])
+        #         # The 0th index in the hub's list of objects is also
+        #         #   it's original object (is included in hub).
 
         # Find the real, neighbor-limited hubs:
         j = 0

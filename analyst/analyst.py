@@ -17,7 +17,8 @@ import os
 #import multiprocessing
 import traceback
 from collections import OrderedDict
-#import ray
+import ray
+import psutil
 
 # Own files:
 from .evaluators import *
@@ -291,6 +292,17 @@ class Distances:
     #   k in self.make_kth_neighbors; otherwise it should have been put in in
     #   the first place.
     #   Use negative for furthest, 0 for self, positive for nearest.
+    def kth_neighbors_dist(self, k):
+        if k == 0: return np.zeros(len(self.space)) # pointless
+        if k < 0: k += len(self.space) # Convert all k to positive
+        assert k in self.make_kth_neighbors
+
+        # Compute neighbors if haven't before:
+        if self.neighbors_dist is None:
+            self.kth_neighbors(k)
+
+        return self.neighbors_dist[k]
+
     def kth_neighbors(self, k):
         if k == 0: return range(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
@@ -315,26 +327,97 @@ class Distances:
             if 1 in self.make_kth_neighbors:
                 self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
 
-            # Filling in neighbors - this may take a long time...
-            for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
-                d = self.distances_from(i)
-                ordering = np.argpartition(d, self.make_kth_neighbors)
-                for j in self.make_kth_neighbors:
-                    self.neighbors[j][i] = ordering[j]
-                    self.neighbors_dist[j][i] = d[ordering[j]]
+            # PARALLELIZATION TO FILL IN NEIGHBORS:
+
+            try: ray.init()
+            except: pass
+
+            @ray.remote
+            def neighbor_row(i, space, distance_matrix,
+                    metric, metric_str, make_kth, metric_args):
+
+                def condensed(i, j):
+                    if i == j: return -1
+                    if i < j: i, j = j, i
+                    return len(space)*j - j*(j+1)//2 + i - 1 - j
+
+                if distance_matrix is not None:
+                    indeces = [condensed(i, j) for j in range(len(space))]
+                    distances = distance_matrix[indeces]
+                    #distances[np.nonzero(indeces < 0)[0]] = 0.
+                    distances[i] = 0.
+                else:
+                    distances = sp.distance.cdist(
+                        np.atleast_2d(space[i]),
+                        space,
+                        metric_str if metric_str != None else metric,
+                        **metric_args).squeeze()
+                ordering = np.argpartition(distances, make_kth)
+
+                neighbors = np.empty(len(make_kth))
+                neighbors_dist = np.empty(len(make_kth))
+
+                for ix, j in enumerate(make_kth):
+                    neighbors[ix] = ordering[j]
+                    neighbors_dist[ix] = distances[ordering[j]]
+                
+                return i, neighbors, neighbors_dist
+                
+            # Shove data into the Object Store:
+            dm = self.get_distance_matrix()
+            distance_matrix_id = ray.put(dm)
+            space_id = ray.put(self.space if dm is None else None)
+            metric_str_id = ray.put(self.metric_str)
+            metric_id = ray.put(self.metric)
+            metric_args_id = ray.put(self.metric_args)
+            make_kth_id = ray.put(np.array(self.make_kth_neighbors))
+
+            cpus = psutil.cpu_count()
+            remaining_ids = [neighbor_row.remote(
+                    i,
+                    space_id,
+                    distance_matrix_id,
+                    metric_id,
+                    metric_str_id,
+                    make_kth_id,
+                    metric_args_id)
+                for i in range(min(len(self.space), cpus))]
+
+            # Compute:
+            for i in tqdm(range(len(self.space)), disable=not self.auto_print):
+                # Using ray.wait allows us to make a progress bar:
+                ready_ids, remaining_ids = ray.wait(remaining_ids)
+                tup = ray.get(ready_ids[0])
+                # Add a new job:
+                if i + cpus < len(self.space):
+                    remaining_ids.append(neighbor_row.remote(
+                        i + cpus, space_id, distance_matrix_id, metric_id,
+                        metric_str_id, make_kth_id, metric_args_id))
+                # Process this one's result and fill in data:
+                i, nbrs, nbrs_d = tup
+                for k, j in enumerate(self.make_kth_neighbors):
+                    self.neighbors[j][i] = nbrs[k]
+                    self.neighbors_dist[j][i] = nbrs_d[k]
+
+            # # Fill in our data with returns from parallelization:
+            # tuples = ray.get(remotes)
+            # for i, (nbrs, nbrs_d) in enumerate(
+            #         tqdm(tuples, disable=not self.auto_print)):
+            #     for k, j in enumerate(self.make_kth_neighbors):
+            #         self.neighbors[j][i] = nbrs[k]
+            #         self.neighbors_dist[j][i] = nbrs_d[k]
+
+            # # ORIGINAL; ALTERNATIVE TO PARALLELIZATION:
+
+            # # Filling in neighbors - this may take a long time...
+            # for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
+            #     d = self.distances_from(i)
+            #     ordering = np.argpartition(d, self.make_kth_neighbors)
+            #     for j in self.make_kth_neighbors:
+            #         self.neighbors[j][i] = ordering[j]
+            #         self.neighbors_dist[j][i] = d[ordering[j]]
 
         return self.neighbors[k]
-
-    def kth_neighbors_dist(self, k):
-        if k == 0: return np.zeros(len(self.space)) # pointless
-        if k < 0: k += len(self.space) # Convert all k to positive
-        assert k in self.make_kth_neighbors
-
-        # Compute neighbors if haven't before:
-        if self.neighbors_dist is None:
-            self.kth_neighbors(k)
-
-        return self.neighbors_dist[k]
 
 
 

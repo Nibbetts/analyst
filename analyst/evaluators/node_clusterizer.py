@@ -1,6 +1,8 @@
 from tqdm import tqdm
 import numpy as np
 import scipy.spatial as sp
+import ray
+import psutil
 
 from ..clustertypes.node import Node
 from .clusterizer import Clusterizer
@@ -45,10 +47,45 @@ class NodeClusterizer(Clusterizer, object):
         # Compute the Relative Alignment of each Node:
         printer("Waiting for the Stars to Align", "Computing Node Alignments")
         if len(self.clusters) > 1:
-            for node in tqdm(self.clusters, disable=(not show_progress)):
-                node.alignment = np.mean([
-                    abs(np.dot(node.alignment_vec, n.alignment_vec)) \
-                    for n in self.clusters if n != node])
+
+            # PARALLELIZED:
+
+            try: ray.init()
+            except: pass
+
+            @ray.remote
+            def align(i, alignment_vecs):
+                return i, np.mean([
+                    abs(np.dot(alignment_vecs[i], v))
+                    for j, v in enumerate(alignment_vecs) if j != i])
+
+            alignment_vecs_id = ray.put(
+                [c.alignment_vec for c in self.clusters])
+
+            cpus = psutil.cpu_count()
+            remaining_ids = [align.remote(i, alignment_vecs_id)
+                for i in range(min(len(self.clusters), cpus))]
+
+            for i in tqdm(range(len(self.clusters)), disable=not show_progress):
+                ready_ids, remaining_ids = ray.wait(remaining_ids)
+                tup = ray.get(ready_ids[0])
+                if i + cpus < len(self.clusters):
+                    remaining_ids.append(align.remote(
+                        i + cpus, alignment_vecs_id))
+                i, a = tup
+                self.clusters[i].alignment = a
+
+            # almts = ray.get(remotes)
+            # for i, a in enumerate(tqdm(almts, disable=not show_progress)):
+            #     self.clusters[i].alignment = a
+
+            # NON-PARALLELIZED:
+
+            # for node in tqdm(self.clusters, disable=(not show_progress)):
+            #     node.alignment = np.mean([
+            #         abs(np.dot(node.alignment_vec, n.alignment_vec)) \
+            #         for n in self.clusters if n != node])
+
         elif len(self.clusters) == 1: self.clusters[0].alignment = 1.0
 
         # Useful data to store:

@@ -36,7 +36,7 @@ class NucleusClusterizer(Clusterizer, object):
                         hubs[i].stats_dict["Dispersion"],
                         hubs[j].stats_dict["Dispersion"])
                 # Currently either from nodes or from centroids will work:
-                if metric(hubs[i].nodes[0].centroid,
+                if metric(hubs[i].nodes[0].centroid, # These have exactly 1 Node
                             hubs[j].nodes[0].centroid) <= threshold \
                         or metric(hubs[i].centroid, hubs[j].centroid) \
                         <= threshold:
