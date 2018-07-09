@@ -82,8 +82,9 @@ class Spatializer(Evaluator, object):
         
         # Use the Cluster class to compute the main stats for us:
         printer("Balancing the Continuum", "Computing Common Spatial Stats")
-        cluster = Cluster(encoder, metric, objects, nearest=nearest,
-            vectors=space, nodes=nodes, auto=True, **metric_args)
+        cluster = Cluster(self.CATEGORY, encoder, metric, objects,
+            nearest=nearest, vectors=space, nodes=nodes, auto=True,
+            **metric_args)
 
         self.data_dict["Count"] = len(space)
         if len(space) > 0:

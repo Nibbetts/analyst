@@ -110,9 +110,10 @@ class Clusterizer(Evaluator, object):
                 objects = [decoder(v) for v in group]
                 nodes = [s_to_node[o] for o in objects] \
                     if s_to_node != None else []
-                self.clusters.append(Cluster(encoder, metric, objects,
-                    nearest=nearest, vectors=group, nodes=nodes, auto=True,
-                    ID=i, name=None, **metric_args))
+                self.clusters.append(Cluster(
+                    self.CATEGORY, encoder, metric,
+                    objects, nearest=nearest, vectors=group, nodes=nodes,
+                    auto=True, ID=i, name=None, **metric_args))
 
 
     # TO BE OVERRIDDEN IF NEEDED - SHOULD CALL SUPER
@@ -127,9 +128,10 @@ class Clusterizer(Evaluator, object):
         
         if len(self.clusters) > 0:
             for key in self.clusters[0].stats_dict.keys():
-                self._compute_list_stats(
-                    [c.stats_dict[key] for c in self.clusters],
-                    key, self.data_dict)
+                if key not in self.clusters[0].QUIET_STATS:
+                    self._compute_list_stats(
+                        [c.stats_dict[key] for c in self.clusters],
+                        key, self.data_dict)
 
 
     # The Analyst will call this function, which pulls it all together.

@@ -41,7 +41,7 @@ class NCCClusterizer(Clusterizer, object):
         # printer("Finding Galactic Hubs", "Finding Potential Hubs")
         # for i in tqdm(range(len(space)), disable=(not show_progress)):
         #     temp_hubs.append(Cluster(
-        #         encoder, metric, nearest=nearest,
+        #         self.CATEGORY, encoder, metric, nearest=nearest,
         #         objects=[strings[i]], nodes=[], auto=False, name=strings[i],
         #         **metric_args))
         #         # Its name is the original object's decoded string.

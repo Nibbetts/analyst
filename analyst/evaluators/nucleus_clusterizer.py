@@ -38,7 +38,7 @@ class NucleusClusterizer(Clusterizer, object):
                 # Currently either from nodes or from centroids will work:
                 if metric(hubs[i].nodes[0].centroid, # These have exactly 1 Node
                             hubs[j].nodes[0].centroid) <= threshold \
-                        or metric(hubs[i].centroid, hubs[j].centroid) \
+                        and metric(hubs[i].centroid, hubs[j].centroid) \
                         <= threshold:
                     # if we've already added one of the hubs to a cluster:
                     if i in hi_to_ni:
@@ -55,13 +55,13 @@ class NucleusClusterizer(Clusterizer, object):
                                     .stats_dict["Hub Count"]
                                 self.clusters[hi_to_ni[j]] = \
                                     self.clusters[hi_to_ni[i]]
-                                #hi_to_ni[j] = hi_to_ni[i]
+                                hi_to_ni[j] = hi_to_ni[i]
                         # else if only added the first:
                         else: # add the second
                             hi_to_ni[j] = hi_to_ni[i]
                             self.clusters[hi_to_ni[i]] += hubs[j]
-                            self.clusters[hi_to_ni[i]] \
-                                .stats_dict["Hub Count"] += 1
+                            self.clusters[hi_to_ni[i]].stats_dict["Hub Count"] \
+                                += 1
                     # or if we've only added the other, similar to the first:
                     elif j in hi_to_ni: # add the first
                         hi_to_ni[i] = hi_to_ni[j]

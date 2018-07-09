@@ -372,6 +372,7 @@ class Distances:
             metric_args_id = ray.put(self.metric_args)
             make_kth_id = ray.put(np.array(self.make_kth_neighbors))
 
+            # Start the first few remote processes/threads:
             cpus = psutil.cpu_count()
             remaining_ids = [neighbor_row.remote(
                     i,
@@ -398,14 +399,6 @@ class Distances:
                 for k, j in enumerate(self.make_kth_neighbors):
                     self.neighbors[j][i] = nbrs[k]
                     self.neighbors_dist[j][i] = nbrs_d[k]
-
-            # # Fill in our data with returns from parallelization:
-            # tuples = ray.get(remotes)
-            # for i, (nbrs, nbrs_d) in enumerate(
-            #         tqdm(tuples, disable=not self.auto_print)):
-            #     for k, j in enumerate(self.make_kth_neighbors):
-            #         self.neighbors[j][i] = nbrs[k]
-            #         self.neighbors_dist[j][i] = nbrs_d[k]
 
             # # ORIGINAL; ALTERNATIVE TO PARALLELIZATION:
 
@@ -1242,7 +1235,9 @@ class Analyst:
             with open(report_path, 'w') as f:
                 f.write(result)
         
-        return stat_dict #, grapher TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # If not printing, will return an ordered dict instead, keyed to tuples:
+        #   (category, description)
+        if not auto_print: return stat_dict #, grapher TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     def get_category_stats(self, category, stat_dict=None):
         # Retrieve a dict containing only stats from desired category, such that

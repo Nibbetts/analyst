@@ -75,14 +75,14 @@ class HubClusterizer(Clusterizer, object):
                 remaining_ids.append(find_hub.remote(
                     i + cpus, strings_id, neighbors_id))
             temp_hubs.append(Cluster(
-                encoder, metric, objects, nearest=nearest, nodes=[],
-                auto=False, name=objects[0], **metric_args))
+                self.CATEGORY, encoder, metric, objects, nearest=nearest,
+                nodes=[], auto=False, name=objects[0], **metric_args))
 
         # NON-PARALLELIZED:
         # temp_hubs = []
         # for i in tqdm(range(len(space)), disable=(not show_progress)):
         #     temp_hubs.append(Cluster(
-        #         encoder, metric, nearest=nearest,
+        #         self.CATEGORY, encoder, metric, nearest=nearest,
         #         objects=[strings[i]], nodes=[], auto=False, name=strings[i],
         #         **metric_args))
         #         # Its name is the original object's decoded string.

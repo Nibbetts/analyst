@@ -13,7 +13,7 @@ if __name__ == "__main__":
     import os.path
 
 
-    MAX_LINES = 1000
+    MAX_LINES = 10000
 
     def normalize(vec):
         return vec/np.linalg.norm(vec)

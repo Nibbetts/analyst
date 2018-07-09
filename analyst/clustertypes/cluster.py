@@ -3,10 +3,34 @@ from collections import OrderedDict
 
 class Cluster:
 
-    def __init__(self, encoder, metric, objects, nearest=None, vectors=None,
-            nodes=[], auto=False, ID=None, name=None, **metric_args):
+    QUIET_STATS = { # Members not used in Analyst reports.
+        "Category",
+        "ID",
+        "Name",
+        "Medoid",
+        "Subcluster Category",
+
+        "Nodes",
+        "Objects",
+        "Subcluster IDs",
+
+        "Centroid Dist Avg",
+        "Centroid Dist Min",
+        "Centroid Dist Max",
+        "Centroid Dist Range",
+        "Centroid Dist Std",
+
+        "Norm Avg",
+        "Norm Min",
+        "Norm Max",
+        "Norm Std"}
+
+    def __init__(self, category, encoder, metric, objects, nearest=None,
+            vectors=None, nodes=[], auto=False, ID=None, name=None,
+            subcluster_category=None, subcluster_ids=[], **metric_args):
         """
         Parameters:
+            category: string; what type of cluster this is.
             encoder: callable; gets one vector from one object at a time.
             metric:  callable; distance metric between multidimensional vectors.
             nearest: callable; takes obj and returns its nearest neighbor obj.
@@ -33,8 +57,11 @@ class Cluster:
             Clusterizers automatically find meta-stats on these values.
         """
         self.ID = ID
+        self.CATEGORY = category
+        self.SUBCLUSTER_CATEGORY = subcluster_category
         self.name = name
         self.objects = objects
+        self.subcluster_ids = subcluster_ids
         self.encoder = encoder
         self.metric = metric
         self.nearest = nearest
@@ -67,6 +94,7 @@ class Cluster:
         self.nodes = list(set(self.nodes + B.nodes))
         # Auto-calculation is dependent on the one being added to:
         #if self.auto | B.auto: self.calculate()
+        self.subcluster_ids = list(set(self.subcluster_ids + B.subcluster_ids))
         self.vectors = None
         if self.auto:
             self.calculate()
@@ -75,12 +103,16 @@ class Cluster:
 
     def __add__(self, B):
         return Cluster(
-            self.encoder, self.metric, nearest=self.nearest,
+            self.CATEGORY, self.encoder, self.metric, nearest=self.nearest,
             vectors=None,
             objects=list(set(self.objects + B.objects)),
             nodes=list(set(self.nodes + B.nodes)),
             # Both must be auto for it to calculate:
-            auto=self.auto & B.auto, ID=None, name=None, **self.metric_args)
+            auto=self.auto & B.auto, ID=None, name=None,
+            subcluster_category=self.SUBCLUSTER_CATEGORY if \
+                self.SUBCLUSTER_CATEGORY == B.SUBCLUSTER_CATEGORY else None,
+            subcluster_ids=list(set(self.subcluster_ids + B.subcluster_ids))
+            **self.metric_args)
 
     def __len__(self):
         # Cardinality
@@ -90,32 +122,17 @@ class Cluster:
         return self.objects[index]
 
     def __str__(self):
-        max_length = 16#max(max(), max()) # TODO
-        format_str = "{:<" + str(max_length + 2) + "}:"
-        def line(key, value, comma=True):
-            c = "," if comma else ""
-            return c + "\n\t" + format_str.format(key) + str(value)
+        max_length = max(16, max([len(s) for s in self.stats_dict]))
+        format_str = "{:<" + str(max_length + 1) + "}: "
+        def line(key, value):#, comma=True):
+            #c = "," if comma else ""
+            #return c + "\n\t" + format_str.format(key) + str(value)
+            return "\n\t" + format_str.format(key) + str(value)
 
-        result = "Cluster(" \
-            + line("ID",         self.ID, comma=False) \
-            + line("Name",       self.name) \
-            + line("Medoid",     self.medoid)
+        result = "Cluster("
         for (key, value) in self.stats_dict.items():
-            if key != "Norm Range": result += line(key, value)
-        result = result \
-            + line("Dispersion",       np.mean(self.centroid_distances)) \
-            + line("Centr Dist Min",   np.min(self.centroid_distances)) \
-            + line("Centr Dist Max",   np.max(self.centroid_distances)) \
-            + line("Centr Dist Range", np.max(self.centroid_distances) - # ADD CENTROID NORM???
-                np.min(self.centroid_distances)) \
-            + line("Centr Dist Std",   np.std(self.centroid_distances)) \
-            + line("Norm Avg",   np.mean(self.norms)) \
-            + line("Norm Min",   np.min(self.norms)) \
-            + line("Norm Max",   np.max(self.norms)) \
-            + line("Norm Range", self.stats_dict["Norm Range"]) \
-            + line("Norm Std",   np.std(self.norms)) \
-            + line("Nodes",      [str(node) for node in sorted(self.nodes)]) \
-            + line("Objects",    [str(o) for o in sorted(self.objects)]) + "\n)"
+            result += line(key, value)
+        result += "\n)"
 
         return result
 
@@ -135,10 +152,29 @@ class Cluster:
         if self.vectors is None or self.vectors is []:
             self.vectors = np.array([self.encoder(o) for o in self.objects])
 
-        self.stats_dict["Population"] = len(self.objects)
         if len(self.objects) > 0:
+
+            # Centroid:
             #self.centroid = sum(self.vectors) / len(self.vectors)
             self.centroid = np.mean(self.vectors, axis=0)
+
+            # Calculate Medoid:
+            medoid_i = np.argmin([
+                self.metric(self.centroid, v, **self.metric_args) \
+                for v in self.vectors])
+            self.medoid = self.objects[medoid_i]
+
+        self.stats_dict["CATEGORY"] = self.CATEGORY
+        self.stats_dict["ID"] = self.ID
+        self.stats_dict["Name"] = self.name
+        self.stats_dict["Medoid"] = self.medoid
+        self.stats_dict["Population"] = len(self.objects)
+        #if self.SUBCLUSTER_CATEGORY is not None:
+        self.stats_dict["Subcluster Category"] = self.SUBCLUSTER_CATEGORY
+        self.stats_dict["Subcluster IDs"] = self.subcluster_ids
+
+        if len(self.objects) > 0:
+
             self.stats_dict["Centroid Norm"] = np.linalg.norm(self.centroid)
 
             # Calculate Dispersion:
@@ -149,11 +185,7 @@ class Cluster:
             self.stats_dict["Dispersion"] = np.mean(
                 self.centroid_distances, axis=0)
 
-            # Calculate Medoid:
-            medoid_i = np.argmin([
-                self.metric(self.centroid, v, **self.metric_args) \
-                for v in self.vectors])
-            self.medoid = self.objects[medoid_i]
+            # Distance from Medoid to Centroid:
             self.stats_dict["Medoid Dist"] = self.metric(
                 self.vectors[medoid_i], self.centroid, **self.metric_args)
 
@@ -183,10 +215,28 @@ class Cluster:
                         **self.metric_args) \
                     for i, v in enumerate(self.vectors)], axis=0)
 
-            # Norm Stats:
+            # Mostly Quiet Stats, not used in Analyst, but printed in Cluster data:
+            cd_min = np.min(self.centroid_distances)
+            cd_max = np.max(self.centroid_distances)
+            self.stats_dict["Centr Dist Avg"] = self.stats_dict["Dispersion"]
+            self.stats_dict["Centr Dist Min"] = cd_min
+            self.stats_dict["Centr Dist Max"] = cd_max
+            self.stats_dict["Centr Dist Range"] = cd_max - cd_min
+            self.stats_dict["Centr Dist Std"] = np.std(self.centroid_distances)
+
             self.norms = [np.linalg.norm(v) for v in self.vectors]
-            self.stats_dict["Norm Range"] = \
-                np.max(self.norms) - np.min(self.norms)
+            n_max = np.max(self.norms)
+            n_min = np.min(self.norms)
+            self.stats_dict["Norm Avg"]   = np.mean(self.norms)
+            self.stats_dict["Norm Min"]   = n_min
+            self.stats_dict["Norm Max"]   = n_max
+            self.stats_dict["Norm Range"] = n_max - n_min # This one NOT quiet.
+            self.stats_dict["Norm Std"]   = np.std(self.norms)
+
+            self.stats_dict["Nodes"]      = \
+                [str(node) for node in sorted(self.nodes)]
+            self.stats_dict["Objects"]    = \
+                [str(o) for o in sorted(self.objects)]
 
 
     def cluster_dist(self, B):
