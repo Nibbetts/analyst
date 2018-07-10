@@ -127,11 +127,15 @@ class Clusterizer(Evaluator, object):
         self.data_dict["Count"] = len(self.clusters)
         
         if len(self.clusters) > 0:
+            skip = self.clusters[0].QUIET_STATS if \
+                self.clusters[0].quiet_stats_override == None else \
+                self.clusters[0].quiet_stats_override
             for key in self.clusters[0].stats_dict.keys():
-                if key not in self.clusters[0].QUIET_STATS:
-                    self._compute_list_stats(
+                if key not in skip:
+                    try: self._compute_list_stats(
                         [c.stats_dict[key] for c in self.clusters],
                         key, self.data_dict)
+                    except: pass
 
 
     # The Analyst will call this function, which pulls it all together.

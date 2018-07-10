@@ -86,19 +86,18 @@ class Spatializer(Evaluator, object):
             nearest=nearest, vectors=space, nodes=nodes, auto=True,
             **metric_args)
 
-        self.data_dict["Count"] = len(space)
         if len(space) > 0:
             # Overall Info:
             self.data_dict["Dimensionality"] = len(space[0])
+            self.data_dict["Population"] = cluster.stats_dict["Population"]
             printer("Electing a Ruler", "Getting Medoid, Etc.")
             self.data_dict["Medoid - Obj Nearest to Centroid"] = cluster.medoid
-            #medoid_dist = self.data_dict.pop("Medoid Dist")
-            #self.data_dict["Medoid Dist to Centroid"] = medoid_dist
-            self.data_dict["Medoid Dist to Centroid"] = \
-                cluster.stats_dict["Medoid Dist"]
             
+            skip = cluster.QUIET_STATS if cluster.quiet_stats_override is None \
+                else cluster.quiet_stats_override
             for key in cluster.stats_dict:
-                self.data_dict[key] = cluster.stats_dict[key]
+                if key not in skip:
+                    self.data_dict[key] = cluster.stats_dict[key]
 
             # Centroid Info:
             printer("Setting Priorities", "Centroid Stats")

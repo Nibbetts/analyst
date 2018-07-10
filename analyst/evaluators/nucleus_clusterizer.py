@@ -82,6 +82,9 @@ class NucleusClusterizer(Clusterizer, object):
                 new = copy.copy(hubs[i])
                 new.stats_dict["Hub Count"] = 1
                 self.clusters.append(new)
+        # Tell the nuclei which hubs they were built from:
+        for h in hi_to_ni:
+            self.clusters[hi_to_ni[h]].subcluster_ids.append(h)
         # Remove duplicate clusters from conglomeration algorithm:
         self.clusters = list(set(self.clusters)) # changes order, but OK, else:
         # filtered = []
@@ -92,6 +95,8 @@ class NucleusClusterizer(Clusterizer, object):
         # Compute cluster stats:
         #   (not done when added, since conglomeration is iterative)
         for c in self.clusters:
+            c.SUBCLUSTER_CATEGORY = self.hub_category
+            c.CATEGORY = self.CATEGORY
             c.calculate()
 
     # Even though we have already filled in self.clusters, we needn't override

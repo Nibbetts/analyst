@@ -4,7 +4,7 @@ from collections import OrderedDict
 class Cluster:
 
     QUIET_STATS = { # Members not used in Analyst reports.
-        "Category",
+        "CATEGORY",
         "ID",
         "Name",
         "Medoid",
@@ -14,11 +14,11 @@ class Cluster:
         "Objects",
         "Subcluster IDs",
 
-        "Centroid Dist Avg",
-        "Centroid Dist Min",
-        "Centroid Dist Max",
-        "Centroid Dist Range",
-        "Centroid Dist Std",
+        "Centr Dist Avg",
+        "Centr Dist Min",
+        "Centr Dist Max",
+        "Centr Dist Range",
+        "Centr Dist Std",
 
         "Norm Avg",
         "Norm Min",
@@ -27,7 +27,8 @@ class Cluster:
 
     def __init__(self, category, encoder, metric, objects, nearest=None,
             vectors=None, nodes=[], auto=False, ID=None, name=None,
-            subcluster_category=None, subcluster_ids=[], **metric_args):
+            subcluster_category=None, subcluster_ids=[],
+            quiet_stats_override=None, **metric_args):
         """
         Parameters:
             category: string; what type of cluster this is.
@@ -68,21 +69,15 @@ class Cluster:
         self.vectors = vectors
         self.nodes = nodes
         self.auto = auto
+        self.quiet_stats_override = quiet_stats_override
         self.metric_args = metric_args
+        # self.medoid = ""
         # self.centroid = []
         # self.centroid_distances = []
         # self.focus = []
-        # self.medoid = None
         # self.norms = []
 
         self.stats_dict = OrderedDict()
-        # self.centroid_norm = 0
-        # self.cardinality = len(self.objects)
-        # self.dispersion = 0
-        # self.std_dev = 0
-        # self.repulsion = 0
-        # self.skew = 0
-        # self.norm_range = 0
 
         if self.auto: self.calculate()
 
@@ -122,7 +117,7 @@ class Cluster:
         return self.objects[index]
 
     def __str__(self):
-        max_length = max(16, max([len(s) for s in self.stats_dict]))
+        max_length = max([len(s) for s in self.stats_dict])
         format_str = "{:<" + str(max_length + 1) + "}: "
         def line(key, value):#, comma=True):
             #c = "," if comma else ""
@@ -131,7 +126,10 @@ class Cluster:
 
         result = "Cluster("
         for (key, value) in self.stats_dict.items():
-            result += line(key, value)
+            if key not in ["Nodes", "Objects"]:
+                result += line(key, value)
+        result += line("Nodes", self.nodes) # Simply moving these to the bottom.
+        result += line("Objects", self.objects)
         result += "\n)"
 
         return result
@@ -163,6 +161,9 @@ class Cluster:
                 self.metric(self.centroid, v, **self.metric_args) \
                 for v in self.vectors])
             self.medoid = self.objects[medoid_i]
+        
+        else:
+            self.medoid = ""
 
         self.stats_dict["CATEGORY"] = self.CATEGORY
         self.stats_dict["ID"] = self.ID
@@ -171,6 +172,7 @@ class Cluster:
         self.stats_dict["Population"] = len(self.objects)
         #if self.SUBCLUSTER_CATEGORY is not None:
         self.stats_dict["Subcluster Category"] = self.SUBCLUSTER_CATEGORY
+        self.stats_dict["Subcluster Count"] = len(self.subcluster_ids)
         self.stats_dict["Subcluster IDs"] = self.subcluster_ids
 
         if len(self.objects) > 0:
@@ -186,7 +188,7 @@ class Cluster:
                 self.centroid_distances, axis=0)
 
             # Distance from Medoid to Centroid:
-            self.stats_dict["Medoid Dist"] = self.metric(
+            self.stats_dict["Medoid Dist to Centr"] = self.metric(
                 self.vectors[medoid_i], self.centroid, **self.metric_args)
 
             # Calculate Standard Deviation:

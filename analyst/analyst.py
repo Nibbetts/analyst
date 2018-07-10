@@ -979,32 +979,34 @@ class Analyst:
         #else: w = max(7, width)
         w = max(9, width)
         result = ""
-        if data is None:
-            result = " " * w
-        elif isstring(data) or parentheses or not np.isfinite(data):
-            # Strings or Bytestrings
-            result = " " # For negatives on others
-            if parentheses: result += "(" + str(data) + ")"
-            else: result += str(data)
-            format_str = "{:" + str(w) + "}"
-            result = format_str.format(result)
-            if len(result) > w:
-                result += "\n" + " " * (start_at + w)
-        else:
-            if (abs(data) >= 1e4 and not parentheses) \
-                    or (abs(data) < 1e-4 and data != 0):
-                # Large or Small
-                format_str = "{: " + str(w) + "." + str(w - 7) + "e}"
-                result = format_str.format(data)
-            elif isinstance(data, int):
-                # Integer
-                format_str = "{:< " + str(w) + "d}"
-                result = format_str.format(int(data))
+        try:
+            if data is None:
+                result = " " * w
+            elif isstring(data) or parentheses or not np.isfinite(data):
+                # Strings or Bytestrings
+                result = " " # For negatives on others
+                if parentheses: result += "(" + str(data) + ")"
+                else: result += str(data)
+                format_str = "{:" + str(w) + "}"
+                result = format_str.format(result)
+                if len(result) > w:
+                    result += "\n" + " " * (start_at + w)
             else:
-                # Float
-                format_str = "{: " + str(w - 1) + "." \
-                    + str(w - 2 - len(str(int(abs(data))))) + "f}"
-                result = format_str.format(data)
+                if (abs(data) >= 1e4 and not parentheses) \
+                        or (abs(data) < 1e-4 and data != 0):
+                    # Large or Small
+                    format_str = "{: " + str(w) + "." + str(w - 7) + "e}"
+                    result = format_str.format(data)
+                elif isinstance(data, int):
+                    # Integer
+                    format_str = "{:< " + str(w) + "d}"
+                    result = format_str.format(int(data))
+                else:
+                    # Float
+                    format_str = "{: " + str(w - 1) + "." \
+                        + str(w - 2 - len(str(int(abs(data))))) + "f}"
+                    result = format_str.format(data)
+        except: print("ERROR, Non-reportable data:", data)
         return result
 
     @staticmethod
