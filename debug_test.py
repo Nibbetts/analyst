@@ -67,12 +67,12 @@ class TestSet2D:
 # Brief script-like behavior for development, debugging, and testing purposes:
 if __name__ == "__main__":
     from analyst import Analyst
+    from analyst.evaluators import NucleusClusterizer
 
-    t = TestSet2D()
-    r = TestSet2D(random=True, seed=19680801)
-    at = Analyst(t.data, "euclidean", t.encode, t.decode, desc="Contrived 2D Test Set")
-    ar = Analyst(r.data, "euclidean", r.encode, r.decode, desc="Random 2D Test Set")
-    at.compare_difference(ar)
+    s = TestSet2D(random=False)
+    a = Analyst(embeddings=s, metric="euclidean", encoder=s.encode,
+        decoder=s.decode, desc="2D Debug Test", evaluators=["Nodes",
+            "Nodal 3-Hubs"],#, NucleusClusterizer(hub_category="Nodal 3-Hubs")],
+            make_distance_matrix=True)
 
-    Analyst.save(at, "an_2d_contrived")
-    Analyst.save(ar, "an_2d_random")
+    Analyst.save(a, "an_2d_debug_test")

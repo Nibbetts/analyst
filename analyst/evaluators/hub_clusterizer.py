@@ -40,6 +40,7 @@ class HubClusterizer(Clusterizer, object):
             force_creation=self.nodal)
         s_to_node = self.node_clusterizer.get_string_node_dict(**kwargs) \
             if self.node_clusterizer != None else None
+        assert self.node_clusterizer.calculated == True
         neighbors = neighbors_fn(1)
 
         # Calculate potential hubs:

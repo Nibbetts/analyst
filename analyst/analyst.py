@@ -316,9 +316,10 @@ class Distances:
 
             self._print(u"Setting the Ship's Computer",
                 u"Allocating Space for Neighbor Matrices")
-            for k in self.make_kth_neighbors: # Allocate empty arrays
-                self.neighbors[k] = np.empty(len(self.space), dtype=np.uint64)
-                self.neighbors_dist[k] = np.empty(len(self.space), dtype=np.float64)
+            for kth in self.make_kth_neighbors: # Allocate empty arrays
+                self.neighbors[kth] = np.empty(len(self.space), dtype=np.uint64)
+                self.neighbors_dist[kth] = \
+                    np.empty(len(self.space), dtype=np.float64)
 
             if -1 in self.make_kth_neighbors: # Print stuff
                 self._print(u"Misconstruing Relations")
@@ -333,16 +334,16 @@ class Distances:
             except: pass
 
             @ray.remote
-            def neighbor_row(i, space, distance_matrix,
+            def neighbor_row(i, space, distance_matrix, len_space,
                     metric, metric_str, make_kth, metric_args):
 
                 def condensed(i, j):
                     if i == j: return -1
                     if i < j: i, j = j, i
-                    return len(space)*j - j*(j+1)//2 + i - 1 - j
+                    return len_space*j - j*(j+1)//2 + i - 1 - j
 
                 if distance_matrix is not None:
-                    indeces = [condensed(i, j) for j in range(len(space))]
+                    indeces = [condensed(i, j) for j in range(len_space)]
                     distances = distance_matrix[indeces]
                     #distances[np.nonzero(indeces < 0)[0]] = 0.
                     distances[i] = 0.
@@ -357,9 +358,9 @@ class Distances:
                 neighbors = np.empty(len(make_kth))
                 neighbors_dist = np.empty(len(make_kth))
 
-                for ix, j in enumerate(make_kth):
-                    neighbors[ix] = ordering[j]
-                    neighbors_dist[ix] = distances[ordering[j]]
+                for j, kth in enumerate(make_kth):
+                    neighbors[j] = ordering[kth]
+                    neighbors_dist[j] = distances[ordering[kth]]
                 
                 return i, neighbors, neighbors_dist
                 
@@ -378,6 +379,7 @@ class Distances:
                     i,
                     space_id,
                     distance_matrix_id,
+                    len(self.space),
                     metric_id,
                     metric_str_id,
                     make_kth_id,
@@ -392,13 +394,13 @@ class Distances:
                 # Add a new job:
                 if i + cpus < len(self.space):
                     remaining_ids.append(neighbor_row.remote(
-                        i + cpus, space_id, distance_matrix_id, metric_id,
-                        metric_str_id, make_kth_id, metric_args_id))
+                        i + cpus, space_id, distance_matrix_id, len(self.space),
+                        metric_id, metric_str_id, make_kth_id, metric_args_id))
                 # Process this one's result and fill in data:
                 i, nbrs, nbrs_d = tup
-                for k, j in enumerate(self.make_kth_neighbors):
-                    self.neighbors[j][i] = nbrs[k]
-                    self.neighbors_dist[j][i] = nbrs_d[k]
+                for j, kth in enumerate(self.make_kth_neighbors):
+                    self.neighbors[kth][i] = nbrs[j]
+                    self.neighbors_dist[kth][i] = nbrs_d[j]
 
             # # ORIGINAL; ALTERNATIVE TO PARALLELIZATION:
 
@@ -406,9 +408,9 @@ class Distances:
             # for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
             #     d = self.distances_from(i)
             #     ordering = np.argpartition(d, self.make_kth_neighbors)
-            #     for j in self.make_kth_neighbors:
-            #         self.neighbors[j][i] = ordering[j]
-            #         self.neighbors_dist[j][i] = d[ordering[j]]
+            #     for kth in self.make_kth_neighbors:
+            #         self.neighbors[kth][i] = ordering[j]
+            #         self.neighbors_dist[kth][i] = d[ordering[j]]
 
         return self.neighbors[k]
 
@@ -678,7 +680,6 @@ class Analyst:
 
         # Run Analyses:
         if evaluate:
-            self._add_info(self.metric_str, "Spatial", "Distance Metric")
             self.analysis(
                 print_report=self.auto_print, auto_save=False, recalculate=[])
 
@@ -782,11 +783,13 @@ class Analyst:
     #   this function will only return the first match it finds. Or None.
     def find_evaluator(self, category, force_creation=False):
         # force_creation: whether or not to create a default evaluator for
-        #   built-ins.
+        #   built-ins, AND TO ADD IT to the Analyst.
         for e in self.evaluators:
             if str(e.CATEGORY) == category: return e
         if force_creation: 
-            return Analyst.make_default_evaluator(str(category))
+            e = Analyst.make_default_evaluator(str(category))
+            self.add_evaluators(e)
+            return e
 
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".

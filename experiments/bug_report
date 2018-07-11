@@ -1,0 +1,105 @@
+# To reproduce a bug:
+
+import numpy as np
+import psutil
+import ray
+import matplotlib.pyplot as plt
+import scipy.spatial as sp
+from tqdm import tqdm
+import copy
+
+try: ray.init()
+except: pass
+
+class Distances:
+
+    def __init__(self):
+
+        # A 2D, mock embedding space with 32 points:
+        self.space = np.array([                                                         
+            [ 0.00, 4.00 ], [ 0.25, 4.00 ], [ 2.00, 4.00 ], [ 2.50, 4.00 ],
+            [-1.50, 3.00 ], [ 2.00, 3.00 ], [ 4.00, 3.00 ], [-3.00, 2.50 ],
+            [-2.00, 2.50 ], [-1.75, 2.50 ], [-1.00, 2.50 ], [-2.00, 2.00 ],
+            [ 0.00, 2.00 ], [ 3.50, 2.00 ], [-1.00, 1.00 ], [ 1.75, 0.50 ],
+            [-3.00, 0.00 ], [ 1.00, 0.00 ], [ 3.00, 0.00 ], [ 1.00,-0.50 ],
+            [ 2.00,-0.50 ], [-3.00,-1.00 ], [-1.00,-1.00 ], [ 1.25,-1.00 ],
+            [-1.00,-1.50 ], [-1.50,-2.00 ], [ 1.50,-2.00 ], [ 3.00,-2.00 ],
+            [-0.50,-3.00 ], [ 0.00,-3.00 ], [-2.00,-4.00 ], [ 4.00,-4.00 ] ])
+
+        # k neighbors to calculate: furthest, nearest, and second-nearest:
+        self.make_kth_neighbors = [31, 1, 2]
+        self.metric_str = "euclidean"
+        self.neighbors = None
+
+
+    # Convenient graphing function so you can see the data and who should be
+    #   nearest, second nearest, and furthest neighbors to whom:
+    def graph(self):
+        plt.figure(1, figsize=(5, 5))
+        p = plt.axes([.1, .1, .8, .8])
+        p.scatter(self.space[:,0], self.space[:,1])
+
+        p.set_xlim((-4.2,4.2))
+        p.set_ylim((-4.2,4.2))
+        p.set_title('Fixed Cluster-like 2D Test Set')
+        p.grid(True)
+        p.set_aspect('equal', 'datalim')
+
+        for i, tup in enumerate(self.space):
+            p.annotate(str(i), tup)
+
+        plt.show()
+
+
+    def kth_neighbors(self, kth):
+        if kth < 0: kth += len(self.space)
+        assert kth in self.make_kth_neighbors
+
+        # NEIGHBOR CALCULATIONS IF HAVEN'T BEFORE:
+        if self.neighbors is None:
+
+            self.neighbors = {} # dicts keyed to the k we're told to calculate
+
+            for k in self.make_kth_neighbors:
+                self.neighbors[k] = np.empty(len(self.space), dtype=np.uint64)
+
+            # PARALLELIZATION TO FILL IN NEIGHBORS:
+
+            # Calculate the required neighbors for the object with the given index i:
+            @ray.remote
+            def neighbor_row(i, space, len_space, metric_str, make_kth):
+
+                distances = sp.distance.cdist(
+                    np.atleast_2d(space[i]),
+                    space,
+                    metric_str
+                ).squeeze()
+                ordering = np.argpartition(distances, make_kth)
+
+                nbrs = np.empty(len(make_kth))
+
+                for j, k in enumerate(make_kth):
+                    nbrs[j] = ordering[k]
+
+                return nbrs
+
+            # Shove some data into the object store:
+            space_id = ray.put(self.space)
+            metric_str_id = ray.put(self.metric_str)
+            make_kth_id = ray.put(np.array(self.make_kth_neighbors))
+
+            # Start the remotes:
+            remotes = [neighbor_row.remote(
+                i,
+                space_id,
+                len(self.space),
+                metric_str_id,
+                make_kth_id
+            ) for i in range(len(self.space))]
+
+            # Get the results:
+            for j, vals in enumerate(zip(*ray.get(remotes))):
+                self.neighbors[self.make_kth_neighbors[j]] = np.array(copy.copy(vals), dtype=np.uint64)
+
+        # Return the kth-nearest neighbor of every object in the space
+        return self.neighbors[kth]

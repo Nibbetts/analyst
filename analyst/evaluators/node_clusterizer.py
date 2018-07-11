@@ -34,15 +34,14 @@ class NodeClusterizer(Clusterizer, object):
         printer     = kwargs["printer_fn"]
 
         # Nearest neighbor indeces array:
-        nearest     = neighbors(1)
+        nearest = neighbors(1)
 
         # Compute Nodes:
         printer("Watching the Galaxies Coelesce", "Computing Nodes")
         self.clusters = [
             Node(strings[i], strings[nearest[i]], encode, metric, **metric_args)
             for i in tqdm(range(len(strings)), disable=(not show_progress))
-            if (i == nearest[nearest[i]]
-                and i < nearest[i])]
+            if (i == nearest[nearest[i]] and i < nearest[i])]
 
         # Compute the Relative Alignment of each Node:
         printer("Waiting for the Stars to Align", "Computing Node Alignments")

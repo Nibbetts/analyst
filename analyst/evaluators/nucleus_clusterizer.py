@@ -30,59 +30,48 @@ class NucleusClusterizer(Clusterizer, object):
         hi_to_ni = {}
         printer("Melding Collided Galaxies", "Finding Nuclei")
         for i in tqdm(range(len(hubs)), disable=(not show_progress)):
+            
+            # Make a nucleus for hub i and record it:
+            hi_to_ni[i] = len(self.clusters)
+            # making a copy of the object, 
+            new = copy.copy(hubs[i])
+            new.stats_dict["Hub Count"] = 1
+            self.clusters.append(new)
+
+            # for j in range(i):
+            #     if hi_to_ni[i] != hi_to_ni[j]:
+            #         threshold = max(
+            #             hubs[i].stats_dict["Dispersion"],
+            #             hubs[j].stats_dict["Dispersion"])
+            #         if metric(hubs[i].nodes[0].centroid, # These have 1 Node
+            #                     hubs[j].nodes[0].centroid) <= threshold \
+            #                 and metric(hubs[i].centroid, hubs[j].centroid) \
+            #                 <= threshold:
+            #             self.clusters[hi_to_ni[i]] += self.clusters[hi_to_ni[j]]
+            #             self.clusters[hi_to_ni[i]].stats_dict["Hub Count"] += \
+            #                 self.clusters[hi_to_ni[j]].stats_dict["Hub Count"]
+            #             self.clusters[hi_to_ni[j]] = self.clusters[hi_to_ni[i]]
+            #             hi_to_ni[j] = hi_to_ni[i]
+
             for j in range(i):
-                # If interior nodes are close enough:
-                threshold = max(
-                        hubs[i].stats_dict["Dispersion"],
-                        hubs[j].stats_dict["Dispersion"])
-                # Currently either from nodes or from centroids will work:
-                if metric(hubs[i].nodes[0].centroid, # These have exactly 1 Node
-                            hubs[j].nodes[0].centroid) <= threshold \
-                        and metric(hubs[i].centroid, hubs[j].centroid) \
-                        <= threshold:
-                    # if we've already added one of the hubs to a cluster:
-                    if i in hi_to_ni:
-                        # if we've actually already added both:
-                        if j in hi_to_ni:
-                            # if not already combined, else we don't care:
-                            if hi_to_ni[i] != hi_to_ni[j]:
-                                # combine them, delete the 2nd, re-key the dict
-                                self.clusters[hi_to_ni[i]] += \
-                                    self.clusters[hi_to_ni[j]]
-                                self.clusters[hi_to_ni[i]] \
-                                    .stats_dict["Hub Count"] \
-                                    += self.clusters[hi_to_ni[j]] \
-                                    .stats_dict["Hub Count"]
-                                self.clusters[hi_to_ni[j]] = \
-                                    self.clusters[hi_to_ni[i]]
-                                hi_to_ni[j] = hi_to_ni[i]
-                        # else if only added the first:
-                        else: # add the second
-                            hi_to_ni[j] = hi_to_ni[i]
-                            self.clusters[hi_to_ni[i]] += hubs[j]
-                            self.clusters[hi_to_ni[i]].stats_dict["Hub Count"] \
-                                += 1
-                    # or if we've only added the other, similar to the first:
-                    elif j in hi_to_ni: # add the first
+                # if not already combined, else we don't care:
+                if hi_to_ni[i] != hi_to_ni[j]:
+                    # # If interior nodes are close enough:
+                    # threshold = max(
+                    #     hubs[i].stats_dict["Dispersion"],
+                    #     hubs[j].stats_dict["Dispersion"])
+                    # if metric(hubs[i].centroid, hubs[j].centroid) <= threshold:
+                    if hubs[i].nodes[0] == hubs[j].nodes[0]:
+                        # combine them, delete the 2nd, re-key the dict
+                        self.clusters[hi_to_ni[j]] += self.clusters[hi_to_ni[i]]
+                        self.clusters[hi_to_ni[j]].stats_dict["Hub Count"] += \
+                            self.clusters[hi_to_ni[j]].stats_dict["Hub Count"]
+                        self.clusters[hi_to_ni[i]] = self.clusters[hi_to_ni[j]]
                         hi_to_ni[i] = hi_to_ni[j]
-                        self.clusters[hi_to_ni[j]] += hubs[i]
-                        self.clusters[hi_to_ni[j]].stats_dict["Hub Count"] += 1
-                    # if both are new:
-                    else: # add both
-                        hi_to_ni[i] = len(self.clusters)
-                        hi_to_ni[j] = len(self.clusters)
-                        new = hubs[i] + hubs[j]
-                        new.stats_dict["Hub Count"] = 2
-                        self.clusters.append(new)
-            # If i didn't get added, add it, because this will only happen if
-            #   i and j were too far apart or i is 0, and j will come up later.
-            if i not in hi_to_ni: # if i is new:
-                hi_to_ni[i] = len(self.clusters)
-                # making a copy of the object, 
-                new = copy.copy(hubs[i])
-                new.stats_dict["Hub Count"] = 1
-                self.clusters.append(new)
+
+
         # Tell the nuclei which hubs they were built from:
+        print(hi_to_ni)
         for h in hi_to_ni:
             self.clusters[hi_to_ni[h]].subcluster_ids.append(h)
         # Remove duplicate clusters from conglomeration algorithm:
@@ -97,6 +86,7 @@ class NucleusClusterizer(Clusterizer, object):
         for c in self.clusters:
             c.SUBCLUSTER_CATEGORY = self.hub_category
             c.CATEGORY = self.CATEGORY
+            c.stats_dict["Hub Count Backup"] = len(c.stats_dict["Subcluster IDs"])
             c.calculate()
 
     # Even though we have already filled in self.clusters, we needn't override

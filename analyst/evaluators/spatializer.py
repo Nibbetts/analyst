@@ -54,6 +54,7 @@ class Spatializer(Evaluator, object):
         # POST: self.data_dict, self.starred filled in.
         encoder           = kwargs["encoder_fn"]
         metric            = kwargs["metric_fn"]
+        metric_str        = kwargs["metric_str"]
         nearest           = kwargs["generic_nearest_fn"]
         printer           = kwargs["printer_fn"]
         find_evaluator    = kwargs["find_evaluator_fn"]
@@ -63,6 +64,8 @@ class Spatializer(Evaluator, object):
         neighbors_dist    = kwargs["kth_neighbors_dist_fn"]
         neighbors_to_stat = kwargs["make_kth_neighbors"] \
             if self.neighbors_to_stat is None else self.neighbors_to_stat
+
+        self.data_dict["Distance Metric"] = metric_str
 
         # It is acceptable and useful to make one clusterizer depend on
         #   results from another. It is a BAD idea to try to make two
