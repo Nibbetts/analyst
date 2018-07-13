@@ -1,5 +1,6 @@
 import numpy as np
 from collections import OrderedDict
+from copy import copy, deepcopy
 
 class Cluster:
 
@@ -107,6 +108,24 @@ class Cluster:
             subcluster_category=self.SUBCLUSTER_CATEGORY if \
                 self.SUBCLUSTER_CATEGORY == B.SUBCLUSTER_CATEGORY else None,
             subcluster_ids=list(set(self.subcluster_ids + B.subcluster_ids))
+            **self.metric_args)
+
+    def modifiable_copy(self, auto=False):
+        # copy(list) is like [i for i in list]
+        return Cluster(
+            self.CATEGORY, # immutables are copied anyway
+            self.encoder, # if references are modified, won't change original
+            self.metric,
+            copy(self.objects), # Make new lists referencing same info!
+            nearest=self.nearest,
+            vectors=copy(self.vectors), # ...
+            nodes=copy(self.nodes), # ...
+            auto=auto, # Expect it will be modified, so no auto.
+            ID=self.ID, # Default keep unique data, expecting it will be changed
+            name=self.name, # ...
+            subcluster_category=self.SUBCLUSTER_CATEGORY,
+            subcluster_ids=copy(self.subcluster_ids), # ...
+            quiet_stats_override=self.quiet_stats_override,
             **self.metric_args)
 
     def __len__(self):

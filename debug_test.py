@@ -71,8 +71,10 @@ if __name__ == "__main__":
 
     s = TestSet2D(random=False)
     a = Analyst(embeddings=s, metric="euclidean", encoder=s.encode,
-        decoder=s.decode, desc="2D Debug Test", evaluators=["Nodes",
-            "Nodal 3-Hubs"],#, NucleusClusterizer(hub_category="Nodal 3-Hubs")],
+        decoder=s.decode, desc="2D Debug Test", evaluators=[
+            #"Nodal 3-Hubs", NucleusClusterizer(hub_category="Nodal 3-Hubs"),
+            "Hubs", "Nuclei",
+            "Nodes"],
             make_distance_matrix=True)
 
     Analyst.save(a, "an_2d_debug_test")

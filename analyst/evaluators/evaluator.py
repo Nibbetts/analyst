@@ -83,41 +83,43 @@ class Evaluator:
 
         # Available kwargs (always given in case needed):
         #
-        #   embeddings,               : 2D matrix, the whole vector space.
-        #   draw_progress,            : bool, whether user wants printouts.
-        #   strings,                  : list, objects in space, indeces match.
-        #   printer_fn,               : callable, Analyst's printout function.
-        #   metric_str,               : None|string, metric name, for scipy.
-        #   metric_fn,                : callable, the one Analyst was given.
-        #   metric_args,              : dict, arguments for metric function.
-        #   encoder_fn,               : callable, string to vector.
-        #   decoder_fn,               : callable, vector to string.
+        #   embeddings                : 2D matrix, the whole vector space.
+        #   draw_progress             : bool, whether user wants printouts.
+        #   strings                   : list, objects in space, indeces match.
+        #   printer_fn                : callable, Analyst's printout function.
+        #   metric_str                : None|string, metric name, for scipy.
+        #   metric_fn                 : callable, the one Analyst was given.
+        #   metric_args               : dict, arguments for metric function.
+        #   encoder_fn                : callable, string to vector.
+        #   decoder_fn                : callable, vector to string.
         #   string_ix_map             : dict, maps strings to indeces.
-        #   as_index_fn,              : callable, any of three to index.
-        #   as_string_fn,             : callable, any of three to string.
-        #   as_vector_fn,             : callable, any of three to vector.
-        #   exists_fn,                : callable, check any of three exists.
-        #   is_string_fn,             : callable, True if is str or bytes.
-        #   angle_fn,                 : callable, angle metric.
+        #   as_index_fn               : callable, any of three to index.
+        #   as_string_fn              : callable, any of three to string.
+        #   as_vector_fn              : callable, any of three to vector.
+        #   exists_fn                 : callable, check any of three exists.
+        #   is_string_fn              : callable, True if is str or bytes.
+        #   angle_fn                  : callable, angle metric.
         #
-        #   metric_in_model_fn,       : getter, fast metric for in-model.
+        #   metric_in_model_fn        : getter, fast metric for in-model.
         
-        #   generic_nearest_fn,       : getter, nearest, keeps same type.
-        #   generic_neighbor_k_fn,    : getter, kth neighbor, keeps same type.
-        #   kth_neighbors_ix_fn,      : getter, vec. of ix of kth, or all.
-        #   kth_neighbors_dist_fn,    : getter, vec. of dist of kth, or all.
-        #   arbitrary_dist_fn,        : callable, dist to each obj in space.
-        #   arbitrary_neighbors_fn,   : callable, all ix ordered by proximity.
-        #   distances_from_ix_fn,     : callable, dist from one to all; SLOW?
-        #   neighbors_of_ix_fn,       : callable, all neighbors of ix; SLOW.
-        #   condensed_dist_matrix_fn, : getter, 1D array of dist, if computed.
-        #   condensed_ix_fn,          : callable, convert ix to condensed.
+        #   generic_nearest_fn        : getter, nearest, keeps same type.
+        #   generic_neighbor_k_fn     : getter, kth neighbor, keeps same type.
+        #   kth_neighbors_ix_fn       : getter, vec. of ix of kth, or all.
+        #   kth_neighbors_dist_fn     : getter, vec. of dist of kth, or all.
+        #   arbitrary_dist_fn         : callable, dist to each obj in space.
+        #   arbitrary_neighbors_fn    : callable, all ix ordered by proximity.
+        #   distances_from_ix_fn      : callable, dist from one to all; SLOW?
+        #   neighbors_of_ix_fn        : callable, all neighbors of ix; SLOW.
+        #   condensed_dist_matrix_fn  : getter, 1D array of dist, if computed.
+        #   condensed_ix_fn           : callable, convert ix to condensed.
         #
-        #   downstream_fn,            : callable, nearest-neighbor chain.
-        #   evaluator_list,           : list, all evaluators the Analyst has.
-        #   find_evaluator_fn,        : getter, finds evaluator by category.
-        #   make_kth_neighbors,       : list, k's for neighbors to compute.
-        #   simulate_cluster_fn.      : callable, Analyst's cluster simulator.
+        #   downstream_fn             : callable, nearest-neighbor chain.
+        #   evaluator_list            : list, all evaluators the Analyst has.
+        #   find_evaluator_fn         : getter, finds evaluator by category.
+        #   get_clusters_fn           : getter, finds cluster list by category.
+        #   make_kth_neighbors        : list, k's for neighbors to compute.
+        #   simulate_cluster_fn       : callable, Analyst's cluster simulator.
+        #   parallel_count            : int >= 1, num threads user wants used.
 
         # NOTE: Generic functions (non-type-specific) will be slower than
         #   direct mapping or indexing, so avoid them en masse.

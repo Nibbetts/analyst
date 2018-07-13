@@ -1,5 +1,4 @@
 from tqdm import tqdm
-import copy
 
 from .clusterizer import Clusterizer
 
@@ -34,8 +33,8 @@ class NucleusClusterizer(Clusterizer, object):
             # Make a nucleus for hub i and record it:
             hi_to_ni[i] = len(self.clusters)
             # making a copy of the object, 
-            new = copy.copy(hubs[i])
-            new.stats_dict["Hub Count"] = 1
+            new = hubs[i].modifiable_copy(auto=False)
+            # Note: subcluster_ids are empty for hubs already.
             self.clusters.append(new)
 
             # for j in range(i):
@@ -64,29 +63,22 @@ class NucleusClusterizer(Clusterizer, object):
                     if hubs[i].nodes[0] == hubs[j].nodes[0]:
                         # combine them, delete the 2nd, re-key the dict
                         self.clusters[hi_to_ni[j]] += self.clusters[hi_to_ni[i]]
-                        self.clusters[hi_to_ni[j]].stats_dict["Hub Count"] += \
-                            self.clusters[hi_to_ni[j]].stats_dict["Hub Count"]
                         self.clusters[hi_to_ni[i]] = self.clusters[hi_to_ni[j]]
                         hi_to_ni[i] = hi_to_ni[j]
 
 
         # Tell the nuclei which hubs they were built from:
-        print(hi_to_ni)
         for h in hi_to_ni:
             self.clusters[hi_to_ni[h]].subcluster_ids.append(h)
         # Remove duplicate clusters from conglomeration algorithm:
         self.clusters = list(set(self.clusters)) # changes order, but OK, else:
-        # filtered = []
-        # for c in self.clusters:
-        #     if c not in filtered: filtered.append(c)
-        # self.clusters = filtered
 
         # Compute cluster stats:
         #   (not done when added, since conglomeration is iterative)
-        for c in self.clusters:
+        for i, c in enumerate(self.clusters):
             c.SUBCLUSTER_CATEGORY = self.hub_category
             c.CATEGORY = self.CATEGORY
-            c.stats_dict["Hub Count Backup"] = len(c.stats_dict["Subcluster IDs"])
+            c.ID = i
             c.calculate()
 
     # Even though we have already filled in self.clusters, we needn't override

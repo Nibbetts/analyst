@@ -32,6 +32,7 @@ class NodeClusterizer(Clusterizer, object):
         neighbors   = kwargs["kth_neighbors_ix_fn"]
         metric_args = kwargs["metric_args"]
         printer     = kwargs["printer_fn"]
+        parallels   = kwargs["parallel_count"]
 
         # Nearest neighbor indeces array:
         nearest = neighbors(1)
@@ -47,43 +48,41 @@ class NodeClusterizer(Clusterizer, object):
         printer("Waiting for the Stars to Align", "Computing Node Alignments")
         if len(self.clusters) > 1:
 
-            # PARALLELIZED:
+            if parallels > 1:
+                # PARALLELIZED:
 
-            try: ray.init()
-            except: pass
+                print("")
+                try: ray.init()
+                except: pass
 
-            @ray.remote
-            def align(i, alignment_vecs):
-                return i, np.mean([
-                    abs(np.dot(alignment_vecs[i], v))
-                    for j, v in enumerate(alignment_vecs) if j != i])
+                @ray.remote
+                def align(i, alignment_vecs):
+                    return i, np.mean([
+                        abs(np.dot(alignment_vecs[i], v))
+                        for j, v in enumerate(alignment_vecs) if j != i])
 
-            alignment_vecs_id = ray.put(
-                [c.alignment_vec for c in self.clusters])
+                alignment_vecs_id = ray.put(
+                    [c.alignment_vec for c in self.clusters])
 
-            cpus = psutil.cpu_count()
-            remaining_ids = [align.remote(i, alignment_vecs_id)
-                for i in range(min(len(self.clusters), cpus))]
+                remaining_ids = [align.remote(i, alignment_vecs_id)
+                    for i in range(min(len(self.clusters), parallels))]
 
-            for i in tqdm(range(len(self.clusters)), disable=not show_progress):
-                ready_ids, remaining_ids = ray.wait(remaining_ids)
-                tup = ray.get(ready_ids[0])
-                if i + cpus < len(self.clusters):
-                    remaining_ids.append(align.remote(
-                        i + cpus, alignment_vecs_id))
-                i, a = tup
-                self.clusters[i].alignment = a
+                for i in tqdm(range(len(self.clusters)), disable=not show_progress):
+                    ready_ids, remaining_ids = ray.wait(remaining_ids)
+                    tup = ray.get(ready_ids[0])
+                    if i + parallels < len(self.clusters):
+                        remaining_ids.append(align.remote(
+                            i + parallels, alignment_vecs_id))
+                    i, a = tup
+                    self.clusters[i].alignment = a
 
-            # almts = ray.get(remotes)
-            # for i, a in enumerate(tqdm(almts, disable=not show_progress)):
-            #     self.clusters[i].alignment = a
-
-            # NON-PARALLELIZED:
-
-            # for node in tqdm(self.clusters, disable=(not show_progress)):
-            #     node.alignment = np.mean([
-            #         abs(np.dot(node.alignment_vec, n.alignment_vec)) \
-            #         for n in self.clusters if n != node])
+            else:
+                # NON-PARALLELIZED:
+                
+                for node in tqdm(self.clusters, disable=(not show_progress)):
+                    node.alignment = np.mean([
+                        abs(np.dot(node.alignment_vec, n.alignment_vec)) \
+                        for n in self.clusters if n != node])
 
         elif len(self.clusters) == 1: self.clusters[0].alignment = 1.0
 

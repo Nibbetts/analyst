@@ -57,9 +57,7 @@ if __name__ == "__main__":
         metric=metric,
         desc="Fasttext Non-Normalized Euclidean",
         evaluators=[u"All", anag])
-    print("Success at saving: "
-        + str(an.Analyst.save(an_fnc, "saved_analyses/an" + str(MAX_LINES) + \
-             "_fasttext_non-normalized_euclidean")))
 
-    #print(an_fnc.find_evaluator("Nuclei").get_clusters())
-    
+    file_name = "saved_analyses/an" + str(MAX_LINES) + \
+        "_fasttext_non-normalized_euclidean"
+    print("Success at saving: " + str(an.Analyst.save(an_fnc, file_name)))

@@ -19,6 +19,7 @@ import traceback
 from collections import OrderedDict
 import ray
 import psutil
+from copy import copy, deepcopy
 
 # Own files:
 from .evaluators import *
@@ -52,13 +53,14 @@ def load(f_name, print_report=False):
     name = _file_extension(f_name)
     try:
         with open(name, 'rb') as file:
-            an = pickle.load(file)
+            # an = pickle.load(file)
             #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
-            an.analysis(
-                print_report=print_report, auto_save=False, recalculate=[])
-            return an
+            # an.analysis(
+            #     print_report=print_report, auto_save=False, recalculate=[])
+            # return an
+            return pickle.load(file)
     except Exception as e:
-        print(u"ERROR: Unable to load or deserialize Analyst object "
+        print(u"ERROR: Unable to load Analyst object "
             u"from file: '{}'".format(name))
         print(e)
         #raise e
@@ -142,7 +144,7 @@ class Distances:
     """
     def __init__(self, embeddings, metric_str, metric_fn, print_fn,
             auto_print=True, make_distance_matrix=False,
-            make_kth_neighbors=[], **metric_args):
+            make_kth_neighbors=[], parallel_count=None, **metric_args):
         # NOTE: Distance matrix calculation is not parallelized.
         
         self.space = embeddings
@@ -162,6 +164,10 @@ class Distances:
         self.distance_matrix = None
         self.neighbors = None
         self.neighbors_dist = None
+        self.parallel_count = parallel_count
+        if self.parallel_count == None:
+            self.parallel_count = psutil.cpu_count()
+            if len(self.space) <= 1000: self.parallel_count = 1
 
         # NOTE: The Distances class conveniently delays computation of distance
         #   matrix and all the requested neighbors until they are requested
@@ -327,90 +333,95 @@ class Distances:
                 self._print(u"Obfuscating Dynastic Ties")
             if 1 in self.make_kth_neighbors:
                 self._print(u"Forming Alliances", u"Finding Nearest Neighbors")
+            
+            if self.parallel_count > 1:
+                # PARALLELIZATION TO FILL IN NEIGHBORS:
 
-            # PARALLELIZATION TO FILL IN NEIGHBORS:
+                print("")
+                try: ray.init()
+                except: pass
 
-            try: ray.init()
-            except: pass
+                @ray.remote
+                def neighbor_row(i, space, distance_matrix, len_space,
+                        metric, metric_str, make_kth, metric_args):
 
-            @ray.remote
-            def neighbor_row(i, space, distance_matrix, len_space,
-                    metric, metric_str, make_kth, metric_args):
+                    def condensed(i, j):
+                        if i == j: return -1
+                        if i < j: i, j = j, i
+                        return len_space*j - j*(j+1)//2 + i - 1 - j
 
-                def condensed(i, j):
-                    if i == j: return -1
-                    if i < j: i, j = j, i
-                    return len_space*j - j*(j+1)//2 + i - 1 - j
+                    if distance_matrix is not None:
+                        indeces = [condensed(i, j) for j in range(len_space)]
+                        distances = distance_matrix[indeces]
+                        #distances[np.nonzero(indeces < 0)[0]] = 0.
+                        distances[i] = 0.
+                    else:
+                        distances = sp.distance.cdist(
+                            np.atleast_2d(space[i]),
+                            space,
+                            metric_str if metric_str != None else metric,
+                            **metric_args).squeeze()
+                    ordering = np.argpartition(distances, make_kth)
 
-                if distance_matrix is not None:
-                    indeces = [condensed(i, j) for j in range(len_space)]
-                    distances = distance_matrix[indeces]
-                    #distances[np.nonzero(indeces < 0)[0]] = 0.
-                    distances[i] = 0.
-                else:
-                    distances = sp.distance.cdist(
-                        np.atleast_2d(space[i]),
-                        space,
-                        metric_str if metric_str != None else metric,
-                        **metric_args).squeeze()
-                ordering = np.argpartition(distances, make_kth)
+                    neighbors = np.empty(len(make_kth))
+                    neighbors_dist = np.empty(len(make_kth))
 
-                neighbors = np.empty(len(make_kth))
-                neighbors_dist = np.empty(len(make_kth))
+                    for j, kth in enumerate(make_kth):
+                        neighbors[j] = ordering[kth]
+                        neighbors_dist[j] = distances[ordering[kth]]
+                    
+                    return i, neighbors, neighbors_dist
+                    
+                # Shove data into the Object Store:
+                dm = self.get_distance_matrix()
+                distance_matrix_id = ray.put(dm)
+                space_id = ray.put(self.space if dm is None else None)
+                metric_str_id = ray.put(self.metric_str)
+                metric_id = ray.put(self.metric)
+                metric_args_id = ray.put(self.metric_args)
+                make_kth_id = ray.put(np.array(self.make_kth_neighbors))
 
-                for j, kth in enumerate(make_kth):
-                    neighbors[j] = ordering[kth]
-                    neighbors_dist[j] = distances[ordering[kth]]
-                
-                return i, neighbors, neighbors_dist
-                
-            # Shove data into the Object Store:
-            dm = self.get_distance_matrix()
-            distance_matrix_id = ray.put(dm)
-            space_id = ray.put(self.space if dm is None else None)
-            metric_str_id = ray.put(self.metric_str)
-            metric_id = ray.put(self.metric)
-            metric_args_id = ray.put(self.metric_args)
-            make_kth_id = ray.put(np.array(self.make_kth_neighbors))
+                # Start the first few remote processes/threads:
+                remaining_ids = [neighbor_row.remote(
+                        i,
+                        space_id,
+                        distance_matrix_id,
+                        len(self.space),
+                        metric_id,
+                        metric_str_id,
+                        make_kth_id,
+                        metric_args_id)
+                    for i in range(min(len(self.space), self.parallel_count))]
 
-            # Start the first few remote processes/threads:
-            cpus = psutil.cpu_count()
-            remaining_ids = [neighbor_row.remote(
-                    i,
-                    space_id,
-                    distance_matrix_id,
-                    len(self.space),
-                    metric_id,
-                    metric_str_id,
-                    make_kth_id,
-                    metric_args_id)
-                for i in range(min(len(self.space), cpus))]
+                # Compute:
+                for i in tqdm(range(len(self.space)),
+                        disable=not self.auto_print):
+                    # Using ray.wait allows us to make a progress bar:
+                    ready_ids, remaining_ids = ray.wait(remaining_ids)
+                    tup = ray.get(ready_ids[0])
+                    # Add a new job:
+                    if i + self.parallel_count < len(self.space):
+                        remaining_ids.append(neighbor_row.remote(
+                            i + self.parallel_count, space_id,
+                            distance_matrix_id, len(self.space), metric_id,
+                            metric_str_id, make_kth_id, metric_args_id))
+                    # Process this one's result and fill in data:
+                    i, nbrs, nbrs_d = tup
+                    for j, kth in enumerate(self.make_kth_neighbors):
+                        self.neighbors[kth][i] = nbrs[j]
+                        self.neighbors_dist[kth][i] = nbrs_d[j]
 
-            # Compute:
-            for i in tqdm(range(len(self.space)), disable=not self.auto_print):
-                # Using ray.wait allows us to make a progress bar:
-                ready_ids, remaining_ids = ray.wait(remaining_ids)
-                tup = ray.get(ready_ids[0])
-                # Add a new job:
-                if i + cpus < len(self.space):
-                    remaining_ids.append(neighbor_row.remote(
-                        i + cpus, space_id, distance_matrix_id, len(self.space),
-                        metric_id, metric_str_id, make_kth_id, metric_args_id))
-                # Process this one's result and fill in data:
-                i, nbrs, nbrs_d = tup
-                for j, kth in enumerate(self.make_kth_neighbors):
-                    self.neighbors[kth][i] = nbrs[j]
-                    self.neighbors_dist[kth][i] = nbrs_d[j]
+            else:
+                # ORIGINAL; ALTERNATIVE TO PARALLELIZATION:
 
-            # # ORIGINAL; ALTERNATIVE TO PARALLELIZATION:
-
-            # # Filling in neighbors - this may take a long time...
-            # for i in tqdm(range(len(self.space)), disable=(not self.auto_print)):
-            #     d = self.distances_from(i)
-            #     ordering = np.argpartition(d, self.make_kth_neighbors)
-            #     for kth in self.make_kth_neighbors:
-            #         self.neighbors[kth][i] = ordering[j]
-            #         self.neighbors_dist[kth][i] = d[ordering[j]]
+                # Filling in neighbors - this may take a long time...
+                for i in tqdm(range(len(self.space)),
+                        disable=(not self.auto_print)):
+                    d = self.distances_from(i)
+                    ordering = np.argpartition(d, self.make_kth_neighbors)
+                    for kth in self.make_kth_neighbors:
+                        self.neighbors[kth][i] = ordering[kth]
+                        self.neighbors_dist[kth][i] = d[ordering[kth]]
 
         return self.neighbors[k]
 
@@ -513,7 +524,7 @@ class Analyst:
     def __init__(self, embeddings=None, strings=None,
         encoder=None, decoder=None, metric=u"cosine", evaluators=[u"All"],
         auto_print=True, desc=None, evaluate=True, make_distance_matrix=False,
-        make_kth_neighbors=[-1, 1, 2], **metric_args):
+        make_kth_neighbors=[-1, 1, 2], parallel_count=None, **metric_args):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -573,6 +584,15 @@ class Analyst:
                 furthest, nearest, and 2nd-nearest neighbors, respectively.
                 Failure to include one or more of these will result in much
                 slower calculations of many Evaluators!
+            parallel_count -- How many parallel threads to use in computing
+                heavier, parallelizeable parts.
+                If None, will try to choose based on CPU count and size of given
+                embedding space (if under 1000, or less than 2 cores/threads,
+                chooses not to for efficiency's sake, though rather more than
+                1000 may still be more efficient on 1). Note the overhead may
+                make 2 less efficient than 1. You can use a larger number than
+                cores/threads, and it will compute that many at a time as
+                by use of multiple tasks on each.
             metric_args -- these are extra arguments to be given to metric.
         """
 
@@ -586,9 +606,9 @@ class Analyst:
         # Find and store a callable version of the given metric:
         self._print(u"Laying the Laws of Physics", u"Setting the Metric")
         if callable(metric):
-            self.metric = metric
-            self.metric_str = None
-        else:
+            self.metric = metric   # Pay attention to how you use the metric!
+            self.metric_str = None #    It is for vectors. For indeces or other,
+        else:                      #    you need to use metric_in_model!
             try:
                 self.metric_str = metric
                 #self.metric_str = str(sp.distance._METRIC_ALIAS[metric])
@@ -647,13 +667,13 @@ class Analyst:
             self.encode = encoder
         #
         # Make decoder:
+        self.vec_to_s = {} # Declared for _decode, but unused if decoder given.
         if decoder is None:
             self._print(u"Mapping the Emptiness", u"Mapping New Decoder")
-            self.vec_to_s = {}
             for i in trange(len(self.space), disable=(not self.auto_print)):
                 self.vec_to_s[str(self.space[i].tolist())] = self.strings[i]
             #self.decode = self.vec_to_s.__getitem__
-            self.decode = lambda vec: self.vec_to_s[str(vec.tolist())]
+            self.decode = self._decode
         else:
             assert callable(decoder)
             self.decode = decoder
@@ -677,12 +697,16 @@ class Analyst:
         self.make_distance_matrix = make_distance_matrix
         self.make_kth_neighbors = make_kth_neighbors
         self.D = None
+        self.parallel_count = parallel_count # We'll get the right value from D.
 
         # Run Analyses:
         if evaluate:
             self.analysis(
                 print_report=self.auto_print, auto_save=False, recalculate=[])
 
+
+    def _decode(self, vec):
+        return self.vec_to_s[str(vec.tolist())]
 
     # Generic type converters & tools for inputs and outputs:
     # NOTE: These will be slower than type-specific functions.
@@ -791,6 +815,9 @@ class Analyst:
             self.add_evaluators(e)
             return e
 
+    def get_clusters(self, category):
+        return self.find_evaluator(category).get_clusters()
+
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
     #   "Hubs" with no number defaults to "Nodal 4-Hubs".
@@ -881,20 +908,30 @@ class Analyst:
         # Won't recalculate any but those whose categories are listed.
         # Even those it doesn't recalculate, it will still get their data and
         #   update its own in case it has changed.
+        # Will only recalculate distances and neighbors if "all" or "All".
 
-        # Delayed creation of this object till now because if
-        #   make_distance_matrix is True, then Distances will immediately begin
-        #   computing its distance matrix, preventing the user from soon doing
-        #   whatever it was they delayed analysis for in the first place.
-        self.D = Distances(
-            embeddings=self.space,
-            metric_str=self.metric_str,
-            metric_fn=self.metric,
-            print_fn=self._print,
-            auto_print=self.auto_print,
-            make_distance_matrix=self.make_distance_matrix,
-            make_kth_neighbors=self.make_kth_neighbors,
-            **self.metric_args)
+        if self.D is None or "All" in recalculate or "all" in recalculate:
+            # Delayed creation of this object till now because if
+            #   make_distance_matrix is True, then Distances will immediately
+            #   begin computing its distance matrix, preventing the user from
+            #   soon doing whatever it was they delayed analysis for in the
+            #   first place.
+            self.D = Distances(
+                embeddings=self.space,
+                metric_str=self.metric_str,
+                metric_fn=self.metric,
+                print_fn=self._print,
+                auto_print=self.auto_print,
+                make_distance_matrix=self.make_distance_matrix,
+                make_kth_neighbors=self.make_kth_neighbors,
+                parallel_count=self.parallel_count,
+                **self.metric_args)
+
+            self.parallel_count = self.D.parallel_count
+
+        # If want to recalculate all:
+        if "All" in recalculate or "all" in recalculate:
+            recalculate = [e.CATEGORY for e in self.evaluators]
 
         # Run the Evaluations:
         for evaluator in self.evaluators:
@@ -929,8 +966,10 @@ class Analyst:
                     downstream_fn=self.downstream,
                     evaluator_list=self.evaluators,
                     find_evaluator_fn=self.find_evaluator,
+                    get_clusters_fn=self.get_clusters,
                     make_kth_neighbors=self.make_kth_neighbors,
-                    simulate_cluster_fn=simulate_cluster)
+                    simulate_cluster_fn=simulate_cluster,
+                    parallel_count=self.parallel_count)
 
                 # The below compatibilities should be unnecessary because both
                 #   keys and starred come from same source, thus same version.
