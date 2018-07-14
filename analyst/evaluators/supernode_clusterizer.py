@@ -30,13 +30,14 @@ class SupernodeClusterizer(NodeClusterizer, object):
         centroids = [n.centroid for n in self.nodes]
         printer("Fracturing the Empire", "Computing Nodal Distance Matrix")
         # TODO: the following won't work if more than like 50000 nodes!
+        ###neighbors = [np.argmax(sp.distance.cdist(c, )]
         node_dist_matrix = sp.distance.squareform(
             sp.distance.pdist(
                 centroids,
                 metric_str if metric_str != None else metric,
                 **metric_args))
         printer("Establishing a Hierocracy", "Computing Nearest Neighbor Nodes")
-        neighbors = np.argmax(node_dist_matrix, axis=1)
+        neighbors = np.argmax(node_dist_matrix, axis=1) #TODO!! ARGMIN???
             
         # Compute the Supernodes:
         printer("Ascertaining Universe Filaments", "Finding Supernodes")

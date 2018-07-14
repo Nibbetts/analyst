@@ -42,7 +42,7 @@ class NucleusClusterizer(Clusterizer, object):
             #         threshold = max(
             #             hubs[i].stats_dict["Dispersion"],
             #             hubs[j].stats_dict["Dispersion"])
-            #         if metric(hubs[i].nodes[0].centroid, # These have 1 Node
+            #         if metric(hubs[i].nodes[0].centroid, 
             #                     hubs[j].nodes[0].centroid) <= threshold \
             #                 and metric(hubs[i].centroid, hubs[j].centroid) \
             #                 <= threshold:
@@ -56,11 +56,14 @@ class NucleusClusterizer(Clusterizer, object):
                 # if not already combined, else we don't care:
                 if hi_to_ni[i] != hi_to_ni[j]:
                     # # If interior nodes are close enough:
-                    # threshold = max(
-                    #     hubs[i].stats_dict["Dispersion"],
-                    #     hubs[j].stats_dict["Dispersion"])
-                    # if metric(hubs[i].centroid, hubs[j].centroid) <= threshold:
-                    if hubs[i].nodes[0] == hubs[j].nodes[0]:
+                    threshold = max(
+                        hubs[i].stats_dict["Dispersion"],
+                        hubs[j].stats_dict["Dispersion"])
+                    #if hubs[i].nodes[0] == hubs[j].nodes[0]:
+                    if metric(hubs[i].centroid, hubs[j].centroid) <= threshold \
+                            or metric(hubs[i].nodes[0].centroid,
+                            hubs[j].nodes[0].centroid) <= threshold:
+                        # (remember, hubs have only one node)
                         # combine them, delete the 2nd, re-key the dict
                         self.clusters[hi_to_ni[j]] += self.clusters[hi_to_ni[i]]
                         self.clusters[hi_to_ni[i]] = self.clusters[hi_to_ni[j]]
