@@ -120,6 +120,7 @@ class Evaluator:
         #   make_kth_neighbors        : list, k's for neighbors to compute.
         #   simulate_cluster_fn       : callable, Analyst's cluster simulator.
         #   parallel_count            : int >= 1, num threads user wants used.
+        #   make_dist_matrix          : bool, whether OK to compute full matrix.
 
         # NOTE: Generic functions (non-type-specific) will be slower than
         #   direct mapping or indexing, so avoid them en masse.

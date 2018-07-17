@@ -24,7 +24,8 @@ class Cluster:
         "Norm Avg",
         "Norm Min",
         "Norm Max",
-        "Norm Std"}
+        "Norm Std",
+    }
 
     def __init__(self, category, encoder, metric, objects, nearest=None,
             vectors=None, nodes=[], auto=False, ID=None, name=None,
@@ -167,7 +168,7 @@ class Cluster:
 
     def calculate(self):
         if self.vectors is None or self.vectors is []:
-            self.vectors = np.array([self.encoder(o) for o in self.objects])
+            self.vectors = np.array([self.encoder(o) for o in self.objects]) # TODO: vectorize?
 
         if len(self.objects) > 0:
 
@@ -253,6 +254,8 @@ class Cluster:
             self.stats_dict["Norm Max"]   = n_max
             self.stats_dict["Norm Range"] = n_max - n_min # This one NOT quiet.
             self.stats_dict["Norm Std"]   = np.std(self.norms)
+
+
 
             self.stats_dict["Nodes"]      = \
                 [str(node) for node in sorted(self.nodes)]

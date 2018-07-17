@@ -142,6 +142,9 @@ class Distances:
         since in very large spaces we cannot simply find a distance matrix,
         unless you have huge amounts of ram on hand.
     """
+
+    PARALLELIZATION_BOUND = 3000
+
     def __init__(self, embeddings, metric_str, metric_fn, print_fn,
             auto_print=True, make_distance_matrix=False,
             make_kth_neighbors=[], parallel_count=None, **metric_args):
@@ -167,7 +170,8 @@ class Distances:
         self.parallel_count = parallel_count
         if self.parallel_count == None:
             self.parallel_count = psutil.cpu_count()
-            if len(self.space) <= 1000: self.parallel_count = 1
+            if len(self.space) <= Distances.PARALLELIZATION_BOUND:
+                self.parallel_count = 1
 
         # NOTE: The Distances class conveniently delays computation of distance
         #   matrix and all the requested neighbors until they are requested
@@ -338,7 +342,7 @@ class Distances:
                 # PARALLELIZATION TO FILL IN NEIGHBORS:
 
                 print("")
-                try: ray.init()
+                try: ray.init() #TODO: reduce odd printing in each ray.init() by checking in globals(), and test UI to make sure later inits are broken or not...
                 except: pass
 
                 @ray.remote
@@ -587,14 +591,18 @@ class Analyst:
             parallel_count -- How many parallel threads to use in computing
                 heavier, parallelizeable parts.
                 If None, will try to choose based on CPU count and size of given
-                embedding space (if under 1000, or less than 2 cores/threads,
-                chooses not to for efficiency's sake, though rather more than
-                1000 may still be more efficient on 1). Note the overhead may
-                make 2 less efficient than 1. You can use a larger number than
-                cores/threads, and it will compute that many at a time as
-                by use of multiple tasks on each.
+                embedding space (if under 3000, or less than 2 cores/threads,
+                chooses not to for efficiency's sake). Note the overhead may
+                make 2 less efficient than 1 in general. You can use a larger
+                number than cores/threads, and it will compute that many at a
+                time as by use of multiple tasks on each. Likewise a smaller
+                number will not constrain itself to n specific CPUS, but will
+                shuffle that many jobs between all those available.
             metric_args -- these are extra arguments to be given to metric.
         """
+
+        #TODO: consider adding in parameters for auto_save and file_name, and
+        #   maybe in initialization if no file_name ask for one if auto_save.
 
         self.auto_print = auto_print
         print(u"")
@@ -637,7 +645,7 @@ class Analyst:
             else:
                 self._print(u"Stretching the Fabric of Space and Time",
                     u"Finding Embeddings")
-                self.space = np.array([encoder(w) for w in
+                self.space = np.array([encoder(w) for w in # TODO: use np.vectorize? Can't show progress...
                     tqdm(strings, disable=(not self.auto_print))])
         else: self.space = embeddings
         #
@@ -969,7 +977,9 @@ class Analyst:
                     get_clusters_fn=self.get_clusters,
                     make_kth_neighbors=self.make_kth_neighbors,
                     simulate_cluster_fn=simulate_cluster,
-                    parallel_count=self.parallel_count)
+                    parallel_count=self.parallel_count,
+                    make_dist_matrix=self.make_distance_matrix,
+                )
 
                 # The below compatibilities should be unnecessary because both
                 #   keys and starred come from same source, thus same version.
@@ -993,6 +1003,7 @@ class Analyst:
             if self.file_name != None: self.save()
             else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
                 "ONCE; NO FILENAME.")
+
         if print_report: self.print_report()
 
 

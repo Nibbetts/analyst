@@ -4,6 +4,8 @@ from tqdm import tqdm
 
 from ..clustertypes.node import Node
 from .node_clusterizer import NodeClusterizer
+#from analyst import Distances
+import analyst
 
 class SupernodeClusterizer(NodeClusterizer, object):
 
@@ -12,12 +14,18 @@ class SupernodeClusterizer(NodeClusterizer, object):
         super(SupernodeClusterizer, self).__init__(
             category=category, starred=starred)
         self.nodes = None
+        self.D = None
 
     def compute_clusters(self, space, show_progress=True, **kwargs):
         printer            = kwargs["printer_fn"]
         metric_str         = kwargs["metric_str"]
         metric             = kwargs["metric_fn"]
         clusterizer_getter = kwargs["find_evaluator_fn"]
+        metric_args        = kwargs["metric_args"]
+        auto_print         = kwargs["draw_progress"]
+        make_dist_matrix   = kwargs["make_dist_matrix"]
+        make_kth_neighbors = kwargs["make_kth_neighbors"]
+        parallel_count     = kwargs["parallel_count"]
         metric_args        = kwargs["metric_args"]
 
         # No need to make sure Nodes are computed before Supernodes,
@@ -26,18 +34,24 @@ class SupernodeClusterizer(NodeClusterizer, object):
             self.node_category, force_creation=True)
         self.nodes = node_clusterizer.get_clusters(**kwargs)
 
-        # Compute distance matrix and nearest neighbors for node centroids:
-        centroids = [n.centroid for n in self.nodes]
-        printer("Fracturing the Empire", "Computing Nodal Distance Matrix")
-        # TODO: the following won't work if more than like 50000 nodes!
-        ###neighbors = [np.argmax(sp.distance.cdist(c, )]
-        node_dist_matrix = sp.distance.squareform(
-            sp.distance.pdist(
-                centroids,
-                metric_str if metric_str != None else metric,
-                **metric_args))
-        printer("Establishing a Hierocracy", "Computing Nearest Neighbor Nodes")
-        neighbors = np.argmax(node_dist_matrix, axis=1) #TODO!! ARGMIN???
+        if len(self.nodes) > 0:
+            # Compute distance matrix and nearest neighbors for node centroids:
+            centroids = [n.centroid for n in self.nodes]
+            printer("Fracturing the Empire", "Computing Nodal Distance Matrix")
+            # Assume to compute Nodal distance matrix if we did the spatial one:
+            self.D = analyst.Distances(centroids, metric_str, metric, printer,
+                auto_print=auto_print, make_distance_matrix=make_dist_matrix,
+                make_kth_neighbors=make_kth_neighbors,
+                parallel_count=parallel_count, **metric_args)
+            neighbors = self.D.kth_neighbors(1)
+            # node_dist_matrix = sp.distance.squareform(
+            #     sp.distance.pdist(
+            #         centroids,
+            #         metric_str if metric_str != None else metric,
+            #         **metric_args))
+            # printer("Establishing a Hierocracy",
+            #     "Computing Nearest Neighbor Nodes")
+            # neighbors = np.argpartition(node_dist_matrix, 1, axis=1)[:,1]
             
         # Compute the Supernodes:
         printer("Ascertaining Universe Filaments", "Finding Supernodes")

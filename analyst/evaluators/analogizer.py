@@ -56,6 +56,11 @@ class Analogizer(Evaluator, object):
         # Notice that by default this class assumes this is a word-embedding
         #   space, but this can be easily changed when initializing it by using
         #   other separators. (And there are built-ins for sentence-embeddings.)
+        self.score = None
+        self.distances = None
+        self.lengths = None
+        self.dropped = []
+        #   dropped will keep track of unusable analogies from input corpus.
         # self.CATEGORY = category       # See parent.
         # self.data_dict = OrderedDict() # See parent.
         # self.starred = []              # See parent.
@@ -87,30 +92,30 @@ class Analogizer(Evaluator, object):
         vectors = data[1]
 
         correct = np.array(answers) == [a[3] for a in self.analogies]
-        score = np.sum(correct) / float(len(self.analogies))
-        distances = np.array([metric(group[3], vectors[i]) \
-            for i, group in enumerate(self.analogy_vectors)])
-        lengths = np.array([metric(group[2], vectors[i]) \
+        self.score = np.sum(correct) / float(len(self.analogies))
+        self.distances = np.array([metric(group[3], vectors[i]) \
+            for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
+        self.lengths = np.array([metric(group[2], vectors[i]) \
             for i, group in enumerate(self.analogy_vectors)])
 
         self.data_dict["Analogy Count"] = len(self.analogies)
         self.data_dict["Dropped Count"] = self.dropped
-        self.data_dict["Accuracy"] = score
+        self.data_dict["Accuracy"] = self.score
 
         # Distance from point found to answer point
-        self._compute_list_stats(distances,
+        self._compute_list_stats(self.distances,
             "Dist All from Answer", self.data_dict)
-        self._compute_list_stats(distances[np.nonzero(correct)],
+        self._compute_list_stats(self.distances[np.nonzero(correct)],
             "Dist for Correct", self.data_dict)
-        self._compute_list_stats(distances[np.nonzero(1 - correct)],
+        self._compute_list_stats(self.distances[np.nonzero(1 - correct)],
             "Dist for Incorrect", self.data_dict)
 
         # Distance from c to d; the length of the analogy vector
-        self._compute_list_stats(lengths,
+        self._compute_list_stats(self.lengths,
             "Analogy Length", self.data_dict)
-        self._compute_list_stats(lengths[np.nonzero(correct)],
+        self._compute_list_stats(self.lengths[np.nonzero(correct)],
             "Length Correct", self.data_dict)
-        self._compute_list_stats(lengths[np.nonzero(1 - correct)],
+        self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
             "Length Incorrect", self.data_dict)
 
     # OVERRIDEABLE
@@ -158,10 +163,10 @@ class Analogizer(Evaluator, object):
                     # This is the expected usage - through a file.
                     self.analogies, self.analogy_vectors, self.dropped = \
                         self.read_analogies_file(**kwargs)
-                else: self.analogies = [ # Assumes given strings all valid!
+                else: self.analogies = [ # Assumes given strings are all valid!
                     [decode(item) for item in a] for a in self.analogy_vectors]
             elif self.analogy_vectors is None:
-                self.analogy_vectors = [ # Assumes given vectors all valid!
+                self.analogy_vectors = [ # Assumes given vectors are all valid!
                     [encode(item) for item in a] for a in self.analogies]
 
             self.compute_stats(**kwargs)
@@ -211,6 +216,7 @@ class Analogizer(Evaluator, object):
                 if item == "": del analogies[i][j]
         # Remove those still not of length 4:
         analogies = [a for a in analogies if len(a) == 4]
+        self.dropped += [a for a in analogies if len(a) != 4]
         if len(analogies) < pre_size:
             # Potential problems are printed outright, so not shushed when
             #   auto_print is False.
@@ -225,7 +231,7 @@ class Analogizer(Evaluator, object):
                 vectors.append([encode(item) for item in a])
                 valid_analogies.append(a)
             except:
-                pass
+                self.dropped.append(a)
         if len(valid_analogies) < len(analogies):
             print("WARNING: %d UNENCODEABLE ANALOGIES WERE DROPPED!" %
                 (len(analogies) - len(valid_analogies)))

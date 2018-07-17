@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from tqdm import tqdm
 
 from ..clustertypes.cluster import Cluster
 from .evaluator import Evaluator
@@ -61,6 +62,8 @@ class Spatializer(Evaluator, object):
         metric_args       = kwargs["metric_args"]
         objects           = kwargs["strings"]
         space             = kwargs["embeddings"]
+        auto_print        = kwargs["draw_progress"]
+        downstream        = kwargs["downstream_fn"]
         neighbors_dist    = kwargs["kth_neighbors_dist_fn"]
         neighbors_to_stat = kwargs["make_kth_neighbors"] \
             if self.neighbors_to_stat is None else self.neighbors_to_stat
@@ -111,6 +114,13 @@ class Spatializer(Evaluator, object):
             # Then re-key one entry:
             dispersion = self.data_dict.pop("Centroid Dist Avg")
             self.data_dict["Dispersion - Centroid Dist Avg"] = dispersion
+
+            # Downstream Path Length stats:
+            printer("Building a Caste-System", "Downstream Stats")
+            downstreamness = [len(downstream(o, give_path=True)) for o in \
+                tqdm(objects, disable=not auto_print)]
+            self._compute_list_stats(
+                downstreamness, "Downstream Length", self.data_dict)
 
             # kth-Neighbors Distance Info:
             for n in neighbors_to_stat:
