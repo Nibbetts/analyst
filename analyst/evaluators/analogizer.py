@@ -56,6 +56,7 @@ class Analogizer(Evaluator, object):
         # Notice that by default this class assumes this is a word-embedding
         #   space, but this can be easily changed when initializing it by using
         #   other separators. (And there are built-ins for sentence-embeddings.)
+        self.correct = []
         self.score = None
         self.distances = None
         self.lengths = None
@@ -74,7 +75,10 @@ class Analogizer(Evaluator, object):
         # This is where you do your analogical run, scoring each analogy
         #   and generating data based on these.
         # kwargs: see parent.
-        # POST: self.data_dict, self.starred will be filled in.
+        # PRE: self.analogies needs to have been filled in.
+        # POST: self.data_dict, self.starred will be filled in, as well as
+        #   self.score, self.distances, self.lengths, self.dropped, and
+        #   self.correct.
 
         # This particular implementation is a simple scoring, counting the
         #   number of correct results and dividing by number of analogies,
@@ -91,31 +95,31 @@ class Analogizer(Evaluator, object):
         answers = data[0]
         vectors = data[1]
 
-        correct = np.array(answers) == [a[3] for a in self.analogies]
-        self.score = np.sum(correct) / float(len(self.analogies))
+        self.correct = np.array(answers) == [a[3] for a in self.analogies]
+        self.score = np.sum(self.correct) / float(len(self.analogies))
         self.distances = np.array([metric(group[3], vectors[i]) \
             for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
         self.lengths = np.array([metric(group[2], vectors[i]) \
             for i, group in enumerate(self.analogy_vectors)])
 
         self.data_dict["Analogy Count"] = len(self.analogies)
-        self.data_dict["Dropped Count"] = self.dropped
+        self.data_dict["Dropped Count"] = len(self.dropped)
         self.data_dict["Accuracy"] = self.score
 
         # Distance from point found to answer point
         self._compute_list_stats(self.distances,
             "Dist All from Answer", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(correct)],
+        self._compute_list_stats(self.distances[np.nonzero(self.correct)],
             "Dist for Correct", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(1 - correct)],
+        self._compute_list_stats(self.distances[np.nonzero(1 - self.correct)],
             "Dist for Incorrect", self.data_dict)
 
         # Distance from c to d; the length of the analogy vector
         self._compute_list_stats(self.lengths,
             "Analogy Length", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(correct)],
+        self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
             "Length Correct", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
+        self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
             "Length Incorrect", self.data_dict)
 
     # OVERRIDEABLE
@@ -194,9 +198,8 @@ class Analogizer(Evaluator, object):
         encode     = kwargs["encoder_fn"]
 
         # Force input if no corpus found:
-        if self.file_name is None:
-            print("")
-            self.file_name = input("PLEASE INPUT THE ANALOGY CORPUS PATH: ")
+        if not isinstance(self.file_name, str):
+            raise ValueError("NO FILENAME GIVEN FOR {}!".format(self.CATEGORY))
 
         # Process the file
         printer_fn("Reading the Writing on the Wall", "Reading Analogy Corpus")
@@ -216,7 +219,7 @@ class Analogizer(Evaluator, object):
                 if item == "": del analogies[i][j]
         # Remove those still not of length 4:
         analogies = [a for a in analogies if len(a) == 4]
-        self.dropped += [a for a in analogies if len(a) != 4]
+        dropped = [a for a in analogies if len(a) != 4]
         if len(analogies) < pre_size:
             # Potential problems are printed outright, so not shushed when
             #   auto_print is False.
@@ -231,11 +234,9 @@ class Analogizer(Evaluator, object):
                 vectors.append([encode(item) for item in a])
                 valid_analogies.append(a)
             except:
-                self.dropped.append(a)
+                dropped.append(a)
         if len(valid_analogies) < len(analogies):
             print("WARNING: %d UNENCODEABLE ANALOGIES WERE DROPPED!" %
                 (len(analogies) - len(valid_analogies)))
-
-        dropped = pre_size - len(valid_analogies)
 
         return valid_analogies, vectors, dropped

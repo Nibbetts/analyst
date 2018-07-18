@@ -1,7 +1,8 @@
 # Compatibility for python 2 and 3:
 from __future__ import print_function
 from __future__ import absolute_import
-from builtins import str, bytes
+from __future__ import unicode_literals
+from builtins import bytes, str # Requires 'future' package to be installed.
 from io import open
 
 # Normal Packages:
@@ -528,7 +529,8 @@ class Analyst:
     def __init__(self, embeddings=None, strings=None,
         encoder=None, decoder=None, metric=u"cosine", evaluators=[u"All"],
         auto_print=True, desc=None, evaluate=True, make_distance_matrix=False,
-        make_kth_neighbors=[-1, 1, 2], parallel_count=None, **metric_args):
+        make_kth_neighbors=[-1, 1, 2], parallel_count=None, auto_save=False,
+        file_name=None, over_write=False, **metric_args):
         """
         Parameters:
             embeddings -- list of vectors populating the space.
@@ -598,18 +600,41 @@ class Analyst:
                 time as by use of multiple tasks on each. Likewise a smaller
                 number will not constrain itself to n specific CPUS, but will
                 shuffle that many jobs between all those available.
+            auto_save -- whether or not to save automatically after computing.
+            file_name -- name of file to use. If blank, will base it on desc.
+            over_write -- whether or not to overwrite existing file of same name
+                when saving. Note we will overwrite our own, but not others.
             metric_args -- these are extra arguments to be given to metric.
         """
-
-        #TODO: consider adding in parameters for auto_save and file_name, and
-        #   maybe in initialization if no file_name ask for one if auto_save.
 
         self.auto_print = auto_print
         print(u"")
         self._print(u"Asking the Grand Question",
             u"What is the Purpose of this Space?")
         self.description = str(desc)
-        self.file_name = None
+
+        # Set the file_name for this analyst:
+        self.auto_save = auto_save
+        self.over_write = over_write
+        if file_name is not None:
+            self.file_name = file_name
+        else:
+            self.file_name = _file_extension(self.description)
+            if not self.over_write:
+                i = 0
+                name_only = self.file_name
+                number = ""
+                ext = ""
+                for i, c in enumerate(self.file_name):
+                    if c == '.':
+                        name_only = self.file_name[:i]
+                        ext = self.file_name[i+1:]
+                        break
+                j = 1
+                while(os.path.isfile(name_only + number + '.' + ext)):
+                    number = '(' + str(j) + ')'
+                    j += 1
+                self.file_name = name_only + number + '.' + ext
         
         # Find and store a callable version of the given metric:
         self._print(u"Laying the Laws of Physics", u"Setting the Metric")
@@ -710,7 +735,7 @@ class Analyst:
         # Run Analyses:
         if evaluate:
             self.analysis(
-                print_report=self.auto_print, auto_save=False, recalculate=[])
+                print_report=self.auto_print, recalculate=[])
 
 
     def _decode(self, vec):
@@ -822,6 +847,7 @@ class Analyst:
             e = Analyst.make_default_evaluator(str(category))
             self.add_evaluators(e)
             return e
+        return None
 
     def get_clusters(self, category):
         return self.find_evaluator(category).get_clusters()
@@ -912,7 +938,7 @@ class Analyst:
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def analysis(self, print_report, auto_save=False, recalculate=[]):
+    def analysis(self, print_report, recalculate=[]):
         # Won't recalculate any but those whose categories are listed.
         # Even those it doesn't recalculate, it will still get their data and
         #   update its own in case it has changed.
@@ -999,7 +1025,7 @@ class Analyst:
                     #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
         
-        if auto_save:
+        if self.auto_save:
             if self.file_name != None: self.save()
             else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
                 "ONCE; NO FILENAME.")

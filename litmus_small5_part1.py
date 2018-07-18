@@ -13,7 +13,7 @@ if __name__ == "__main__":
     import os.path
 
 
-    MAX_LINES = 10000
+    MAX_LINES = 1000
 
     def normalize(vec):
         return vec/np.linalg.norm(vec)
@@ -50,13 +50,14 @@ if __name__ == "__main__":
     anag = an.evaluators.analogizer.Analogizer(
         analogies_path="/mnt/pccfs/backed_up/zac/zac_desktop/zac_docs/Corpora/"
             "subcorp_analogy_storage/analogy_subcorp5_family_relations")
+    anagc = an.evaluators.analogizer_combiner.AnalogizerCombiner()
     an_fnc = an.Analyst(
         embeddings=embed_fn,
         strings=str_f,
         auto_print=True,
         metric=metric,
         desc="Fasttext Non-Normalized Euclidean",
-        evaluators=[u"All", anag])
+        evaluators=[u"All", anag, anagc])
 
     file_name = "saved_analyses/an" + str(MAX_LINES) + \
         "_fasttext_non-normalized_euclidean"

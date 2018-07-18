@@ -3,6 +3,7 @@ from tqdm import tqdm
 import numpy as np
 
 from .evaluator import Evaluator
+from .analogizer import Analogizer
 
 
 class AnalogizerCombiner(Evaluator, object):
@@ -12,13 +13,17 @@ class AnalogizerCombiner(Evaluator, object):
 
     def __init__(self, category="Combined Analogizers", starred=None,
             analogizers=None):
+        # analogizers: if None, will automatically search for Analogizers, or
+        #   instances of classes derived therefrom. Otherwise fill this with
+        #   the categorical names of the ones you want it to combine data for,
+        #   or references to the analogizers themselves.
         super(AnalogizerCombiner, self).__init__(category=category, starred=starred)
         self.analogizer_categories = analogizers
-        self.analogy_count = None
+        self.analogizers = None
         self.score = None
         self.distances = None
         self.lengths = None
-        self.dropped_count = None
+        self.score_list = None
         # self.CATEGORY = category       # See parent.
         # self.data_dict = OrderedDict() # See parent.
         # self.starred = []              # See parent.
@@ -26,88 +31,78 @@ class AnalogizerCombiner(Evaluator, object):
 
     # OVERRIDEABLE
     def compute_stats(self, **kwargs):
-        # This is where you do your analogical run, scoring each analogy
-        #   and generating data based on these.
         # kwargs: see parent.
-        # POST: self.data_dict, self.starred will be filled in.
 
-        # This particular implementation is a simple scoring, counting the
-        #   number of correct results and dividing by number of analogies,
-        #   Though we will also give some distance stats.
+        printer        = kwargs["printer_fn"]
+        find_evaluator = kwargs["find_evaluator_fn"]
+        evaluators     = kwargs["evaluator_list"]
 
-        show_progress = kwargs["draw_progress"]
-        printer       = kwargs["printer_fn"]
-        metric        = kwargs["metric_fn"]
+        printer("Compiling Wisdom and Knowledge",
+            "Combining Analogical Results")
 
-        printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
-        data = list(zip(*[
-            self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
-                disable=(not show_progress))]))
-        answers = data[0]
-        vectors = data[1]
+        # Fill in Analogizer Lists:
+        self.analogizers = []
+        if self.analogizer_categories is None:
+            self.analogizer_categories = []
+            for e in evaluators:
+                if isinstance(e, Analogizer):
+                    self.analogizer_categories.append(e.CATEGORY)
+                    self.analogizers.append(e)
+                # Only adds ones which inherit from Analogizer class.
+        else:
+            for i, c in enumerate(self.analogizer_categories):
+                if isinstance(c, str):
+                    a = find_evaluator(c)
+                    if a is not None: self.analogizers.append(a)
+                    else: printer("WARNING: {} dropped {}; no evaluator with "
+                        "this category was found.")
+                elif isinstance(c, Analogizer):
+                    self.analogizers.append(c)
+                    self.analogizer_categories[i] = c.CATEGORY
+                else: printer("WARNING: {} dropped {}; was not string and "
+                    "does not inherit from Analogizer.".format(self.CATEGORY,
+                    str(c)))
 
-        correct = np.array(answers) == [a[3] for a in self.analogies]
-        self.score = np.sum(correct) / float(len(self.analogies))
-        self.distances = np.array([metric(group[3], vectors[i]) \
-            for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
-        self.lengths = np.array([metric(group[2], vectors[i]) \
-            for i, group in enumerate(self.analogy_vectors)])
+        # Make sure their data is filled in first:
+        for a in self.analogizers:
+            a.calculate(**kwargs)
 
-        self.data_dict["Analogy Count"] = len(self.analogies)
-        self.data_dict["Dropped Count"] = self.dropped
-        self.data_dict["Accuracy"] = self.score
+        self.data_dict["Analogizer Count"] = len(self.analogizers)
 
-        # Distance from point found to answer point
-        self._compute_list_stats(self.distances,
-            "Dist All from Answer", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(correct)],
-            "Dist for Correct", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(1 - correct)],
-            "Dist for Incorrect", self.data_dict)
+        if len(self.analogizers) > 0:
+            correct = np.concatenate([a.correct for a in self.analogizers])
+            self.score = np.sum(correct) / float(len(correct))
+            self.distances = np.concatenate(
+                [a.distances for a in self.analogizers])
+            self.lengths = np.concatenate([a.lengths for a in self.analogizers])
 
-        # Distance from c to d; the length of the analogy vector
-        self._compute_list_stats(self.lengths,
-            "Analogy Length", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(correct)],
-            "Length Correct", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
-            "Length Incorrect", self.data_dict)
+            # Overall Stats
+            self.data_dict["Analogy Count"] = len(correct)
+            self.data_dict["Dropped Count"] = sum(
+                [len(a.dropped) for a in self.analogizers])
+            self.data_dict["Accuracy"] = self.score
 
+            # Category Score Data
+            self.score_list = np.array([a.score for a in self.analogizers])
+            self.data_dict["Most Accurate Category"] = self.analogizers[
+                np.argmax(self.score_list)].CATEGORY
+            self.data_dict["Least Accurate Category"] = self.analogizers[
+                np.argmin(self.score_list)].CATEGORY
+            self._compute_list_stats(
+                self.score_list, "Category Score", self.data_dict)
 
-    # The Analyst will call this function, which pulls it all together.
-    #   You shouldn't have to override this function:
-    def calculate(self, recalculate_all=False, **kwargs):
-        if not self.calculated or recalculate_all:
-            if kwargs == {}:
-                print("NOT YET CALCULATED AND NO KWARGS GIVEN!")
-            printer       = kwargs["printer_fn"]
-            show_progress = kwargs["draw_progress"]
-            decode        = kwargs["decoder_fn"]
-            encode        = kwargs["encoder_fn"]
+            # Distance from point found to answer point
+            self._compute_list_stats(self.distances,
+                "Dist All from Answer", self.data_dict)
+            self._compute_list_stats(self.distances[np.nonzero(correct)],
+                "Dist for Correct", self.data_dict)
+            self._compute_list_stats(self.distances[np.nonzero(1 - correct)],
+                "Dist for Incorrect", self.data_dict)
 
-            if show_progress:
-                printer("Evaluating " + self.CATEGORY)
-
-            if self.analogies is None:
-                if self.analogy_vectors is None:
-                    # This is the expected usage - through a file.
-                    self.analogies, self.analogy_vectors, self.dropped = \
-                        self.read_analogies_file(**kwargs)
-                else: self.analogies = [ # Assumes given strings are all valid!
-                    [decode(item) for item in a] for a in self.analogy_vectors]
-            elif self.analogy_vectors is None:
-                self.analogy_vectors = [ # Assumes given vectors are all valid!
-                    [encode(item) for item in a] for a in self.analogies]
-
-            self.compute_stats(**kwargs)
-
-            # Override default stars if user gave any:
-            if self.given_stars != None:
-                self.starred = self.given_stars
-
-            self.calculated = True
-
-        # Returning these means the Analyst need only access datamembers
-        #   directly if we are doing specifics inspection, later,
-        #   or when searching by category.
-        return self.data_dict, self.starred, self.CATEGORY
+            # Distance from c to d; the length of the analogy vector
+            self._compute_list_stats(self.lengths,
+                "Analogy Length", self.data_dict)
+            self._compute_list_stats(self.lengths[np.nonzero(correct)],
+                "Length Correct", self.data_dict)
+            self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
+                "Length Incorrect", self.data_dict)

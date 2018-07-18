@@ -8,3 +8,4 @@ from .hub_clusterizer import *
 from .nucleus_clusterizer import *
 from .spatializer import *
 from .analogizer import *
+from .analogizer_combiner import *

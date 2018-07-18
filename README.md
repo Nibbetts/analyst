@@ -10,11 +10,14 @@ matplotlib: plotting and graphing
 tqdm: progress bars  
 dill: pickling and loading, allows for unusual data members
 tkinter? (sudo apt-get install python3-tk)
+future: needed if trying to use python2
 
 Each of these should be accessible through the pip package manager:
 ```bash
 sudo pip install name_of_package
 ```
+
+matplotlib may require python-tk, installed through the OS, not through pip.
 
 ## Usage
 
