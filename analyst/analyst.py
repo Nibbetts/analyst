@@ -575,7 +575,7 @@ class Analyst:
             #         to no longer contain functions when an Analyst is pickled.
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
-            evaluate -- whether or not to run the analysis.
+            evaluate -- whether or not to run the analysis right away.
                 Typically always True, unless you want to iteratively add
                 evaluators or something.
             make_distance_matrix -- whether or not the user thinks they have
@@ -623,18 +623,18 @@ class Analyst:
             if not self.over_write:
                 i = 0
                 name_only = self.file_name
-                number = ""
-                ext = ""
+                number = u""
+                ext = u""
                 for i, c in enumerate(self.file_name):
-                    if c == '.':
+                    if c == u'.':
                         name_only = self.file_name[:i]
                         ext = self.file_name[i+1:]
                         break
                 j = 1
-                while(os.path.isfile(name_only + number + '.' + ext)):
-                    number = '(' + str(j) + ')'
+                while(os.path.isfile(name_only + number + u'.' + ext)):
+                    number = u'(' + str(j) + u')'
                     j += 1
-                self.file_name = name_only + number + '.' + ext
+                self.file_name = name_only + number + u'.' + ext
         
         # Find and store a callable version of the given metric:
         self._print(u"Laying the Laws of Physics", u"Setting the Metric")
@@ -668,10 +668,11 @@ class Analyst:
                 raise ValueError(u"FATAL ERROR: Without embeddings, you must "
                     u"give both an encoder and strings!")
             else:
-                self._print(u"Stretching the Fabric of Space and Time",
+                self._print(u"Stretching Fabric of Space and Time",
                     u"Finding Embeddings")
-                self.space = np.array([encoder(w) for w in # TODO: use np.vectorize? Can't show progress...
-                    tqdm(strings, disable=(not self.auto_print))])
+                self.space = np.array([encoder(w) for w in
+                    tqdm(strings, disable=not self.auto_print)])
+                # TODO: use np.vectorize?
         else: self.space = embeddings
         #
         # Find strings:
@@ -714,8 +715,7 @@ class Analyst:
         # A separate Map for quick string indexing:
         self.s_to_ix = {}
         self._print(u"Indexing Planets", u"Making String-Index Mappings")
-        for ix, s in enumerate(
-                tqdm(self.strings, disable=(not self.auto_print))):
+        for ix, s in enumerate(self.strings):
             self.s_to_ix[s] = ix
         # NOTE: I'm not making vec_to_ix because I assume that the length of the
         #   vectors makes it more efficient to use s_to_ix[decode(vec)].
@@ -1332,11 +1332,16 @@ class Analyst:
         return new_d
 
     def save(self, file_name=None):
+        # NOTE: An Analyst with a space of one million 100D vectors and no
+        #   evaluators will pickle to around 7GB because of the quick encoders/
+        #   decoders. Most Evaluators will not add much more, though higher-D
+        #   vectors will take up more hard drive space.
         try:
             f_name = self.file_name if file_name is None else file_name
             if f_name is None:
                 f_name = self.description
             #obj._serialize()
+            self._print(u"Snapshotting the Universe", u"Saving the Analyst")
             with open(_file_extension(f_name), 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             self.file_name = f_name

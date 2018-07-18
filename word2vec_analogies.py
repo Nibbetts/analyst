@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 # ONLY WORKS IN PYTHON2?
 
 if __name__ == "__main__":
@@ -9,18 +10,16 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import pickle as pkl
     import os.path
+    import word2vec
 
 
-    MAX_LINES = 33000
 
     metric = "cosine"
+    model = word2vec.load("/home/nate/Projects/scholar/" \
+        "postagged_wikipedia_for_word2vec.bin")
 
-    with open("/home/nate/Projects/scholar/postagged_wikipedia_" \
-            "for_word2vec_30kn3kv.pkl", 'rb') as f:
-        model = pkl.load(f)
-
-    path_start = "/mnt/pccfs/backed_up/zac/zac_desktop/zac_docs/Corpora/" \
-        "subcorp_analogy_storage/analogy_subcorp"
+    path_start = "/mnt/pccfs/backed_up/nathan/Projects/" \
+        "analogy_corpora_postagged/analogy_subcorp"
     path_ends = [
         "1_capitals_countries",
         "2_capitals_world",
@@ -50,8 +49,6 @@ if __name__ == "__main__":
         metric=metric,
         desc="Word2Vec Analogies",
         evaluators=[anagc] + corpora, # + ["all"],
-        auto_save=True)
-
-    file_name = "saved_analyses/an" + str(MAX_LINES) + \
-        "_fasttext_non-normalized_euclidean"
-    print("Success at saving: " + str(an.Analyst.save(an_fnc, file_name)))
+        auto_save=True,
+        over_write=True,
+    )

@@ -33,7 +33,6 @@ import tensorflow_hub as hub
 MAX_LINES = 100000
 METRIC = "cosine"
 TAG = "utterance_clusters"
-CLUSTERS_TYPE = "Nuclei"
 
 # Process a line-separated utterance file and encode it with the U.S.E:
 def process_file(file_name):
@@ -64,14 +63,17 @@ def process_file(file_name):
 # Make an Analyst and let it compute:
 def run_analyst(lines, pts, tag=TAG, save=True):
     print("Analyzing space...")
+
+    nucleizer = an.evaluators.nucleus_clusterizer.NucleusClusterizer(
+        hub_category="Nodal 8-Hubs")
+
     a = an.Analyst(
         embeddings=pts[:MAX_LINES],
         strings=lines[:MAX_LINES],
         metric=METRIC,
         auto_print=True,
         desc=tag + "_" + str(len(lines)),
-        evaluators=[CLUSTERS_TYPE],
-        calculate=True
+        evaluators=[nucleizer],
     )
 
     if save:
@@ -85,8 +87,7 @@ def run_analyst(lines, pts, tag=TAG, save=True):
 
 # Extracts and orders clusters from an analyst:
 def get_ordered_clusters(analyst_inst, ordering="population"):
-    clusterizer = analyst_inst.find_evaluator(
-        CLUSTERS_TYPE, force_creation=True)
+    clusterizer = analyst_inst.find_evaluator("Nuclei", force_creation=True)
     clusters = clusterizer.get_clusters()
 
     if ordering == "population":
@@ -147,8 +148,8 @@ def utterance_clusters_from_file(input_file, tag=TAG):
 # SCRIPT BEHAVIOR:
 #   Example:
 #       Run this command from the analyst_project directory:
-#           "python3 experiments/utterance_clusters.py input_utterances_path
-#           [output_tag] [max_lines]"
+#           "python3 utterance_clusters.py input_utterances_path [output_tag]
+#           [max_lines]"
 #       And it will save to the experiments directory.
 #   NOTE: if output_tag is undefined, will default to "utterance_clusters".
 #       We use a tag instead of a name because multiple files are generated.

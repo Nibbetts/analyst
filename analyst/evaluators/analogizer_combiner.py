@@ -1,9 +1,11 @@
 from abc import abstractmethod
 from tqdm import tqdm
 import numpy as np
+import traceback
 
 from .evaluator import Evaluator
 from .analogizer import Analogizer
+import analyst
 
 
 class AnalogizerCombiner(Evaluator, object):
@@ -37,9 +39,6 @@ class AnalogizerCombiner(Evaluator, object):
         find_evaluator = kwargs["find_evaluator_fn"]
         evaluators     = kwargs["evaluator_list"]
 
-        printer("Compiling Wisdom and Knowledge",
-            "Combining Analogical Results")
-
         # Fill in Analogizer Lists:
         self.analogizers = []
         if self.analogizer_categories is None:
@@ -51,7 +50,7 @@ class AnalogizerCombiner(Evaluator, object):
                 # Only adds ones which inherit from Analogizer class.
         else:
             for i, c in enumerate(self.analogizer_categories):
-                if isinstance(c, str):
+                if analyst.isstring(c):
                     a = find_evaluator(c)
                     if a is not None: self.analogizers.append(a)
                     else: printer("WARNING: {} dropped {}; no evaluator with "
@@ -67,42 +66,53 @@ class AnalogizerCombiner(Evaluator, object):
         for a in self.analogizers:
             a.calculate(**kwargs)
 
+        printer("Compiling Wisdom and Knowledge",
+            "Combining Analogical Results")
+            
         self.data_dict["Analogizer Count"] = len(self.analogizers)
 
         if len(self.analogizers) > 0:
-            correct = np.concatenate([a.correct for a in self.analogizers])
-            self.score = np.sum(correct) / float(len(correct))
-            self.distances = np.concatenate(
-                [a.distances for a in self.analogizers])
-            self.lengths = np.concatenate([a.lengths for a in self.analogizers])
+            try:
+                correct = np.concatenate([a.correct for a in \
+                    self.analogizers if len(a.correct) != 0])
+                self.score = np.sum(correct) / float(len(correct))
+                self.distances = np.concatenate([a.distances for a in \
+                    self.analogizers if len(a.distances) != 0])
+                self.lengths = np.concatenate([a.lengths for a in \
+                    self.analogizers if len(a.lengths) != 0])
+            except ValueError as e:
+                traceback.print_exc()
+                correct = []
 
-            # Overall Stats
             self.data_dict["Analogy Count"] = len(correct)
             self.data_dict["Dropped Count"] = sum(
                 [len(a.dropped) for a in self.analogizers])
-            self.data_dict["Accuracy"] = self.score
 
-            # Category Score Data
-            self.score_list = np.array([a.score for a in self.analogizers])
-            self.data_dict["Most Accurate Category"] = self.analogizers[
-                np.argmax(self.score_list)].CATEGORY
-            self.data_dict["Least Accurate Category"] = self.analogizers[
-                np.argmin(self.score_list)].CATEGORY
-            self._compute_list_stats(
-                self.score_list, "Category Score", self.data_dict)
+            if len(correct) > 0:
+                self.data_dict["Accuracy"] = self.score
 
-            # Distance from point found to answer point
-            self._compute_list_stats(self.distances,
-                "Dist All from Answer", self.data_dict)
-            self._compute_list_stats(self.distances[np.nonzero(correct)],
-                "Dist for Correct", self.data_dict)
-            self._compute_list_stats(self.distances[np.nonzero(1 - correct)],
-                "Dist for Incorrect", self.data_dict)
+                # Category Score Data
+                self.score_list = np.array([a.score for a in self.analogizers])
+                self.data_dict["Most Accurate Category"] = self.analogizers[
+                    np.argmax(self.score_list)].CATEGORY
+                self.data_dict["Least Accurate Category"] = self.analogizers[
+                    np.argmin(self.score_list)].CATEGORY
+                self._compute_list_stats(
+                    self.score_list, "Category Score", self.data_dict)
 
-            # Distance from c to d; the length of the analogy vector
-            self._compute_list_stats(self.lengths,
-                "Analogy Length", self.data_dict)
-            self._compute_list_stats(self.lengths[np.nonzero(correct)],
-                "Length Correct", self.data_dict)
-            self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
-                "Length Incorrect", self.data_dict)
+                # Distance from point found to answer point
+                self._compute_list_stats(self.distances,
+                    "Dist All from Answer", self.data_dict)
+                self._compute_list_stats(self.distances[np.nonzero(correct)],
+                    "Dist for Correct", self.data_dict)
+                self._compute_list_stats(
+                    self.distances[np.nonzero(1 - correct)],
+                    "Dist for Incorrect", self.data_dict)
+
+                # Distance from c to d; the length of the analogy vector
+                self._compute_list_stats(self.lengths,
+                    "Analogy Length", self.data_dict)
+                self._compute_list_stats(self.lengths[np.nonzero(correct)],
+                    "Length Correct", self.data_dict)
+                self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
+                    "Length Incorrect", self.data_dict)

@@ -3,6 +3,7 @@ from tqdm import tqdm
 import numpy as np
 
 from .evaluator import Evaluator
+import analyst
 
 
 # DEFAULTS:
@@ -88,39 +89,42 @@ class Analogizer(Evaluator, object):
         printer       = kwargs["printer_fn"]
         metric        = kwargs["metric_fn"]
 
-        printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
-        data = list(zip(*[
-            self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
-                disable=(not show_progress))]))
-        answers = data[0]
-        vectors = data[1]
-
-        self.correct = np.array(answers) == [a[3] for a in self.analogies]
-        self.score = np.sum(self.correct) / float(len(self.analogies))
-        self.distances = np.array([metric(group[3], vectors[i]) \
-            for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
-        self.lengths = np.array([metric(group[2], vectors[i]) \
-            for i, group in enumerate(self.analogy_vectors)])
-
         self.data_dict["Analogy Count"] = len(self.analogies)
         self.data_dict["Dropped Count"] = len(self.dropped)
-        self.data_dict["Accuracy"] = self.score
 
-        # Distance from point found to answer point
-        self._compute_list_stats(self.distances,
-            "Dist All from Answer", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(self.correct)],
-            "Dist for Correct", self.data_dict)
-        self._compute_list_stats(self.distances[np.nonzero(1 - self.correct)],
-            "Dist for Incorrect", self.data_dict)
+        printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
+        if len(self.analogies) > 0:
+            data = list(zip(*[
+                self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
+                    disable=(not show_progress))]))
+            answers = data[0]
+            vectors = data[1]
 
-        # Distance from c to d; the length of the analogy vector
-        self._compute_list_stats(self.lengths,
-            "Analogy Length", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
-            "Length Correct", self.data_dict)
-        self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
-            "Length Incorrect", self.data_dict)
+            self.correct = np.array(answers) == [a[3] for a in self.analogies]
+            self.score = np.sum(self.correct) / float(len(self.analogies))
+            self.distances = np.array([metric(group[3], vectors[i]) \
+                for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
+            self.lengths = np.array([metric(group[2], vectors[i]) \
+                for i, group in enumerate(self.analogy_vectors)])
+
+            self.data_dict["Accuracy"] = self.score
+
+            # Distance from point found to answer point
+            self._compute_list_stats(self.distances,
+                "Dist All from Answer", self.data_dict)
+            self._compute_list_stats(self.distances[np.nonzero(self.correct)],
+                "Dist for Correct", self.data_dict)
+            self._compute_list_stats(
+                self.distances[np.nonzero(1 - self.correct)],
+                "Dist for Incorrect", self.data_dict)
+
+            # Distance from c to d; the length of the analogy vector
+            self._compute_list_stats(self.lengths,
+                "Analogy Length", self.data_dict)
+            self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
+                "Length Correct", self.data_dict)
+            self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
+                "Length Incorrect", self.data_dict)
 
     # OVERRIDEABLE
     def analogy(self, string_a, string_b, string_c, **kwargs):
@@ -198,7 +202,7 @@ class Analogizer(Evaluator, object):
         encode     = kwargs["encoder_fn"]
 
         # Force input if no corpus found:
-        if not isinstance(self.file_name, str):
+        if not analyst.isstring(self.file_name):
             raise ValueError("NO FILENAME GIVEN FOR {}!".format(self.CATEGORY))
 
         # Process the file
@@ -206,8 +210,9 @@ class Analogizer(Evaluator, object):
         with open(self.file_name, 'r') as f:
             #lines = f.readlines()
             whole = f.read()
-        analogies = whole.split(self.analogy_sep)
-        analogies = [group.split(self.item_sep) for group in analogies]
+        analogies = whole.strip().split(self.analogy_sep)
+        analogies = [group.strip().split(self.item_sep) for group in analogies \
+            if not group.isspace() and len(group) != 0]
         analogies = [[item.strip() for item in a] for a in analogies]
 
         # Certify each is length 4:
