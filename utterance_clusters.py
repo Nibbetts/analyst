@@ -33,6 +33,8 @@ import tensorflow_hub as hub
 MAX_LINES = 100000
 METRIC = "cosine"
 TAG = "utterance_clusters"
+UTTERANCES_TO_PRINT = 30
+HUB_THRESHOLD = 8
 
 # Process a line-separated utterance file and encode it with the U.S.E:
 def process_file(file_name):
@@ -65,7 +67,7 @@ def run_analyst(lines, pts, tag=TAG, save=True):
     print("Analyzing space...")
 
     nucleizer = an.evaluators.nucleus_clusterizer.NucleusClusterizer(
-        hub_category="Nodal 8-Hubs")
+        hub_category=u"Nodal " + str(HUB_THRESHOLD) + u"-Hubs")
 
     a = an.Analyst(
         embeddings=pts[:MAX_LINES],
@@ -118,7 +120,7 @@ def report(analyst_inst, clusters, ordering, tag=TAG, save=True):
         report += "\nDispersion: " + str(c.stats_dict["Dispersion"])
         
         inds = np.argsort(c.centroid_distances)
-        sorted_objs = np.array(c.objects)[inds[:10]]
+        sorted_objs = np.array(c.objects)[inds[:UTTERANCES_TO_PRINT]]
         report += "\nSample Utterances:"
         for u in sorted_objs:
             report += "\n\t" + u
