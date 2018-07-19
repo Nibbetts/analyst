@@ -8,6 +8,7 @@ embeddings/*.h5
 *.dill
 *.pyc
 *.py~
+*.bin
 *__pycache__*
 #experiments
 *utterance_*.txt

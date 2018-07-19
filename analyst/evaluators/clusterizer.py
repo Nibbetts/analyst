@@ -103,12 +103,12 @@ class Clusterizer(Evaluator, object):
                     found! " + self.CATEGORY + " will have no information on \
                     contained Nodes.")
             else:
-                s_to_node = self.node_clusterizer.get_string_node_dict()
+                s_to_node = self.node_clusterizer.get_string_node_dict(**kwargs)
                 
             nodes = []
             for i, group in enumerate(self.vector_groups):
                 objects = [decoder(v) for v in group]
-                nodes = [s_to_node[o] for o in objects] \
+                nodes = [s_to_node[o] for o in objects if o in s_to_node] \
                     if s_to_node != None else []
                 self.clusters.append(Cluster(
                     self.CATEGORY, encoder, metric,
@@ -127,6 +127,8 @@ class Clusterizer(Evaluator, object):
         self.data_dict["Count"] = len(self.clusters)
         
         if len(self.clusters) > 0:
+            self.data_dict["Subcluster Category"] = \
+                self.clusters[0].SUBCLUSTER_CATEGORY
             skip = self.clusters[0].QUIET_STATS if \
                 self.clusters[0].quiet_stats_override == None else \
                 self.clusters[0].quiet_stats_override

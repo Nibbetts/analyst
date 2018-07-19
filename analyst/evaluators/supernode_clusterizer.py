@@ -15,6 +15,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
             category=category, starred=starred)
         self.nodes = None
         self.D = None
+        self.NODE_CATEGORY = node_category
 
     def compute_clusters(self, space, show_progress=True, **kwargs):
         printer            = kwargs["printer_fn"]
@@ -31,7 +32,7 @@ class SupernodeClusterizer(NodeClusterizer, object):
         # No need to make sure Nodes are computed before Supernodes,
         #   since get_nodes ensures this for us:
         node_clusterizer = clusterizer_getter(
-            self.node_category, force_creation=True)
+            self.NODE_CATEGORY, force_creation=True)
         self.nodes = node_clusterizer.get_clusters(**kwargs)
 
         if len(self.nodes) > 0:
@@ -75,6 +76,8 @@ class SupernodeClusterizer(NodeClusterizer, object):
         self.add_generic_node_stats()
 
         if len(self.clusters) > 0:
+            self.data_dict["Node Category"] = self.NODE_CATEGORY
+
             # Island Factor
             printer("Minding the Macrocosm", "Calculating Island Factor")
             self.data_dict["Island Factor"] = (

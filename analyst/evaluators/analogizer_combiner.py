@@ -116,3 +116,9 @@ class AnalogizerCombiner(Evaluator, object):
                     "Length Correct", self.data_dict)
                 self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
                     "Length Incorrect", self.data_dict)
+
+                self.add_star("Accuracy")
+                self.add_star("Analogy Length Avg")
+                self.add_star("Most Accurate Category")
+                self.add_star("Least Accurate Category")
+                self.add_star("Category Score Histogram Key")

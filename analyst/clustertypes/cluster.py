@@ -14,6 +14,7 @@ class Cluster:
         "Nodes",
         "Objects",
         "Subcluster IDs",
+        "Subcluster Count"
 
         "Centr Dist Avg",
         "Centr Dist Min",
@@ -190,10 +191,10 @@ class Cluster:
         self.stats_dict["Name"] = self.name
         self.stats_dict["Medoid"] = self.medoid
         self.stats_dict["Population"] = len(self.objects)
-        #if self.SUBCLUSTER_CATEGORY is not None:
         self.stats_dict["Subcluster Category"] = self.SUBCLUSTER_CATEGORY
-        self.stats_dict["Subcluster Count"] = len(self.subcluster_ids)
-        self.stats_dict["Subcluster IDs"] = self.subcluster_ids
+        if self.SUBCLUSTER_CATEGORY is not None:
+            self.stats_dict["Subcluster Count"] = len(self.subcluster_ids)
+            self.stats_dict["Subcluster IDs"] = self.subcluster_ids
 
         if len(self.objects) > 0:
 
@@ -254,8 +255,6 @@ class Cluster:
             self.stats_dict["Norm Max"]   = n_max
             self.stats_dict["Norm Range"] = n_max - n_min # This one NOT quiet.
             self.stats_dict["Norm Std"]   = np.std(self.norms)
-
-
 
             self.stats_dict["Nodes"]      = \
                 [str(node) for node in sorted(self.nodes)]

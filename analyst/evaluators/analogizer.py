@@ -85,6 +85,8 @@ class Analogizer(Evaluator, object):
         #   number of correct results and dividing by number of analogies,
         #   Though we will also give some distance stats.
 
+        assert len(kwargs["embeddings"]) >= 4
+
         show_progress = kwargs["draw_progress"]
         printer       = kwargs["printer_fn"]
         metric        = kwargs["metric_fn"]
@@ -92,7 +94,7 @@ class Analogizer(Evaluator, object):
         self.data_dict["Analogy Count"] = len(self.analogies)
         self.data_dict["Dropped Count"] = len(self.dropped)
 
-        printer("Philosophizing about Relations", "Scoring Mikolov Analogies")
+        printer("Philosophizing about Relations", "Scoring Analogies")
         if len(self.analogies) > 0:
             data = list(zip(*[
                 self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
@@ -126,6 +128,10 @@ class Analogizer(Evaluator, object):
             self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
                 "Length Incorrect", self.data_dict)
 
+            self.add_star("Accuracy")
+            self.add_star("Dist for Correct Avg")
+            self.add_star("Dist for Incorrect Avg")
+
     # OVERRIDEABLE
     def analogy(self, string_a, string_b, string_c, **kwargs):
         # string_a, string_b, and string_c are the given analogy items.
@@ -141,7 +147,9 @@ class Analogizer(Evaluator, object):
         # This particular implementation is a simple, Mikolov-type analogy.
 
         encode   = kwargs["encoder_fn"]
-        stringit = kwargs["as_string_fn"]
+        #stringit = kwargs["as_string_fn"]
+        nbrs_of  = kwargs["arbitrary_neighbors_fn"]
+        strings  = kwargs["strings"]
         # NOTE: we use as_string because the decoder only works on known objs!
 
         a = encode(string_a)
@@ -149,7 +157,13 @@ class Analogizer(Evaluator, object):
         c = encode(string_c)
         d = b - a + c # our nearest guess for what d is
 
-        return stringit(d, in_model=False), d
+        # Grab the four closest, just in case the first three are source words,
+        #   which we exclude by default. See InclusiveAnalogizer otherwise.
+        nbrs_ix = nbrs_of(d, indeces=range(4))
+        sources = [string_a, string_b, string_c]
+        for index in nbrs_ix:
+            if strings[index] not in sources:
+                return strings[index], d
 
 
     # The Analyst will call this function, which pulls it all together.

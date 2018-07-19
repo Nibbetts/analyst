@@ -277,17 +277,21 @@ class Distances:
         d = self.distances_from_arbitrary(vector)
         return np.argpartition(d, k)[k]
             
-    def neighbors_of_arbitrary(self, vector):
-        # Takes a vector not in the model and finds its distance to every obj
+    def neighbors_of_arbitrary(self, vector, indeces=None):
+        # Takes a vector NOT IN THE MODEL and finds its distance to every obj
         #   in the model, returning a 1D array of indeces (not vectors!)
-        # Includes an extra optimization for the common case
-        #   that metric is cosine similarity.
         # NOTE: results are not stored, so recomputes every time.
-        if self.metric_str != u"cosine":
-            return np.argsort(self.distances_from_arbitrary(vector))
+        #if self.metric_str != u"cosine":
+        distances = self.distances_from_arbitrary(vector)
+        if indeces is None:
+            return np.argsort(distances)
         else:
-            distances = np.dot(self.space, np.array([vector]).T.squeeze())
-            return distances.argsort()[::-1]
+            return np.argpartition(distances, indeces)[indeces]
+        # Includes an extra optimization for the common case
+        #   that metric is cosine similarity. # REMOVED FOR INDECES OPTIMIZATION
+        # else:
+        #     distances = np.dot(self.space, np.array([vector]).T.squeeze())
+        #     return distances.argsort()[::-1]
 
     def nearest_to_arbitrary(self, vector):
         # Takes in a vector and returns the index of the nearest object in the
@@ -516,6 +520,7 @@ class Analyst:
 
     BUILT_IN_CATEGORIES = [
         u"Spatial",
+        u"KMeans",
         u"Nodes",
         u"Extremities",
         u"Supernodes",
@@ -524,7 +529,8 @@ class Analyst:
         u"Chains",
         u"NCC",
         u"LNCC",
-        u"Anti-hubs"]
+        u"Anti-hubs",
+    ]
 
     def __init__(self, embeddings=None, strings=None,
         encoder=None, decoder=None, metric=u"cosine", evaluators=[u"All"],
@@ -841,16 +847,29 @@ class Analyst:
     def find_evaluator(self, category, force_creation=False):
         # force_creation: whether or not to create a default evaluator for
         #   built-ins, AND TO ADD IT to the Analyst.
+        cat = category.lower()
         for e in self.evaluators:
-            if str(e.CATEGORY) == category: return e
+            if str(e.CATEGORY.lower()) == cat: return e
+        for e in self.evaluators: # To find modified categories, ex. '5-Hubs':
+            # But note, it picks the first match it finds, so this will be a
+            #   problem if you've told it to compute two versions of a category.
+            if cat in str(e.CATEGORY.lower()):
+                print("DECISION: Found no category '" + category + "'; " \
+                    "using '" + e.CATEGORY + "' instead.")
+                return e
         if force_creation: 
             e = Analyst.make_default_evaluator(str(category))
             self.add_evaluators(e)
             return e
         return None
 
-    def get_clusters(self, category):
-        return self.find_evaluator(category).get_clusters()
+    def get_clusters(self, category, force_creation=False):
+        try:
+            return self.find_evaluator(
+                category, force_creation=force_creation).get_clusters()
+        except:
+            traceback.print_exc()
+            return None
 
     # Makes Built-in Clusterizers with Default Values:
     # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
@@ -882,6 +901,13 @@ class Analyst:
             return HubClusterizer(threshold=thresh, nodal=nodal, category=cat)
         elif cat == u"nuclei":
             return NucleusClusterizer()
+        elif cat[-6:] == "kmeans":
+            try:
+                if cat[-7] == '-': k = int(cat[:-7])
+                cat = str(k) + "-KMeans"
+                return KMeansClusterizer(category=cat, k_or_guess=k)
+            except:
+                return KMeansClusterizer(category="KMeans", k_or_guess=None)
         # ADD STUFF!!
         else:
             print(u"UNRECOGNIZED BUILT-IN EVALUTATOR '"
@@ -1026,7 +1052,8 @@ class Analyst:
                     % evaluator.CATEGORY)
         
         if self.auto_save:
-            if self.file_name != None: self.save()
+            if self.file_name != None:
+                self.save()
             else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
                 "ONCE; NO FILENAME.")
 
@@ -1291,8 +1318,9 @@ class Analyst:
             self.category_lists[i].append((description, variable, star))
 
     def _print(self, string=u"", report=None):
-        if self.auto_print: print("{:<40}".format(u"\r" + str(string) + u"...")
-            + ("" if report is None else u"(" + report + u")"))
+        if self.auto_print:
+            print("{:<40}".format(u"\r" + str(string) + u"...")
+                + ("" if report is None else u"(" + report + u")"))
 
     def print_report(self, w=10, report_path=None, auto_print=True):
         self._print(u"Revealing the Grand Plan", u"Printing Report")

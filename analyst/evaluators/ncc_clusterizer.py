@@ -6,8 +6,8 @@ from .clusterizer import Clusterizer
 class NCCClusterizer(Clusterizer, object):
 
     def __init__(self, category="NCC", starred=None,
-            node_category="Nodes", hub_category_nodal="Nodal 4-Hubs",
-            hub_category_branching="Branching 4-Hubs"):
+            node_category="Nodes", hub_category_nodal="Hubs",
+            hub_category_branching="Branching Hubs"):
         #   Notice we can add custom parameters.
 
         super(NCCClusterizer, self).__init__(

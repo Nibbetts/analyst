@@ -116,6 +116,12 @@ class HubClusterizer(Clusterizer, object):
         # Run the basic stats first:
         super(HubClusterizer, self).compute_stats(**kwargs)
 
+        self.add_star("Population Standard Dev")
+        self.add_star("Dispersion Avg")
+        self.add_star("Dispersion Range")
+        self.add_star("Repulsion Avg")
+        self.add_star("Count")
+
         # TODO:
         # Then add our own:
         #!!!!add uniformity of density, by comparing hub dispersion range to space dispersion range, and maybe ln or sqrt to invert relationship?

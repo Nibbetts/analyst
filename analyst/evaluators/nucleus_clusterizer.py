@@ -5,7 +5,7 @@ from .clusterizer import Clusterizer
 class NucleusClusterizer(Clusterizer, object):
 
     def __init__(self, category="Nuclei", starred=None,
-            node_category="Nodes", hub_category="Nodal 4-Hubs"):
+            node_category="Nodes", hub_category="Hubs"):
 
         super(NucleusClusterizer, self).__init__(
             category=category, starred=starred, node_category=node_category)
@@ -83,6 +83,12 @@ class NucleusClusterizer(Clusterizer, object):
             c.CATEGORY = self.CATEGORY
             c.ID = i
             c.calculate()
+
+        self.add_star("Population Standard Dev")
+        self.add_star("Dispersion Avg")
+        self.add_star("Dispersion Range")
+        self.add_star("Repulsion Avg")
+        self.add_star("Count")
 
     # Even though we have already filled in self.clusters, we needn't override
     #   vectors_to_clusters which does so, since it checks for this.
