@@ -60,11 +60,10 @@ def load(f_name, print_report=False):
             #     print_report=print_report, auto_save=False, recalculate=[])
             # return an
             return pickle.load(file)
-    except Exception as e:
+    except:
+        traceback.print_exc()
         print(u"ERROR: Unable to load Analyst object "
             u"from file: '{}'".format(name))
-        print(e)
-        #raise e
         return None
 
 def unsave(file_name):
@@ -202,6 +201,7 @@ class Distances:
                 #   a distance vector, so we have to use some special indexing.
                 #   Converting to squareform would take ~twice as much memory.
             except: # NOTE: catching a memory error probably won't work!
+                traceback.print_exc()
                 print("FAILED TO MAKE DISTANCE MATRIX; "
                     "PROBABLY NOT ENOUGH MEMORY!")
                 self.make_distance_matrix = False
@@ -526,10 +526,10 @@ class Analyst:
         u"Supernodes",
         u"Hubs",
         u"Nuclei",
-        u"Chains",
-        u"NCC",
-        u"LNCC",
-        u"Anti-hubs",
+        #u"Chains",
+        #u"NCC",
+        #u"LNCC",
+        #u"Anti-hubs",
     ]
 
     def __init__(self, embeddings=None, strings=None,
@@ -654,8 +654,8 @@ class Analyst:
                 #   Only worked in python2.
                 self.metric = sp.distance._TEST_METRICS[
                     u"test_" + self.metric_str]
-            except Exception as e:
-                print(e)
+            except:
+                traceback.print_exc()
                 raise ValueError(u"FATAL ERROR: %s PARAMETER UNRECOGNIZED "
                     u"AND UNCALLABLE!"
                     % str(metric))
@@ -1044,12 +1044,16 @@ class Analyst:
                 for (key, value) in data_dict.items():
                     self._add_info(value, category, key, key in starred)
 
-            except Exception: # as e:
-                #print(e)
+            except:
                 traceback.print_exc()
                 print(u"ERROR IN CALCULATION OF %s."# DOES YOUR EVALUATOR "
                     #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
+
+        # For convenience, we print the report before taking time to save;
+        #   this behavior is protected from losing data with a try block in the
+        #   print_report function:
+        if print_report: self.print_report()
         
         if self.auto_save:
             if self.file_name != None:
@@ -1057,12 +1061,10 @@ class Analyst:
             else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
                 "ONCE; NO FILENAME.")
 
-        if print_report: self.print_report()
-
 
     # SPECIFICS INSPECTION:
 
-    def graph(self, hist_key, bins=64, **kwargs):
+    def graph_hist(self, hist_key, bins=64, **kwargs):
         """
             Description: creates a histogram according to key printed in report.
         """
@@ -1076,6 +1078,58 @@ class Analyst:
         plt.title(self.graph_info[hist_key][1])
         plt.show()
 
+    @staticmethod
+    def graph_comparison(ana_list, category, description):
+        """
+            Description:
+                Creates a bar graph for a given stat across multiple Analysts.
+        """
+        vals = [a.get_category_stats(category)[description] for a in ana_list]
+        labels = [a.description for a in ana_list]
+        x = range(len(ana_list))
+
+        plt.bar(x, vals, align='center')
+        plt.xticks(x, labels)
+        plt.ylabel(category + ": " + description)
+        plt.title("Analyst Comparison")
+        plt.show()
+
+    @staticmethod
+    def graph_multi(ana_list, group_by_stat=True, *cat_desc_pairs):
+        """
+            Description:
+                Creates a multi-bar graph showing stats side-by-side for
+                multiple Analysts.
+            Inputs:
+                ana_list: a list of analysts.
+                group_by_stat: True means bars will be grouped by stat,
+                    False means bars will be grouped by Analyst.
+                *cat_desc_pairs: variable number of remaining arguments, each
+                    of the form ("Category", "Description").
+        """
+        categories, descriptions = zip(*cat_desc_pairs)
+        vals = np.array([ # one row per analyst, one column per stat.
+            [a.get_category_stats(c)[descriptions[i]] \
+                for i, c in enumerate(categories)] \
+            for a in ana_list])
+        keys = [a.description for a in ana_list]
+        labels = [t[0] + ": " + t[1] for t in cat_desc_pairs]
+
+        if not group_by_stat:
+            (keys, labels) = (labels, keys)
+            vals = vals.T
+
+        x = range(len(keys))
+        width = 1.0 / len(keys)
+        for i in x:
+            plt.bar(x + width * i, vals[i], width, label=key[i])
+            
+        plt.ylabel("Value")
+        plt.title("Analyst Comparison on Various Stats")
+        plt.xticks(x + 0.5, labels)
+        plt.legend(loc='best')
+        plt.show()
+
 
     # COMPARATIVE:
 
@@ -1086,9 +1140,11 @@ class Analyst:
         w = max(9, width)
         result = ""
         try:
-            if data is None:
-                result = " " * w
-            elif isstring(data) or parentheses or not np.isfinite(data):
+            if (data is None or type(data) == list or
+                    type(data) == type(np.ndarray)):
+                data = str(data)
+
+            if isstring(data) or parentheses or not np.isfinite(data):
                 # Strings or Bytestrings
                 result = " " # For negatives on others
                 if parentheses: result += "(" + str(data) + ")"
@@ -1112,11 +1168,14 @@ class Analyst:
                     format_str = "{: " + str(w - 1) + "." \
                         + str(w - 2 - len(str(int(abs(data))))) + "f}"
                     result = format_str.format(data)
-        except: print("ERROR, Non-reportable data:", data)
+        except:
+            traceback.print_exc()
+            print("ERROR, Non-reportable data:", data)
         return result
 
     @staticmethod
-    def compare(ana_list, w=10, comparators=[u"default"], report_path=None):
+    def compare(ana_list, w=10, comparators=[u"default"], report_path=None,
+            categories=None):
         # Lists side by side the values for each analyst in the list,
         #   as well as a column for each comparator, run on that stat.
         # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
@@ -1137,6 +1196,7 @@ class Analyst:
         #   "odd_one_out": spikes when one value differs largely from others
         # ana_list: a list of analysts. Kinda thought that was clear... :)
         # report_path: file path to save report to.
+        # categories: list of category names, if want to limit what prints.
         # Returns: an ordered stat_dict keyed to tuples (Category, Description),
         #   and a grapher object with multi-histogram information from TODO !!!!!!!!!!!!!!!!!!!!!!!!!!
         #   the comparison.
@@ -1244,10 +1304,13 @@ class Analyst:
                 datalist = [values[(a, d)] if (a, d) in values else u"" \
                     for a in range(len(ana_list))]
                 # Comparisons:
-                numbers = [d for d in datalist if not isstring(d)]
-                if numbers == [] or is_hist:
+                numbers = [d for d in datalist if (
+                    not isstring(d) and d is not None and np.isscalar(d))]
+                if numbers is [] or is_hist:
                     comps = [u""] * len(comparisons)
-                else: comps = [comp(numbers) for comp in comparisons]
+                else:
+                    try: comps = [comp(numbers) for comp in comparisons]
+                    except: comps = [u""] * len(comparisons)
                 # Histograms:
                 #if is_hist:
                 #    if comps == []!!: comps = [len(graphs)]
@@ -1269,12 +1332,16 @@ class Analyst:
             return string
 
         # Put it all together - loop through cats in order and build result:
-        categories = []
-        for a in ana_list:
-            for c in a.categories:
-                if c not in categories:
-                    categories.append(c)
-                    result += get_category(c)
+        if categories is None:
+            used_categories = []
+            for a in ana_list:
+                for c in a.categories:
+                    if c not in used_categories:
+                        used_categories.append(c)
+                        result += get_category(c)
+        else: # If selective choice of categories:
+            for c in categories:
+                result += get_category(c)
                     
         # Print report, save file:
         print(result)
@@ -1322,37 +1389,50 @@ class Analyst:
             print("{:<40}".format(u"\r" + str(string) + u"...")
                 + ("" if report is None else u"(" + report + u")"))
 
-    def print_report(self, w=10, report_path=None, auto_print=True):
+    def print_report(self, w=10, report_path=None, auto_print=True,
+            categories=None):
         self._print(u"Revealing the Grand Plan", u"Printing Report")
         print(u"")
         result = ""
         stat_dict = OrderedDict()
+        if categories is None: categories = self.categories
 
-        if self.description != None: result += self.description.upper() + u"\n"
-        for i, category in enumerate(self.categories):
-            result += category + u":\n"
-            for cat in self.category_lists[i]:
-                stat_dict[(category, cat[0])] = cat[1]
-                result += u"  {}{} {}{}".format(
-                    "*" if cat[2] else u" ", # Stars
-                    Analyst._formatit(cat[1], w, u"Histogram Key" in cat[0], 3),
-                    u"*" if cat[2] else u" ", # Stars
-                    cat[0]) + u"\n"
+        try:
+            if self.description != None:
+                result += self.description.upper() + u"\n"
+            for i, category in enumerate(categories):
+                result += category + u":\n"
+                for cat in self.category_lists[i]:
+                    stat_dict[(category, cat[0])] = cat[1]
+                    result += u"  {}{} {}{}".format(
+                        "*" if cat[2] else u" ", # Stars
+                        Analyst._formatit(
+                            cat[1], w, u"Histogram Key" in cat[0], 3),
+                        u"*" if cat[2] else u" ", # Stars
+                        cat[0]) + u"\n"
 
-        if auto_print: print(result)
-        if report_path != None:
-            with open(report_path, 'w') as f:
-                f.write(result)
+            if auto_print: print(result)
+            if report_path != None:
+                with open(report_path, 'w') as f:
+                    f.write(result)
+
+        except:
+            traceback.print_exc()
+            print("ERROR IN PRINTING REPORT!")
+            print("CATEGORY INFORMATION:")
+            print(self.category_lists)
+            print("REPORT PATH:", report_path)
+
         
         # If not printing, will return an ordered dict instead, keyed to tuples:
         #   (category, description)
-        if not auto_print: return stat_dict #, grapher TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if not auto_print: return stat_dict #, grapher TODO.
 
     def get_category_stats(self, category, stat_dict=None):
         # Retrieve a dict containing only stats from desired category, such that
         #   new_d["Description"] == value
         # Works on multi-analyst stat_dicts as well.
-        d = self.print_report(auto_print=False) \
+        d = self.print_report(auto_print=False, categories=[category]) \
             if stat_dict == None else stat_dict
         new_d = OrderedDict()
         for k in d.keys():
@@ -1374,8 +1454,8 @@ class Analyst:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             self.file_name = f_name
             return True
-        except Exception as e:
-            print(e)
+        except:
+            traceback.print_exc()
             return False
 
 

@@ -162,14 +162,17 @@ class Evaluator:
 
         stats = {} if dictionary == None else dictionary
         
-        val_max = np.max(vals)
-        val_min = np.min(vals)
-        stats[attribute + " Avg"          ] = np.mean(vals)
-        stats[attribute + " Min"          ] = val_min
-        stats[attribute + " Max"          ] = val_max
-        stats[attribute + " Range"        ] = val_max-val_min
-        stats[attribute + " Standard Dev" ] = np.std(vals)
-        stats[attribute + " Histogram Key"] = vals
+        if len(vals) > 0:
+            val_max = np.max(vals)
+            val_min = np.min(vals)
+            stats[attribute + " Avg"          ] = np.mean(vals)
+            stats[attribute + " Min"          ] = val_min
+            stats[attribute + " Max"          ] = val_max
+            stats[attribute + " Range"        ] = val_max-val_min
+            stats[attribute + " Standard Dev" ] = np.std(vals)
+            stats[attribute + " Histogram Key"] = vals
+        else:
+            stats[attribute + " Stats"] = None
 
         return stats
 

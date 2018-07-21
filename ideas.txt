@@ -1,83 +1,81 @@
-Overall:
---------
-- build in anvaka's visualization?
-- fix all to work in python3 - check if evaluator kwargs need to be unicode,
-particularly if run and save in python 2, then go to 3 to run again.
-!Protocol level won't allow this?
-- test imports for unnecessary ones?
-- documentation
-- update metric_args to use a partial function instead, from functtools?
-Fix problem where metric_args doesn't work on non-scipy-builtins.
-Sholdn't interfere with scipy because of metric_str? Use update_wrapper, python3 book pg 145.
-Or if not functtools.partial, then functtools.partialmethod, or simple decorator.
-- use built-in print function's file-handler to output to file?
-
-Analyses:
----------
-- check if there are properties associated with length of vectors in non-normalized spaces,
-ex: check if outliers are longer
+For Research Paper:
+-------------------
 - on presentable analysis make sure that same words in each space, and or trained
 on same training data, maybe as separate analysis!
+- make funct to examine a group of given strings thoroughly - makes a cluster.
+adds it to where? Then use this to analyze analogical sets. Maybe look into
+cluster extremities! (strange attractors?) All info printed?
+
+Analyses / to Propose:
+---------
 - fasttext is not normalized - compare to self normalized!
+- check if there are properties associated with length of vectors in non-normalized spaces,
+ex: check if outliers are longer
 - compare before adn after being in an RNN. Norms, and also performance on analogies.
 - find which stats are most indicative of success, then add those into a loss function!!
 - various hub configurations side by side
 - (my, in purple notebook) outlier count in small space vs large, and node count.
+- cluster by length of vector to test?
+- make hubs of hubs
+- make k2means
 
-Analyst:
---------
+For use of users after research presented:
+------------------------------------------
+- documentation
+- fix all to work in python3 - check if evaluator kwargs need to be unicode,
+particularly if run and save in python 2, then go to 3 to run again.
+!Protocol level won't allow this?
+- test imports for unnecessary ones?
+
+Later Fixes:
+------------
+- test and add in eliptical yarax
 - make function to compare clustering or analogy algorithms in a given analyst
 (can be done in post-processing of text until this becomes relevant)
 compare_categories, side by side.
+- update metric_args to use a partial function instead, from functtools?
+Fix problem where metric_args doesn't work on non-scipy-builtins.
+Sholdn't interfere with scipy because of metric_str? Use update_wrapper, python3 book pg 145.
+Or if not functtools.partial, then functtools.partialmethod, or simple decorator.
+- make delete_evaluator function, and function to make it printable if not?
+or make it so that adding, when not a category for it, won't replace it?
+- add functionality to recompute stars and data but not clusters, or give disclaimer/
+warning that changing it won't work.
+
+Analyst:
+--------
+- add function to compare two clusters - use ward dissimilarity? In inspection
+of a given group, dissimilarity to all other clusters?
 - add in_frequency_order=False and frequencies=[] to analyst, complete with tests on that.
 - list words who are no one's nearest neighbor
+OR make a scholar-like evaluator that takes these info in and has functions.
 - decide if multi-comparison needs grapher....
 - make grapher object, and have analyst have it as a data member - analyst's graph
 function just call's its grapher's graph function.
-- make delete_evaluator function, and function to make it printable if not?
-or make it so that adding, when not a category for it, won't replace it?
 - continue adding make_default_evaluator options for new evaluators.
-- add functionality to recompute stars and data but not clusters, or give disclaimer/
-warning that changing it won't work.
 - evaluation indicators to test validity of an algorithm?
 Davies-Bouldin, Dunn, Silhouette coefficient; or for external evaluation:
 Rand indicator, F indicator, Jaccard indicator,Fowlkes-mallows indicator,
 Mutual information, Confusion matrix.
-
-Word Group Specific Analysis:
------------------------------
-- make a scholar evaluator?
-- make it so clusters only compute at start what is needed for report - other
-info can come in an inspection function! not printed when cluster printed.
-- make funct to examine a group of given strings thoroughly - makes a cluster.
-adds it to where?
-- look into cluster extremities! (strange attractors)
-- check if correct standard deviation of vectors from centroids - like dispersion:
-https://math.stackexchange.com/questions/2442132/generalize-standard-deviation-to-vectors
-(This is also for the space as a whole)
-- use ward dissimilarity somehow? In inspection of a given group, dissimilarity to
-all other clusters?
-- make second_downstream function? And maybe one that switches
-randomly if dist within epsilon
+- build in anvaka's visualization?
 
 Clusterizers TO DO:
 -------------------
 - compute both nodal and branching hubs at same time instead of redoing?
-- cluster by length of vector to test?
 - Spatial
     - include Local Outlier Factor, Local Reachability Density.
     Perhaps in separate clusterizer?
     - covariance, variance, 
-- Rest of built-ins
-- EM clustering (base default off of nodal hub count, or allow varying parameters)
-- make kmeans start from hub centroids, and base on hub count?
-- PHATE (base default off of nodal hub count, or allow varying parameters)
-- pick some other important ones, affinity?
-- Rule-based partitioning clusters (see purple notebook)
 - implement a k-means cheat clusterizer in which you pick words to be cluster centers,
 and partition the rest into those. ex: give specific example use cases for clusters,
 such as having a custom clustering algorithm which builds clusters stemmed from
 color words. include as example
+- make kmeans start from hub centroids, and base on hub count?
+- Rest of built-ins
+- EM clustering (base default off of nodal hub count, or allow varying parameters)
+- PHATE (base default off of nodal hub count, or allow varying parameters)
+- pick some other important ones, affinity?
+- Rule-based partitioning clusters (see purple notebook)
 
 
 

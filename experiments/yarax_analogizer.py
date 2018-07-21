@@ -5,7 +5,10 @@ import numpy as np
 from .analogizer import Analogizer
 import analogizer
 import analyst
+#BELONGS IN EVALUATORS FOLDER
 
+# TODO: test eliptical yarax, so that this is still a valid algorithm on
+#   non-normalized spaces!!
 
 
 class YaraxAnalogizer(Analogizer, object):

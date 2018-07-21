@@ -17,23 +17,22 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import pickle as pkl
     import os.path
-    #import gensim
-    #import tensorflow as tf
-    #import tensorflow_hub as hub
+    import gensim
+    import tensorflow as tf
+    import tensorflow_hub as hub
 
     #import tkinter
     #from tkinter import messagebox
 
 
-    MAX_LINES = 20000
-
+    MAX_LINES = 1000
+    """
     def normalize(vec):
         return vec/np.linalg.norm(vec)
 
-    #metric = "cosine"
-    metric = an.Analyst.angle
+    metric = "cosine"
 
-    '''def read_text_table(path, firstline=True, limit_lines=None):
+    def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()
         if firstline:
             numvecs, dim = map(int, lines[0].split(" "))
@@ -63,13 +62,13 @@ if __name__ == "__main__":
     str_f = list(map(str, str_f))
     embed_f = data_ft['vectors'][:MAX_LINES]
     embed_fn = np.array([normalize(v) for v in embed_f])
-    an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f, auto_print=True,
-        metric=metric, desc="Fasttext Normalized Cosine")
-    print("Success at saving Fasttext Normalized Cosine: "
+    an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f,
+        auto_print=False, metric=metric, desc="Fasttext Normalized")
+    print("Success at saving Fasttext Normalized: "
         + str(an.Analyst.save(an_fnc,
-            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized_cosine")))
+            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized")))
 
-    messagebox.showinfo("Information","Analysis 1 complete!")
+    #messagebox.showinfo("Information","Analysis 1 complete!")
 
     # ConceptNet Numberbatch:
     #   alphanumeric order.
@@ -82,11 +81,11 @@ if __name__ == "__main__":
     #embed_nb = np.array([embed_nb[i] for i in indeces_nb])
     embed_nb = embed_nb[indeces_nb]
     an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
-        auto_print=True, desc="ConceptNet Numberbatch")
+        auto_print=False, desc="ConceptNet Numberbatch")
     print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
         "saved_analyses/an" + str(MAX_LINES) + "_numberbatch")))
 
-    messagebox.showinfo("Information","Analysis 2 complete!")
+    #messagebox.showinfo("Information","Analysis 2 complete!")
 
     # # Fasttext Normalization Comparison:
     # an_fe = an.Analyst(embeddings=embed_f, strings=str_f, auto_print=True,
@@ -113,13 +112,13 @@ if __name__ == "__main__":
     common_w = [w for w in str_f if w in model_w.vocab.keys()]
     embed_w = [normalize(model_w.get_vector(w)) for w in common_w]
     an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
-        auto_print=True, desc="Word2Vec GoogleNews Normalized")
-    print("Success at saving Word2Vec GoogleNews Normalized: " +
+        auto_print=False, desc="GoogleNews Normalized")
+    print("Success at saving GoogleNews Normalized: " +
         str(an.Analyst.save(an_w,
             "saved_analyses/an" + str(MAX_LINES) +
-            "_word2vec_googlenews_normalized")))
+            "_googlenews_normalized")))
 
-    messagebox.showinfo("Information","Analysis 3 complete!")
+    #messagebox.showinfo("Information","Analysis 3 complete!")
 
     # GloVe:
     #   ordered by frequency, I think.
@@ -128,11 +127,11 @@ if __name__ == "__main__":
         "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
     embed_g = [normalize(v) for v in embed_g]
     an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
-        auto_print=True, desc="GloVe Normalized")
+        auto_print=False, desc="GloVe Normalized")
     print("Success at saving GloVe Normalized: " + str(an.Analyst.save(an_g,
         "saved_analyses/an" + str(MAX_LINES) + "_glove_normalized")))
 
-    messagebox.showinfo("Information","Analysis 4 complete!")
+    #messagebox.showinfo("Information","Analysis 4 complete!")
 
     # Universal Sentence Encoder:
     #   embeddings must be found by hand from things to encode.
@@ -145,19 +144,23 @@ if __name__ == "__main__":
         sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
         embed_u = sess.run(embed(str_f))
     an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
-        auto_print=True, desc="Universal Sentence Encoder with words")
-    print("Success at saving Universal Sentence Encoder with words: " +
+        auto_print=False, desc="Universal Sentence Encoder")
+    print("Success at saving Universal Sentence Encoder: " +
         str(an.Analyst.save(
             an_u, "saved_analyses/an" + str(MAX_LINES) +
-            "_universal_sentence_encoder_with_words")))
+            "_universal_sentence_encoder")))
 
-    messagebox.showinfo("Information","Analysis 5 complete!")'''
-
-    an_fnc = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_fasttext_normalized_cosine")
-    an_nb = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_numberbatch")
-    an_w = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_word2vec_googlenews_normalized")
-    an_g = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_glove_normalized")
-    an_u = an.Analyst.load("saved_analyses/5_degrees_normalized_20000/an" + str(MAX_LINES) + "_universal_sentence_encoder_with_words")
+    #messagebox.showinfo("Information","Analysis 5 complete!")'''
+    """
+    an_fnc = an.load("saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized")
+    an_nb  = an.load("saved_analyses/an" + str(MAX_LINES) + "_numberbatch")
+    an_w   = an.load("saved_analyses/an" + str(MAX_LINES) + "_googlenews_normalized")
+    an_g   = an.load("saved_analyses/an" + str(MAX_LINES) + "_glove_normalized")
+    an_u   = an.load("saved_analyses/an" + str(MAX_LINES) + "_universal_sentence_encoder")
 
     #an.Analyst.compare([an_fnc, an_fe, an_fne, an_fc])
-    an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])
+    #an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])
+
+    print(an_fnc.get_category_stats("Nodes"))
+    an.Analyst.graph_comparison([an_w, an_fnc, an_g, an_nb, an_u], "Nodes", "Count")
+    an.Analyst.graph_multi([an_w, an_fnc, an_g, an_nb, an_u], ("Nodes", "Count"))

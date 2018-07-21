@@ -16,11 +16,11 @@ class Cluster:
         "Subcluster IDs",
         "Subcluster Count"
 
-        "Centr Dist Avg",
-        "Centr Dist Min",
-        "Centr Dist Max",
-        "Centr Dist Range",
-        "Centr Dist Std",
+        "Ctr Dist Avg",
+        "Ctr Dist Min",
+        "Ctr Dist Max",
+        "Ctr Dist Range",
+        "Ctr Dist Std",
 
         "Norm Avg",
         "Norm Min",
@@ -209,7 +209,7 @@ class Cluster:
                 self.centroid_distances, axis=0)
 
             # Distance from Medoid to Centroid:
-            self.stats_dict["Medoid Dist to Centr"] = self.metric(
+            self.stats_dict["Medoid Dist to Ctr"] = self.metric(
                 self.vectors[medoid_i], self.centroid, **self.metric_args)
 
             # Calculate Standard Deviation:
@@ -241,11 +241,11 @@ class Cluster:
             # Mostly Quiet Stats, not used in Analyst, but printed in Cluster data:
             cd_min = np.min(self.centroid_distances)
             cd_max = np.max(self.centroid_distances)
-            self.stats_dict["Centr Dist Avg"] = self.stats_dict["Dispersion"]
-            self.stats_dict["Centr Dist Min"] = cd_min
-            self.stats_dict["Centr Dist Max"] = cd_max
-            self.stats_dict["Centr Dist Range"] = cd_max - cd_min
-            self.stats_dict["Centr Dist Std"] = np.std(self.centroid_distances)
+            self.stats_dict["Ctr Dist Avg"] = self.stats_dict["Dispersion"]
+            self.stats_dict["Ctr Dist Min"] = cd_min
+            self.stats_dict["Ctr Dist Max"] = cd_max
+            self.stats_dict["Ctr Dist Range"] = cd_max - cd_min
+            self.stats_dict["Ctr Dist Std"] = np.std(self.centroid_distances)
 
             self.norms = [np.linalg.norm(v) for v in self.vectors]
             n_max = np.max(self.norms)
