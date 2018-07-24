@@ -31,7 +31,7 @@ class Analogizer(Evaluator, object):
         one for each algorithm.
     """
 
-    def __init__(self, category="Mikolov Analogies", starred=None,
+    def __init__(self, category="Linear Offset Analogies", starred=None,
             analogies_path=None, analogies=None, analogy_vectors=None,
             analogy_sep=WORD_ANALOGY_SEP, item_sep=WORD_ITEM_SEP):
         super(Analogizer, self).__init__(category=category, starred=starred)

@@ -31,7 +31,7 @@ from .simulation import *
 
 
 #--------------------------------------------------------------------------#
-# General Functions                                                        #
+# General Functions & Utilities                                            #
 #--------------------------------------------------------------------------#
 
 def isstring(obj):
@@ -76,6 +76,48 @@ def unsave(file_name):
         return True
     except:
         return False
+
+# TODO! Now that this is implemented, need to refactor code to use it!
+class UncasedOrderedDict(OrderedDict):
+    """ Case In-Sensitive Ordered Dictionary.
+
+        Keys are lowered, values are left unchanged.
+        Even expressions such as: "string in dict" or "if in dict"
+            have appropriate behavior, checking in an uncased way, but returning
+            remembered, cased strings when iterated across, while using
+            "dict.keys()" will instead will yield only the lower-case versions
+            of the keys, as will dict.items()! While this gives flexibility,
+            this requires care to not confuse the two!
+        NOTE: While this works with multi-keys, any of which may be strings,
+            it will NOT see data inside structures any differently.
+        NOTE: Takes more memory than a normal dictionary, and is slower.
+    """
+    def __init__(self, *args, **kwargs): # Necessary only for remembering cases.
+        self.cases = {}
+        super(UncasedOrderedDict, self).__init__(*args, **kwargs)
+        # Since child setitem is called by parent, no need to adjust cases after
+        #   initialization from explicit {}.
+
+    @staticmethod
+    def simple(k):
+        if type(k) == tuple:
+            return tuple(e.lower() if isstring(e) else e for e in k)
+        else: return k.lower() if isstring(k) else k
+    
+    def __getitem__(self, k):
+        return super(UncasedOrderedDict, self).__getitem__(self.simple(k))
+    
+    def __setitem__(self, k, v): # If not remember cases, need only last line.
+        key = self.simple(k)
+        if key not in self.cases: self.cases[key] = k
+        return super(UncasedOrderedDict, self).__setitem__(key, v)
+    
+    def __contains__(self, k):
+        return super(UncasedOrderedDict, self).__contains__(k.lower())
+
+    def __iter__(self): # Only necessary for remembering cases.
+        for k in self.keys():
+            yield self.cases[k]
 
 
 
@@ -616,7 +658,7 @@ class Analyst:
         self.auto_print = auto_print
         print(u"")
         self._print(u"Asking the Grand Question",
-            u"What is the Purpose of this Space?")
+            u"What is the Purpose of this Embedding?")
         self.description = str(desc)
 
         # Set the file_name for this analyst:
@@ -1084,18 +1126,22 @@ class Analyst:
             Description:
                 Creates a bar graph for a given stat across multiple Analysts.
         """
-        vals = [a.get_category_stats(category)[description] for a in ana_list]
+        vals = [a.get_stat(category, description) for a in ana_list]
+        vals = [v if v is not None else 0 for v in vals]
         labels = [a.description for a in ana_list]
-        x = range(len(ana_list))
+        x = range(len(vals))
 
         plt.bar(x, vals, align='center')
         plt.xticks(x, labels)
+        plt.setp(plt.gca().get_xticklabels(), rotation=-45,
+            horizontalalignment='left')
         plt.ylabel(category + ": " + description)
         plt.title("Analyst Comparison")
+        plt.tight_layout()
         plt.show()
 
     @staticmethod
-    def graph_multi(ana_list, group_by_stat=True, *cat_desc_pairs):
+    def graph_multi(ana_list, cat_desc_pairs, group_by_stat=True):
         """
             Description:
                 Creates a multi-bar graph showing stats side-by-side for
@@ -1108,26 +1154,52 @@ class Analyst:
                     of the form ("Category", "Description").
         """
         categories, descriptions = zip(*cat_desc_pairs)
-        vals = np.array([ # one row per analyst, one column per stat.
-            [a.get_category_stats(c)[descriptions[i]] \
-                for i, c in enumerate(categories)] \
-            for a in ana_list])
-        keys = [a.description for a in ana_list]
-        labels = [t[0] + ": " + t[1] for t in cat_desc_pairs]
+        # dicts = [[a.get_category_stats(c) for c in categories] \
+        #     for a in ana_list]
+        # vals = np.array([ # one row per analyst, one column per stat.
+        #     [d[descriptions[i]] if descriptions[i] in d else 0 \
+        #         for i, d in enumerate(row_of_dicts)] \
+        #     for row_of_dicts in dicts])
+        xlabel = None
+        ticks = [t[0] + ": " + t[1] for t in cat_desc_pairs]
+        for i, c in enumerate(categories):
+            if c != categories[0]: break
+            if i == len(categories) - 1:
+                xlabel = "Category: " + c
+                ticks = descriptions
+        for i, d in enumerate(descriptions):
+            if d != descriptions[0]: break
+            if i == len(categories) - 1:
+                xlabel = "Statistic: " + d
+                ticks = categories
+
+        vals = [
+            [a.get_stat(c, descriptions[i]) for a in ana_list] \
+            for i, c in enumerate(categories)]
+        vals = np.array([
+            [v if v is not None else 0 for v in row] \
+            for row in vals])
+        legend = [a.description for a in ana_list]
 
         if not group_by_stat:
-            (keys, labels) = (labels, keys)
+            legend, ticks = ticks, legend
+        else:
             vals = vals.T
 
-        x = range(len(keys))
-        width = 1.0 / len(keys)
-        for i in x:
-            plt.bar(x + width * i, vals[i], width, label=key[i])
+        x = np.arange(len(ticks))
+        width = 1.0 / (len(legend) + 1)
+        for i in range(len(legend)):
+            plt.bar(x + width * (i + 1), vals[i],
+                width=width, label=legend[i])
             
         plt.ylabel("Value")
+        if xlabel is not None: plt.xlabel(xlabel)
         plt.title("Analyst Comparison on Various Stats")
-        plt.xticks(x + 0.5, labels)
+        plt.xticks(x + 0.5, ticks)
+        plt.setp(plt.gca().get_xticklabels(), rotation=-45,
+            horizontalalignment='left')
         plt.legend(loc='best')
+        plt.tight_layout()
         plt.show()
 
 
@@ -1396,20 +1468,21 @@ class Analyst:
         result = ""
         stat_dict = OrderedDict()
         if categories is None: categories = self.categories
-
+        #   These are the categories we want to keep.
         try:
             if self.description != None:
                 result += self.description.upper() + u"\n"
-            for i, category in enumerate(categories):
-                result += category + u":\n"
-                for cat in self.category_lists[i]:
-                    stat_dict[(category, cat[0])] = cat[1]
-                    result += u"  {}{} {}{}".format(
-                        "*" if cat[2] else u" ", # Stars
-                        Analyst._formatit(
-                            cat[1], w, u"Histogram Key" in cat[0], 3),
-                        u"*" if cat[2] else u" ", # Stars
-                        cat[0]) + u"\n"
+            for i, category in enumerate(self.categories):
+                if category in categories:
+                    result += category + u":\n"
+                    for cat in self.category_lists[i]:
+                        stat_dict[(category, cat[0])] = cat[1]
+                        result += u"  {}{} {}{}".format(
+                            "*" if cat[2] else u" ", # Stars
+                            Analyst._formatit(
+                                cat[1], w, u"Histogram Key" in cat[0], 3),
+                            u"*" if cat[2] else u" ", # Stars
+                            cat[0]) + u"\n"
 
             if auto_print: print(result)
             if report_path != None:
@@ -1432,12 +1505,27 @@ class Analyst:
         # Retrieve a dict containing only stats from desired category, such that
         #   new_d["Description"] == value
         # Works on multi-analyst stat_dicts as well.
+        # Case in-sensitive.
         d = self.print_report(auto_print=False, categories=[category]) \
             if stat_dict == None else stat_dict
+        #d's keys are tuples, (category, description), and vals are stats.
         new_d = OrderedDict()
-        for k in d.keys():
-            if k[0] == category: new_d[k[1]] = d[k]
+        for k in d:#.keys():
+            if k[0].lower() == category.lower(): new_d[k[1]] = d[k]
         return new_d
+
+    # Get a single stat
+    #   Case in-sensitive.
+    def get_stat(self, category, description):
+        try:
+            desc = description.lower()
+            cat = category.lower()
+            for i, c in enumerate(self.categories):
+                if c.lower() == cat: break
+            for t in self.category_lists[i]:
+                if t[0].lower() == desc: return t[1]
+        except: pass
+        return None
 
     def save(self, file_name=None):
         # NOTE: An Analyst with a space of one million 100D vectors and no

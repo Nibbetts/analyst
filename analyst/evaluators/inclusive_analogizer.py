@@ -11,13 +11,14 @@ import analyst
 
 class InclusiveAnalogizer(Analogizer, object):
     """
-    Mikolov-like analogy evaluator,
-        only does not exclude the source words as possible answers.
+    Naive Linear Offset Analogy,
+        Of the form used by Mikolov et al, only does not exclude source words
+        in choosing the result.
     """
 
-    def __init__(self, category="Inclusive Analogies", starred=None,
-            analogies_path=None, analogies=None, analogy_vectors=None,
-            analogy_sep=WORD_ANALOGY_SEP,
+    def __init__(self, category="Inclusive Linear Offset Analogies",
+            starred=None, analogies_path=None, analogies=None,
+            analogy_vectors=None, analogy_sep=WORD_ANALOGY_SEP,
             item_sep=WORD_ITEM_SEP):
         super(InclusiveAnalogizer, self).__init__(
             category=category, starred=starred, analogies_path=analogies_path,
@@ -42,5 +43,5 @@ class InclusiveAnalogizer(Analogizer, object):
         c = encode(string_c)
         d = b - a + c # our nearest guess for what d is
 
-        # Naive Mikolov-like analogy, except does not exclude source words:
+        # Naive Linear Offset Analogy which does not exclude source words:
         return stringit(d, in_model=False), d

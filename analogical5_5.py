@@ -25,12 +25,9 @@ if __name__ == "__main__":
     #from tkinter import messagebox
 
 
-    MAX_LINES = 1000
-    """
-    def normalize(vec):
-        return vec/np.linalg.norm(vec)
+    MAX_LINES = 500000
 
-    metric = "cosine"
+    metric = "euclidean"
 
     def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()
@@ -47,6 +44,29 @@ if __name__ == "__main__":
             strings.append(row[0])#str(row[0]))
             embeddings[i] = row[1:]
         return strings, embeddings
+
+    path_ends = [
+        "1_capitals_countries",
+        "2_capitals_world",
+        "3_countries_currency",
+        "4_city_state",
+        "5_family_relations",
+        "6_adj_adverb",
+        "7_opposites",
+        "8_comparative",
+        "9_superlative",
+        "10_present_participle",
+        "11_nationality_adj",
+        "12_past_tense",
+        "13_plural",
+        "14_plural_verbs",
+    ]
+
+    def get_e():
+        return [an.evaluators.analogizer.Analogizer(category=p,
+                analogies_path="/mnt/pccfs/backed_up/zac/zac_desktop/zac_docs/Corpora/"
+                    "subcorp_analogy_storage/analogy_subcorp" + p) for p in path_ends] + \
+                [an.evaluators.analogizer_combiner.AnalogizerCombiner()]
  
     # hide main window
     #root = tkinter.Tk()
@@ -61,12 +81,13 @@ if __name__ == "__main__":
     str_f = data_ft['tokens'][:MAX_LINES]
     str_f = list(map(str, str_f))
     embed_f = data_ft['vectors'][:MAX_LINES]
-    embed_fn = np.array([normalize(v) for v in embed_f])
-    an_fnc = an.Analyst(embeddings=embed_fn, strings=str_f,
-        auto_print=False, metric=metric, desc="Fasttext Normalized")
-    print("Success at saving Fasttext Normalized: "
+    #embed_fn = np.array([normalize(v) for v in embed_f])
+    an_fnc = an.Analyst(embeddings=embed_f, strings=str_f,
+        auto_print=True, metric=metric, desc="Fasttext",
+        evaluators=get_e())
+    print("Success at saving Fasttext: "
         + str(an.Analyst.save(an_fnc,
-            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized")))
+            "saved_analyses/an" + str(MAX_LINES) + "_fasttext_analogies5_euclidean")))
 
     #messagebox.showinfo("Information","Analysis 1 complete!")
 
@@ -81,9 +102,10 @@ if __name__ == "__main__":
     #embed_nb = np.array([embed_nb[i] for i in indeces_nb])
     embed_nb = embed_nb[indeces_nb]
     an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
-        auto_print=False, desc="ConceptNet Numberbatch")
+        auto_print=True, desc="ConceptNet Numberbatch",
+        evaluators=get_e())
     print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
-        "saved_analyses/an" + str(MAX_LINES) + "_numberbatch")))
+        "saved_analyses/an" + str(MAX_LINES) + "_numberbatch_analogies5_euclidean")))
 
     #messagebox.showinfo("Information","Analysis 2 complete!")
 
@@ -110,13 +132,14 @@ if __name__ == "__main__":
     #common_w = list(filter(lambda w: w in model_w.vocab.keys() \
     #    or bytes(w) in model_w.vocab.keys(), str_f))
     common_w = [w for w in str_f if w in model_w.vocab.keys()]
-    embed_w = [normalize(model_w.get_vector(w)) for w in common_w]
+    embed_w = [model_w.get_vector(w) for w in common_w]
     an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
-        auto_print=False, desc="GoogleNews Normalized")
-    print("Success at saving GoogleNews Normalized: " +
+        auto_print=True, desc="GoogleNews",
+        evaluators=get_e())
+    print("Success at saving GoogleNews: " +
         str(an.Analyst.save(an_w,
             "saved_analyses/an" + str(MAX_LINES) +
-            "_googlenews_normalized")))
+            "_googlenews_analogies5_euclidean")))
 
     #messagebox.showinfo("Information","Analysis 3 complete!")
 
@@ -125,11 +148,12 @@ if __name__ == "__main__":
     #   non-normalized.
     str_g, embed_g = read_text_table(
         "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
-    embed_g = [normalize(v) for v in embed_g]
+    #embed_g = [normalize(v) for v in embed_g]
     an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
-        auto_print=False, desc="GloVe Normalized")
+        auto_print=True, desc="GloVe Normalized",
+        evaluators=get_e())
     print("Success at saving GloVe Normalized: " + str(an.Analyst.save(an_g,
-        "saved_analyses/an" + str(MAX_LINES) + "_glove_normalized")))
+        "saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_euclidean")))
 
     #messagebox.showinfo("Information","Analysis 4 complete!")
 
@@ -144,22 +168,23 @@ if __name__ == "__main__":
         sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
         embed_u = sess.run(embed(str_f))
     an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
-        auto_print=False, desc="Universal Sentence Encoder")
+        auto_print=True, desc="Universal Sentence Encoder",
+        evaluators=get_e())
     print("Success at saving Universal Sentence Encoder: " +
         str(an.Analyst.save(
             an_u, "saved_analyses/an" + str(MAX_LINES) +
-            "_universal_sentence_encoder")))
+            "_USE_analogies5_euclidean")))
 
     #messagebox.showinfo("Information","Analysis 5 complete!")'''
-    """
-    an_fnc = an.load("saved_analyses/an" + str(MAX_LINES) + "_fasttext_normalized")
-    an_nb  = an.load("saved_analyses/an" + str(MAX_LINES) + "_numberbatch")
-    an_w   = an.load("saved_analyses/an" + str(MAX_LINES) + "_googlenews_normalized")
-    an_g   = an.load("saved_analyses/an" + str(MAX_LINES) + "_glove_normalized")
-    an_u   = an.load("saved_analyses/an" + str(MAX_LINES) + "_universal_sentence_encoder")
+    
+    an_fnc = an.load("saved_analyses/an" + str(MAX_LINES) + "_fasttext_analogies5_euclidean")
+    an_nb  = an.load("saved_analyses/an" + str(MAX_LINES) + "_numberbatch_analogies5_euclidean")
+    an_w   = an.load("saved_analyses/an" + str(MAX_LINES) + "_googlenews_analogies5_euclidean")
+    an_g   = an.load("saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_euclidean")
+    an_u   = an.load("saved_analyses/an" + str(MAX_LINES) + "_USE_analogies5_euclidean")
 
     #an.Analyst.compare([an_fnc, an_fe, an_fne, an_fc])
-    #an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])
+    an.Analyst.compare([an_w, an_fnc, an_g, an_nb, an_u])
 
     #an.Analyst.graph_comparison([an_w, an_fnc, an_g, an_nb, an_u], "Nodes", "Count")
-    an.Analyst.graph_multi([an_w, an_fnc, an_g, an_nb, an_u], [("Nodes", "Count"), ("Nuclei", "Count"), ("Nodal 4-Hubs", "Count")], group_by_stat=False)
+    #an.Analyst.graph_multi([an_w, an_fnc, an_g, an_nb, an_u], [("Nodes", "Count"), ("Nuclei", "Count"), ("Nodal 4-Hubs", "Count")], group_by_stat=False)
