@@ -69,36 +69,44 @@ class AnalogizerCombiner(Evaluator, object):
         printer("Compiling Wisdom and Knowledge",
             "Combining Analogical Results")
             
-        self.data_dict["Analogizer Count"] = len(self.analogizers)
+        self.data_dict["Category Count"] = len(self.analogizers)
 
         if len(self.analogizers) > 0:
             try:
                 correct = np.concatenate([a.correct for a in \
-                    self.analogizers if len(a.correct) != 0])
+                    self.analogizers if a.correct is not None and \
+                    len(a.correct) != 0])
                 self.score = np.sum(correct) / float(len(correct))
                 self.distances = np.concatenate([a.distances for a in \
-                    self.analogizers if len(a.distances) != 0])
+                    self.analogizers if a.distances is not None and \
+                    len(a.distances) != 0])
                 self.lengths = np.concatenate([a.lengths for a in \
-                    self.analogizers if len(a.lengths) != 0])
+                    self.analogizers if a.lengths is not None and \
+                    len(a.lengths) != 0])
             except ValueError as e:
                 traceback.print_exc()
                 correct = []
 
             self.data_dict["Analogy Count"] = len(correct)
             self.data_dict["Dropped Count"] = sum(
-                [len(a.dropped) for a in self.analogizers])
+                [len(a.dropped) if a.dropped is not None else 0 \
+                for a in self.analogizers])
 
             if len(correct) > 0:
-                self.data_dict["Accuracy"] = self.score
+                self.data_dict["Accuracy Per Category"] = np.mean([
+                    a.score for a in self.analogizers if a.score is not None])
+                self.data_dict["Accuracy Per Analogy"] = self.score
 
                 # Category Score Data
-                self.score_list = np.array([a.score for a in self.analogizers])
-                self.data_dict["Most Accurate Category"] = self.analogizers[
-                    np.argmax(self.score_list)].CATEGORY
-                self.data_dict["Least Accurate Category"] = self.analogizers[
-                    np.argmin(self.score_list)].CATEGORY
-                self._compute_list_stats(
-                    self.score_list, "Category Score", self.data_dict)
+                self.score_list = np.array([
+                    a.score for a in self.analogizers if a.score is not None])
+                if len(self.score_list) > 0:
+                    self.data_dict["Most Accurate Category"] = self.analogizers[
+                        np.argmax(self.score_list)].CATEGORY
+                    self.data_dict["Least Accurate Category"] = \
+                        self.analogizers[np.argmin(self.score_list)].CATEGORY
+                    self._compute_list_stats(
+                        self.score_list, "Category Score", self.data_dict)
 
                 # Distance from point found to answer point
                 self._compute_list_stats(self.distances,
@@ -117,7 +125,7 @@ class AnalogizerCombiner(Evaluator, object):
                 self._compute_list_stats(self.lengths[np.nonzero(1 - correct)],
                     "Length Incorrect", self.data_dict)
 
-                self.add_star("Accuracy")
+                self.add_star("Accuracy Per Category")
                 self.add_star("Analogy Length Avg")
                 self.add_star("Most Accurate Category")
                 self.add_star("Least Accurate Category")

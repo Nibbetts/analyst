@@ -1,0 +1,17 @@
+Contributions:
+- intuition about high-dimensional embeddings
+- analyst api, convenience of comparison
+- numerical analyses on known problems/sets shown in comparison
+- 
+
+
+- try renormalizing after canonical, because not sure if ever did that!
+- resulst from corl seem to show we haven't elongated enough before -
+-- try showing results from a walk, maybe with an evaluator? and see what it produces.
+- try including flow 
+
+
+- Most directions we take from any given point will leave us in the sphere (1/D likelihood of picking the wrong way), but going too far in any direction will take us away, and going not far enough will leave us near where we were. Imagine it like you are in the middle of a 3D space, and can find a direction to go that will take you close to anything by going around the same distance. Not only that, but you can find a direction to go that will take you close to many different combinations of things, excluding others. The distance to go does not vary greatly, it just has to be far enough, but the direction matters enormously. There is an appropriate direction for some combinations of objects, and not for others, hence relationships in the space; and this is independent of where our starting point is, since all locations in the space are accessible from all directions.
+
+
+TELL DR WINGATE what i've been doing

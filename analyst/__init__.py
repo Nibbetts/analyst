@@ -44,20 +44,22 @@ from .clustertypes.node import *
 
 from .evaluators import *
 
-# from .evaluators.evaluator import * # TODO: THESE MAY NOT BE NEEDED!
-# from .evaluators.clusterizer import *
-# from .evaluators.node_clusterizer import *
-# from .evaluators.extremity_clusterizer import *
-# from .evaluators.supernode_clusterizer import *
-# from .evaluators.hub_clusterizer import *
-# from .evaluators.analogizer import *
-# from .evaluators.inclusive_analogizer import *
-# from .evaluators.analogizer_combiner import *
-# from .evaluators.nucleus_clusterizer import *
-# from .evaluators.spatializer import *
-# #from .evaluators.ncc_clusterizer import *
-# #from .evaluators.yarax_clusterizer import *
-# from .evaluators.kmeans_clusterizer import *
+from .evaluators.evaluator import * # TODO: THESE MAY NOT BE NEEDED!
+from .evaluators.clusterizer import *
+from .evaluators.node_clusterizer import *
+from .evaluators.extremity_clusterizer import *
+from .evaluators.supernode_clusterizer import *
+from .evaluators.hub_clusterizer import *
+from .evaluators.analogizer import *
+from .evaluators.inclusive_analogizer import *
+from .evaluators.avg_canonical_analogizer import *
+from .evaluators.ext_canonical_analogizer import *
+from .evaluators.analogizer_combiner import *
+from .evaluators.nucleus_clusterizer import *
+from .evaluators.spatializer import *
+#from .evaluators.ncc_clusterizer import *
+#from .evaluators.yarax_clusterizer import *
+from .evaluators.kmeans_clusterizer import *
 
 # NOTE: Don't need both ways, but done for convenience!
 # Recursive way: (Must have import code in subsidiary package inits, too)

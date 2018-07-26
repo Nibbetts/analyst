@@ -12,5 +12,7 @@ from .nucleus_clusterizer import *
 from .spatializer import *
 from .analogizer import *
 from .inclusive_analogizer import *
+from .avg_canonical_analogizer import *
+from .ext_canonical_analogizer import *
 from .analogizer_combiner import *
 from .kmeans_clusterizer import *

@@ -26,7 +26,7 @@ class InclusiveAnalogizer(Analogizer, object):
             analogy_sep=analogy_sep, item_sep=item_sep)
 
     # OVERRIDEABLE
-    def analogy(self, string_a, string_b, string_c, **kwargs):
+    def analogy(self, string_a, string_b, string_c, *args, **kwargs):
         # string_a, string_b, and string_c are the given analogy items.
         #   string_d is not given.
         # RETURNS: vector approximation for d, and string approximation for d.

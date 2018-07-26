@@ -76,7 +76,8 @@ class Analogizer(Evaluator, object):
         # This is where you do your analogical run, scoring each analogy
         #   and generating data based on these.
         # kwargs: see parent.
-        # PRE: self.analogies needs to have been filled in.
+        # PRE: self.analogies, self.analogy_vectors, and self.dropped
+        #   need to have been filled in.
         # POST: self.data_dict, self.starred will be filled in, as well as
         #   self.score, self.distances, self.lengths, self.dropped, and
         #   self.correct.
@@ -97,21 +98,20 @@ class Analogizer(Evaluator, object):
         printer("Philosophizing about Relations", "Scoring Analogies")
         if len(self.analogies) > 0:
             data = list(zip(*[
-                self.analogy(*a[:3], **kwargs) for a in tqdm(self.analogies,
+                self.analogy(*a, **kwargs) for a in tqdm(self.analogies,
                     disable=(not show_progress))]))
             answers = data[0]
-            vectors = data[1]
+            answer_vectors = data[1]
 
-            self.correct = np.array(answers) == [a[3] for a in self.analogies]
+            self.correct = np.array(answers) == [a[-1] for a in self.analogies]
             self.score = np.sum(self.correct) / float(len(self.analogies))
-            self.distances = np.array([metric(group[3], vectors[i]) \
-                for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
-            self.lengths = np.array([metric(group[2], vectors[i]) \
-                for i, group in enumerate(self.analogy_vectors)])
 
             self.data_dict["Accuracy"] = self.score
 
             # Distance from point found to answer point
+            self.distances = np.array([metric(group[-1], answer_vectors[i]) \
+                for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
+            
             self._compute_list_stats(self.distances,
                 "Dist All from Answer", self.data_dict)
             self._compute_list_stats(self.distances[np.nonzero(self.correct)],
@@ -121,6 +121,9 @@ class Analogizer(Evaluator, object):
                 "Dist for Incorrect", self.data_dict)
 
             # Distance from c to d; the length of the analogy vector
+            self.lengths = np.array([metric(group[-2], answer_vectors[i]) \
+                for i, group in enumerate(self.analogy_vectors)])
+
             self._compute_list_stats(self.lengths,
                 "Analogy Length", self.data_dict)
             self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
@@ -133,7 +136,7 @@ class Analogizer(Evaluator, object):
             self.add_star("Dist for Incorrect Avg")
 
     # OVERRIDEABLE
-    def analogy(self, string_a, string_b, string_c, **kwargs):
+    def analogy(self, string_a, string_b, string_c, *args, **kwargs):
         # string_a, string_b, and string_c are the given analogy items.
         #   string_d is not given.
         # RETURNS: vector approximation for d, and string approximation for d.
@@ -143,6 +146,10 @@ class Analogizer(Evaluator, object):
         # NOTE: Overridden versions could return more data for stat gathering;
         #   to use them, you may want to override compute_stats also, optionally
         #   calling the parent function as you do.
+        # NOTE: While string_d is included in args, using it in computing actual
+        #   analogies would skew results, since d is supposed to be unknown.
+        #   I supposed it could be used here for generating statistics, though
+        #   such should be done in the compute_stats function if you can.
 
         # This particular implementation is a simple, Mikolov-type analogy.
 
