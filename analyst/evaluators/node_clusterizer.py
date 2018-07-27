@@ -67,7 +67,8 @@ class NodeClusterizer(Clusterizer, object):
                 remaining_ids = [align.remote(i, alignment_vecs_id)
                     for i in range(min(len(self.clusters), parallels))]
 
-                for i in tqdm(range(len(self.clusters)), disable=not show_progress):
+                for i in tqdm(range(len(self.clusters)),
+                        disable=not show_progress):
                     ready_ids, remaining_ids = ray.wait(remaining_ids)
                     tup = ray.get(ready_ids[0])
                     if i + parallels < len(self.clusters):
@@ -108,7 +109,7 @@ class NodeClusterizer(Clusterizer, object):
         if len(self.clusters) > 0:
             # Nodal Factor
             printer("Comparing the Cosmos", "Calculating Nodal Factor")
-            self.data_dict["Nodal Factor"] = (
+            self.stats_dict["Nodal Factor"] = (
                 len(self.clusters)*2.0/float(len(space)))
             self.add_star("Nodal Factor")
             #   I tend to think this is important.
@@ -116,15 +117,15 @@ class NodeClusterizer(Clusterizer, object):
             # Alignment Factor
             printer("Musing over Magnetic Moments",
                 "Calculating Alignment Factor")
-            self.data_dict["Alignment Factor"] = np.mean([
+            self.stats_dict["Alignment Factor"] = np.mean([
                 n.alignment for n in self.clusters])
             # avg_align = np.mean(
             #     [n.alignment_vec for n in self.clusters], axis=0)
             #     # Note: this only works because all on one side of the space,
             #     #   and all are normalized.
-            # self.data_dict["Alignment Factor"] = np.linalg.norm(avg_align)
+            # self.stats_dict["Alignment Factor"] = np.linalg.norm(avg_align)
             # # avg_align /= np.linalg.norm(avg_align)
-            # # self.data_dict["Alignment Factor"] = \
+            # # self.stats_dict["Alignment Factor"] = \
             # #     np.mean([
             # #         np.abs(np.dot(avg_align, n.alignment_vec) \
             # #             if np.linalg.norm(n.alignment_vec) != 0 else 0.0)
@@ -139,12 +140,12 @@ class NodeClusterizer(Clusterizer, object):
     # No problem adding functions, as well. This one useful for Node inheriters.
     def add_generic_node_stats(self):
         # Node Count
-        self.data_dict["Count"] = len(self.clusters)
+        self.stats_dict["Count"] = len(self.clusters)
 
         if len(self.clusters) > 0:
             # Span Stats
             self._compute_list_stats([n.distance for n in self.clusters],
-                "Span", self.data_dict)
+                "Span", self.stats_dict)
 
     # These exist to allow getting of node-specific information with the
     #   assurance that it has been filled in.

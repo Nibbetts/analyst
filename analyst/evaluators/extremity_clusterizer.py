@@ -50,7 +50,7 @@ class ExtremityClusterizer(NodeClusterizer, object):
         if len(self.clusters) > 0:
             # Nodal Factor
             printer("Placating the Extremists", "Calculating Extremity Factor")
-            self.data_dict["Extremity Factor"] = (
+            self.stats_dict["Extremity Factor"] = (
                 len(self.clusters)*2.0/float(len(space)))
             self.add_star("Extremity Factor")
             #   I tend to think this is important.

@@ -98,7 +98,7 @@ def word2vec_analysis():
         metric=metric,
         desc="Word2Vec Canonical Test",
         evaluators=get_e(),
-        auto_save=True,
+        auto_save=True, # Careful! End up saving twice if you forget...
         over_write=True,
     )
 
@@ -145,6 +145,6 @@ if __name__ == "__main__":
     a=an.load("Word2Vec Canonical Test.dill")
     #a.add_evaluators(*get_e2())
     # for e in a.evaluators:
-    #     if len(e.data_dict) == 0 and "file_name" in dir(e):
+    #     if len(e.stats_dict) == 0 and "file_name" in dir(e):
     #         e.file_name = e.file_name[:53] + "text/" + e.file_name[53:]
     a.analysis()

@@ -38,7 +38,7 @@ class Clusterizer(Evaluator, object):
         #   Should contain a list of lists of vectors after compute_clusters is
         #   called. Also only used for detailed inspection, or is used if
         #   vectors_to_clusters is not overridden.
-        # self.data_dict = OrderedDict()
+        # self.stats_dict = OrderedDict()
         #   Additional information to be included in the printed report.
         #   Keys are attribute name strings, vals are ints, floats, strings, or
         #   lists if "Histogram Key" in key.
@@ -56,8 +56,8 @@ class Clusterizer(Evaluator, object):
         # space: the entire embedding space, a vector of vectors
         # show_progress: whether or not to show a progress bar etc.
         # (These two given are also included in kwargs, but with the names
-        #   embeddings and draw_progress. Duplicated as real arguments because they
-        #   are assumed to be very commonly used.)
+        #   embeddings and draw_progress. Duplicated as real arguments because
+        #   they are assumed to be very commonly used.)
         # Available kwargs (always given in case needed) listed in parent class,
         #   Evaluator.
         # NOTE: Excuse the long names. They should be fairly clear.
@@ -122,12 +122,12 @@ class Clusterizer(Evaluator, object):
         # Do generic cluster stat stuff here; override if unwanted,
         #   or if you want both then override and call super.
         # PRE: self.clusters must be filled in.
-        # POST: self.data_dict will contain whatever you want reported,
+        # POST: self.stats_dict will contain whatever you want reported,
         #   and self.starred likewise.
-        self.data_dict["Count"] = len(self.clusters)
+        self.stats_dict["Count"] = len(self.clusters)
         
         if len(self.clusters) > 0:
-            self.data_dict["Subcluster Category"] = \
+            self.stats_dict["Subcluster Category"] = \
                 self.clusters[0].SUBCLUSTER_CATEGORY
             skip = self.clusters[0].QUIET_STATS if \
                 self.clusters[0].quiet_stats_override == None else \
@@ -136,7 +136,7 @@ class Clusterizer(Evaluator, object):
                 if key not in skip:
                     try: self._compute_list_stats(
                         [c.stats_dict[key] for c in self.clusters],
-                        key, self.data_dict)
+                        key, self.stats_dict)
                     except: pass
 
 
@@ -164,13 +164,13 @@ class Clusterizer(Evaluator, object):
 
             self.calculated = True
 
-        return self.data_dict, self.starred, self.CATEGORY
+        return self.stats_dict, self.starred, self.CATEGORY
 
 
     # These allow the retrieval of cluster information without having to worry
     #   about whether or not it has been filled in.
     #   No getter needed for CATEGORY since it should never change.
-    #   Parent also has get_data_dict and get_starred.
+    #   Parent also has get_stats_dict and get_starred.
     def get_clusters(self, **kwargs):
         self.calculate(recalculate_all=False, **kwargs)
         return self.clusters

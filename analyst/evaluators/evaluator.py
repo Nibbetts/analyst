@@ -38,7 +38,7 @@ class Evaluator:
         #   since instances may be given different starting parameters,
         #   thus needing new labels to disambiguate.
         #   NOTE: Treat categories as case-sensitive.
-        self.data_dict = OrderedDict()
+        self.stats_dict = OrderedDict()
         #   Additional information to be included in the printed report.
         #   Keys are attribute name strings, vals are ints, floats, strings, or
         #   lists if "Histogram Key" in key.
@@ -58,7 +58,7 @@ class Evaluator:
         # Do generic cluster stat stuff here; override if unwanted,
         #   or if you want both then override and call super.
         # kwargs: includes all the same as the calculate function below.
-        # POST: self.data_dict will contain whatever you want reported,
+        # POST: self.stats_dict will contain whatever you want reported,
         #   and self.starred likewise.
         pass
 
@@ -150,7 +150,7 @@ class Evaluator:
         # Returning these means the Analyst need only access datamembers
         #   directly if we are doing specifics inspection, later,
         #   or when searching by category.
-        return self.data_dict, self.starred, self.CATEGORY
+        return self.stats_dict, self.starred, self.CATEGORY
 
 
     @staticmethod
@@ -180,9 +180,9 @@ class Evaluator:
     # These allow the retrieval of information without having to worry
     #   about whether or not it has been filled in.
     #   No getter needed for CATEGORY since it should never change.
-    def get_data_dict(self, **kwargs):
+    def get_stats_dict(self, **kwargs):
         self.calculate(recalculate_all=False, **kwargs)
-        return self.data_dict
+        return self.stats_dict
 
     def get_starred(self, **kwargs):
         self.calculate(recalculate_all=False, **kwargs)

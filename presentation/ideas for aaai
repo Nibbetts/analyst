@@ -18,19 +18,19 @@ Contributions:
 GROUP OF THINGS #1: (analogical/moving around in space)
 - explain how distance and direction work when moving around in an n-1 dimensional unit hyperspherical manifold
 - explain analogical reasoning applied to conversational flow, and how we can use this as a ranker (nancy thinks I may have a different enough focus that this won't be too much the same as Will's part of their presentation, which may also get published as part of a paper)
-- explain why we need to relengthen canonical analogy vectors (which has minor results in word2vec, but bigger I think in universal sentence space). Explain that this was why pisa/DSM worked a year ago, showing that we got results with canonicals before that were closer in relatedness-space. This also can fit an explanation of what it means to travel around in the manifold, or to travel in a direction.
+*- explain why we need to relengthen canonical analogy vectors (which has minor results in word2vec, but bigger I think in universal sentence space). Explain that this was why pisa/DSM worked a year ago, showing that we got results with canonicals before that were closer in relatedness-space. This also can fit an explanation of what it means to travel around in the manifold, or to travel in a direction.
 - show results from "walk"s in the space, around the hypersphere and straight, and explain the significance of epitomizing a vector. Also show clustering that appears in doing so.
 
 GROUP OF THINGS #2: (clustering/spatial structure)
 - show results of clustering with an agglomeration threshold (which appears to lump things continuously into one large lump, not groups all over)
-- show comparison of clustering/spatial data on word embeddings versus universal sentence encodings, and explain what they mean (subsection of the space, odd shape, less round in sentence space).
+*- show comparison of clustering/spatial data on word embeddings versus universal sentence encodings, and explain what they mean (subsection of the space, odd shape, less round in sentence space).
 - Show that universal sentence encoded words perform terribly on analogies
 - explain interest in extremities of the space, and what it means in high dimensionality (also maybe related to outliers?)
 - explain how hubs (shared nearest-neighbor groups) are important because it is mathematically a local density maximum.
 - Lots of ideas of algorithms I'd like to test but haven't implemented yet... .
 
 GROUP OF THINGS #3: (The Analyst API)
-- introduce analyst as an expandable toolset with ease of running large groups of tests, both for clustering algorithms, mathematical analysis of an embedding space, and analogical reasoning
+*- introduce analyst as an expandable toolset with ease of running large groups of tests, both for clustering algorithms, mathematical analysis of an embedding space, and analogical reasoning
 - good for comparing embedding spaces - important if we want to improve them
 - instant graphs
 - inspection of details

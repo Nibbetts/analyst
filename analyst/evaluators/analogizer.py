@@ -63,10 +63,10 @@ class Analogizer(Evaluator, object):
         self.lengths = None
         self.dropped = []
         #   dropped will keep track of unusable analogies from input corpus.
-        # self.CATEGORY = category       # See parent.
-        # self.data_dict = OrderedDict() # See parent.
-        # self.starred = []              # See parent.
-        # self.calculated = False        # See parent.
+        # self.CATEGORY = category        # See parent.
+        # self.stats_dict = OrderedDict() # See parent.
+        # self.starred = []               # See parent.
+        # self.calculated = False         # See parent.
 
         #assert analogies_path is not None or analogies is not None \
         #    or analogy_vectors is not None
@@ -78,7 +78,7 @@ class Analogizer(Evaluator, object):
         # kwargs: see parent.
         # PRE: self.analogies, self.analogy_vectors, and self.dropped
         #   need to have been filled in.
-        # POST: self.data_dict, self.starred will be filled in, as well as
+        # POST: self.stats_dict, self.starred will be filled in, as well as
         #   self.score, self.distances, self.lengths, self.dropped, and
         #   self.correct.
 
@@ -92,8 +92,8 @@ class Analogizer(Evaluator, object):
         printer       = kwargs["printer_fn"]
         metric        = kwargs["metric_fn"]
 
-        self.data_dict["Analogy Count"] = len(self.analogies)
-        self.data_dict["Dropped Count"] = len(self.dropped)
+        self.stats_dict["Analogy Count"] = len(self.analogies)
+        self.stats_dict["Dropped Count"] = len(self.dropped)
 
         printer("Philosophizing about Relations", "Scoring Analogies")
         if len(self.analogies) > 0:
@@ -106,30 +106,30 @@ class Analogizer(Evaluator, object):
             self.correct = np.array(answers) == [a[-1] for a in self.analogies]
             self.score = np.sum(self.correct) / float(len(self.analogies))
 
-            self.data_dict["Accuracy"] = self.score
+            self.stats_dict["Accuracy"] = self.score
 
             # Distance from point found to answer point
             self.distances = np.array([metric(group[-1], answer_vectors[i]) \
                 for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
             
             self._compute_list_stats(self.distances,
-                "Dist All from Answer", self.data_dict)
+                "Dist All from Answer", self.stats_dict)
             self._compute_list_stats(self.distances[np.nonzero(self.correct)],
-                "Dist for Correct", self.data_dict)
+                "Dist for Correct", self.stats_dict)
             self._compute_list_stats(
                 self.distances[np.nonzero(1 - self.correct)],
-                "Dist for Incorrect", self.data_dict)
+                "Dist for Incorrect", self.stats_dict)
 
             # Distance from c to d; the length of the analogy vector
             self.lengths = np.array([metric(group[-2], answer_vectors[i]) \
                 for i, group in enumerate(self.analogy_vectors)])
 
             self._compute_list_stats(self.lengths,
-                "Analogy Length", self.data_dict)
+                "Analogy Length", self.stats_dict)
             self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
-                "Length Correct", self.data_dict)
+                "Length Correct", self.stats_dict)
             self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
-                "Length Incorrect", self.data_dict)
+                "Length Incorrect", self.stats_dict)
 
             self.add_star("Accuracy")
             self.add_star("Dist for Correct Avg")
@@ -209,7 +209,7 @@ class Analogizer(Evaluator, object):
         # Returning these means the Analyst need only access datamembers
         #   directly if we are doing specifics inspection, later,
         #   or when searching by category.
-        return self.data_dict, self.starred, self.CATEGORY
+        return self.stats_dict, self.starred, self.CATEGORY
 
     # MAY BE OVERRIDDEN IF NEEDED
     def read_analogies_file(self, **kwargs):

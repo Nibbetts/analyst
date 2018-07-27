@@ -1038,7 +1038,7 @@ class Analyst:
         # Run the Evaluations:
         for evaluator in self.evaluators:
             try:
-                data_dict, starred, category = evaluator.calculate(
+                stats_dict, starred, category = evaluator.calculate(
                     recalculate_all=evaluator.CATEGORY in recalculate,
                     #   Only does those not yet done.
 
@@ -1083,7 +1083,7 @@ class Analyst:
                 #key = str(key)
                 #category = str(category)
 
-                for (key, value) in data_dict.items():
+                for (key, value) in stats_dict.items():
                     self._add_info(value, category, key, key in starred)
 
             except:
@@ -1106,9 +1106,14 @@ class Analyst:
 
     # SPECIFICS INSPECTION:
 
+    #TODO!
+
+
+    # GRAPHING:
+
     def graph_hist(self, hist_key, bins=64, **kwargs):
         """
-            Description: creates a histogram according to key printed in report.
+            Creates a histogram according to key printed in report.
         """
         # self.graph_info[hist_key] == 
         #   ([analyst_descriptions], category, description, [datasets])
@@ -1120,28 +1125,155 @@ class Analyst:
         plt.title(self.graph_info[hist_key][1])
         plt.show()
 
+    def graph_bar(self, description, categories=None, **kwargs):
+        """
+            Creates a bar graph of the given stat (description) across multiple
+                Evaluators. If categories is None, will look across all for that
+                stat and only use evaluators which contain that stat;
+                otherwise will only look in ones in the given list.
+            Can take evaluator references instead of their categories.
+            **kwargs is for matplotlib.pyplot.bar
+        """
+        if categories is None:
+            cats = [e.CATEGORY for e in self.evaluators \
+                if description in e.stats_dict]
+        else:
+            cats = []
+            for c in categories:
+                cats.append(c) if isstring(c) else cats.append(c.CATEGORY)
+        
+        vals = [self.get_stat(c, description) for c in cats]
+        vals = [v if v is not None else 0 for v in vals]
+        x = range(len(vals))
+
+        plt.bar(x, vals, align='center', **kwargs)
+        plt.xticks(x, cats)
+        plt.setp(plt.gca().get_xticklabels(), rotation=-45,
+            horizontalalignment='left')
+        plt.ylabel(description)
+        plt.title(description.title() + " Comparison in " + self.description)
+        plt.tight_layout()
+        plt.show()
+
+    def graph_bar_multi(self, descriptions, categories=None,
+            group_by_stat=False, **kwargs):
+        """
+            Creates a multi- bar graph comparing the given stats (descriptions)
+                across multiple evaluators.
+                If categories is None, will use every evaluator containing the
+                FIRST description in its stat_dict.
+            Can take evaluator references instead of their categories.
+            **kwargs is for matplotlib.pyplot.bar
+        """
+        if categories is None:
+            cats = [e.CATEGORY for e in self.evaluators \
+                if descriptions[0] in e.stats_dict]
+        else:
+            cats = []
+            for c in categories:
+                cats.append(c) if isstring(c) else cats.append(c.CATEGORY)
+
+        # one row per stat, one column per evaluator.
+        vals = [[self.get_stat(c, d) for d in descriptions] for c in cats]
+        vals = np.array([
+            [v if v is not None else 0 for v in row] for row in vals])
+        ticks = cats
+        legend = descriptions
+
+        if group_by_stat:
+            legend, ticks = ticks, legend
+        else:
+            vals = vals.T
+
+        x = np.arange(len(ticks))
+        width = 1.0 / (len(legend) + 1)
+        for i in range(len(legend)):
+            plt.bar(x + width * (i + 1), vals[i],
+                width=width, label=legend[i], **kwargs)
+            
+        plt.ylabel("Value")
+        plt.xlabel("Statistic" if group_by_stat else "Category")
+        plt.title("Comparison on Various Stats in " + self.description)
+        plt.xticks(x + 0.5, ticks)
+        plt.setp(plt.gca().get_xticklabels(), rotation=-45,
+            horizontalalignment='left')
+        plt.legend(loc='best')
+        try:
+            plt.tight_layout()
+        except:
+            print("Could not use tight_layout.")
+        plt.show()
+
+    def graph_evaluators(self, description, eval_array,
+            xticks=None, legend=None, xlabel=None, transpose=None, **kwargs):
+        """
+            Compares evaluators from multiple groups against each other,
+                on a single stat (description), by creating a multi- bar graph.
+            eval_array: a list of lists or 2d array of evaluators or
+                their categories, or a mix.
+                Each ROW in the input array corresponds to a group of bars!
+            xticks: labels along the x axis.
+            legend: labels for each bar in a given group, shown in map legend.
+            transpose: should we transpose eval_array for you? None will try
+                to match shape of xticks and legend.
+            **kwargs: for matplotlib.pyplot.bar
+        """
+        cats = [[c if isstring(c) else c.CATEGORY for c in row] \
+            for row in eval_array]
+
+        # one row per group, one column per bar.
+        vals = [[self.get_stat(c, description) for c in row] for row in cats]
+        vals = np.array([
+            [v if v is not None else 0 for v in row] for row in vals])
+
+        if transpose is None:
+            transpose = len(eval_array) == len(xticks)
+        if transpose:
+            vals = vals.T
+
+        x = np.arange(len(xticks))
+        width = 1.0 / (len(legend) + 1)
+        for i in range(len(legend)):
+            plt.bar(x + width * (i + 1), vals[i],
+                width=width, label=legend[i], **kwargs)
+            
+        plt.ylabel(description)
+        if xlabel is not None: plt.xlabel(xlabel)
+        plt.title(
+            description + " Comparison on Evaluators in " + self.description)
+        plt.xticks(x + 0.5, xticks)
+        plt.setp(plt.gca().get_xticklabels(), rotation=-45,
+            horizontalalignment='left')
+        plt.legend(loc='best')
+        plt.tight_layout()
+        plt.show()
+
     @staticmethod
-    def graph_comparison(ana_list, category, description):
+    def graph_comparison(ana_list, category, description, **kwargs):
         """
-            Description:
-                Creates a bar graph for a given stat across multiple Analysts.
+            Creates a bar graph for a given stat across multiple Analysts.
+            category: can be string or reference to an evaluator.
+            **kwargs is for matplotlib.pyplot.bar
         """
-        vals = [a.get_stat(category, description) for a in ana_list]
+        cat = category if isstring(category) else category.CATEGORY
+
+        vals = [a.get_stat(cat, description) for a in ana_list]
         vals = [v if v is not None else 0 for v in vals]
         labels = [a.description for a in ana_list]
         x = range(len(vals))
 
-        plt.bar(x, vals, align='center')
+        plt.bar(x, vals, align='center', **kwargs)
         plt.xticks(x, labels)
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
-        plt.ylabel(category + ": " + description)
+        plt.ylabel(cat + ": " + description)
         plt.title("Analyst Comparison")
         plt.tight_layout()
         plt.show()
 
     @staticmethod
-    def graph_multi(ana_list, cat_desc_pairs, group_by_stat=True):
+    def graph_comparison_multi(ana_list, cat_desc_pairs, group_by_stat=True,
+            **kwargs):
         """
             Description:
                 Creates a multi-bar graph showing stats side-by-side for
@@ -1150,8 +1282,9 @@ class Analyst:
                 ana_list: a list of analysts.
                 group_by_stat: True means bars will be grouped by stat,
                     False means bars will be grouped by Analyst.
-                *cat_desc_pairs: variable number of remaining arguments, each
-                    of the form ("Category", "Description").
+                cat_desc_pairs: list of tuples, each of the form
+                    ("Category", "Description").
+                **kwargs: extra arguments to pass into matplotlib.pyplot.bar
         """
         categories, descriptions = zip(*cat_desc_pairs)
         # dicts = [[a.get_category_stats(c) for c in categories] \
@@ -1190,7 +1323,7 @@ class Analyst:
         width = 1.0 / (len(legend) + 1)
         for i in range(len(legend)):
             plt.bar(x + width * (i + 1), vals[i],
-                width=width, label=legend[i])
+                width=width, label=legend[i], **kwargs)
             
         plt.ylabel("Value")
         if xlabel is not None: plt.xlabel(xlabel)

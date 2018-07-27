@@ -23,7 +23,7 @@ class KMeansClusterizer(Clusterizer, object):
         # Inherited:
         # self.clusters = []
         # self.vector_groups = []
-        # self.data_dict = OrderedDict()
+        # self.stats_dict = OrderedDict()
         # self.starred = []
         # self.calculated = False
         self.k_or_guess = k_or_guess
@@ -74,11 +74,11 @@ class KMeansClusterizer(Clusterizer, object):
 
     def compute_stats(self, **kwargs):
         # PRE: self.clusters must have been filled in (by vectors_to_clusters).
-        # POST: self.data_dict, self.starred filled in.
+        # POST: self.stats_dict, self.starred filled in.
         printer = kwargs["printer_fn"]
 
-        self.data_dict["K"] = len(self.vector_groups)
-        #self.data_dict["KMeans Distortion"] = self.distortion
+        self.stats_dict["K"] = len(self.vector_groups)
+        #self.stats_dict["KMeans Distortion"] = self.distortion
         #   Was duplicate of Spatial Distortion Avg!
         # Add cluster distortion stats:
 
@@ -88,11 +88,11 @@ class KMeansClusterizer(Clusterizer, object):
                 np.mean(self.distortion_groups[i])
         # Add overall distortion stats:
         self._compute_list_stats(
-            self.distortion_list, "Spatial Distortion", self.data_dict)
+            self.distortion_list, "Spatial Distortion", self.stats_dict)
 
         super(KMeansClusterizer, self).compute_stats(**kwargs)
         # Count has been redubbed K:
-        self.data_dict.pop("Count")
+        self.stats_dict.pop("Count")
 
         self.add_star("Population Max")
         self.add_star("Population Min")

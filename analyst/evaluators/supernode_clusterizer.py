@@ -76,18 +76,18 @@ class SupernodeClusterizer(NodeClusterizer, object):
         self.add_generic_node_stats()
 
         if len(self.clusters) > 0:
-            self.data_dict["Node Category"] = self.NODE_CATEGORY
+            self.stats_dict["Node Category"] = self.NODE_CATEGORY
 
             # Island Factor
             printer("Minding the Macrocosm", "Calculating Island Factor")
-            self.data_dict["Island Factor"] = (
+            self.stats_dict["Island Factor"] = (
                 len(self.clusters)*4.0/float(len(space)))
             self.add_star("Island Factor")
 
             # Hierarchical Factor
             printer("Deliberating over Dominions",
                 "Calculating Hierarchical Factor")
-            self.data_dict["Hierarchical Factor"] = (
+            self.stats_dict["Hierarchical Factor"] = (
                 len(self.clusters)*2.0/float(len(self.nodes)))
             self.add_star("Hierarchical Factor")
         

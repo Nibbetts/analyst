@@ -52,15 +52,15 @@ class AvgCanonicalAnalogizer(Analogizer, object):
     # OVERRIDEABLE
     def compute_stats(self, **kwargs):
         # PRE: self.analogies needs to have been filled in (with pairs)
-        # POST: self.data_dict, self.starred will be filled in, as well as
+        # POST: self.stats_dict, self.starred will be filled in, as well as
         #   self.score, self.distances, self.lengths, self.dropped, and
         #   self.correct.
         self._prep_canonical(kwargs["encoder_fn"])
 
         if self.canonical is not None:
-            self.data_dict["Canonical Length"] = np.linalg.norm(self.canonical)
+            self.stats_dict["Canonical Length"] = np.linalg.norm(self.canonical)
             self.add_star("Canonical Length")
-        self.data_dict["Canonical Components"] = len(self.canonical_vectors)
+        self.stats_dict["Canonical Components"] = len(self.canonical_vectors)
 
         super(AvgCanonicalAnalogizer, self).compute_stats(**kwargs)
 
