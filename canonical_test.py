@@ -31,8 +31,26 @@ path_ends = [
     "14_plural_verbs",
 ]
 
+names_2 = [
+    "accessing_containers",
+    "affordance",
+    "belong",
+    "causation",
+    "containers",
+    "locations_for_objects",
+    "rooms_for_containers",
+    "rooms_for_objects",
+    "tools",
+    "trash_or_treasure",
+    "travel",
+]
+
 def get_e():
-    analogies_path="/mnt/pccfs/backed_up/nathan/Projects/analogy_corpora_uncased/analogy_subcorp"
+    analogies_path="/mnt/pccfs/backed_up/nathan/Projects/analogy_corpora_postagged/analogy_subcorp"
+    e_analogy = [an.evaluators.analogizer.Analogizer(
+        category="Linear Offset " + p,
+        analogies_path=analogies_path + p) \
+        for p in path_ends]
     e_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
         category="Avg Canonical " + p,
         analogies_path=analogies_path + p) \
@@ -44,8 +62,32 @@ def get_e():
     e_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
             category="Combined Avg Canonical", analogizers=e_avg),
         an.evaluators.analogizer_combiner.AnalogizerCombiner(
-            category="Combined Ext Canonical", analogizers=e_ext)]
-    return e_comb + e_avg + e_ext
+            category="Combined Ext Canonical", analogizers=e_ext),
+        an.evaluators.analogizer_combiner.AnalogizerCombiner(
+            category="Combined Linear Offset", analogizers=e_analogy)]
+    return e_analogy + e_avg + e_ext + e_comb
+
+def get_e2():
+    analogies_path="/home/nate/Projects/BYU-Analogical-Reasoning-Dataset/text/"
+    e_analogy = [an.evaluators.analogizer.Analogizer(
+        category="Linear Offset " + p,
+        analogies_path=analogies_path + p + ".txt") \
+        for p in names_2]
+    e_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
+        category="Avg Canonical " + p,
+        analogies_path=analogies_path + p + ".txt") \
+        for p in names_2]
+    e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
+        category="Ext Canonical " + p,                                                          
+        analogies_path=analogies_path + p + ".txt") \
+        for p in names_2]
+    e_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
+            category="Combined AvgCan Reasoning", analogizers=e_avg),
+        an.evaluators.analogizer_combiner.AnalogizerCombiner(
+            category="Combined ExtCan Reasoning", analogizers=e_ext),
+        an.evaluators.analogizer_combiner.AnalogizerCombiner(
+            category="Combined LinOfst Reasoning", analogizers=e_analogy)]
+    return e_analogy + e_avg + e_ext + e_comb
 
 def word2vec_analysis():
     return an.Analyst(
@@ -98,4 +140,11 @@ if __name__ == "__main__":
 
     #data_ft, str_f = get_strings()
     #fasttext(str_f, data_ft)
-    word2vec_analysis()
+    #word2vec_analysis()
+
+    a=an.load("Word2Vec Canonical Test.dill")
+    #a.add_evaluators(*get_e2())
+    # for e in a.evaluators:
+    #     if len(e.data_dict) == 0 and "file_name" in dir(e):
+    #         e.file_name = e.file_name[:53] + "text/" + e.file_name[53:]
+    a.analysis()

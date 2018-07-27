@@ -1006,7 +1006,7 @@ class Analyst:
     # General Analyses:                                                        #
     #--------------------------------------------------------------------------#
 
-    def analysis(self, print_report, recalculate=[]):
+    def analysis(self, print_report=True, recalculate=[]):
         # Won't recalculate any but those whose categories are listed.
         # Even those it doesn't recalculate, it will still get their data and
         #   update its own in case it has changed.

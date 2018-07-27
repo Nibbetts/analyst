@@ -14,4 +14,27 @@ Contributions:
 - Most directions we take from any given point will leave us in the sphere (1/D likelihood of picking the wrong way), but going too far in any direction will take us away, and going not far enough will leave us near where we were. Imagine it like you are in the middle of a 3D space, and can find a direction to go that will take you close to anything by going around the same distance. Not only that, but you can find a direction to go that will take you close to many different combinations of things, excluding others. The distance to go does not vary greatly, it just has to be far enough, but the direction matters enormously. There is an appropriate direction for some combinations of objects, and not for others, hence relationships in the space; and this is independent of where our starting point is, since all locations in the space are accessible from all directions.
 
 
-TELL DR WINGATE what i've been doing
+
+GROUP OF THINGS #1: (analogical/moving around in space)
+- explain how distance and direction work when moving around in an n-1 dimensional unit hyperspherical manifold
+- explain analogical reasoning applied to conversational flow, and how we can use this as a ranker (nancy thinks I may have a different enough focus that this won't be too much the same as Will's part of their presentation, which may also get published as part of a paper)
+- explain why we need to relengthen canonical analogy vectors (which has minor results in word2vec, but bigger I think in universal sentence space). Explain that this was why pisa/DSM worked a year ago, showing that we got results with canonicals before that were closer in relatedness-space. This also can fit an explanation of what it means to travel around in the manifold, or to travel in a direction.
+- show results from "walk"s in the space, around the hypersphere and straight, and explain the significance of epitomizing a vector. Also show clustering that appears in doing so.
+
+GROUP OF THINGS #2: (clustering/spatial structure)
+- show results of clustering with an agglomeration threshold (which appears to lump things continuously into one large lump, not groups all over)
+- show comparison of clustering/spatial data on word embeddings versus universal sentence encodings, and explain what they mean (subsection of the space, odd shape, less round in sentence space).
+- Show that universal sentence encoded words perform terribly on analogies
+- explain interest in extremities of the space, and what it means in high dimensionality (also maybe related to outliers?)
+- explain how hubs (shared nearest-neighbor groups) are important because it is mathematically a local density maximum.
+- Lots of ideas of algorithms I'd like to test but haven't implemented yet... .
+
+GROUP OF THINGS #3: (The Analyst API)
+- introduce analyst as an expandable toolset with ease of running large groups of tests, both for clustering algorithms, mathematical analysis of an embedding space, and analogical reasoning
+- good for comparing embedding spaces - important if we want to improve them
+- instant graphs
+- inspection of details
+- works with word level or sentence level
+- use own encoders/decoders, as well as distance metrics (and all those in scipy)
+- some is parallelized
+- examples of results
