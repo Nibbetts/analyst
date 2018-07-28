@@ -180,9 +180,12 @@ def odd_one_out(l):
 
 class Distances:
     """
-        A class for distance and neighbor operations on a vector space,
-        since in very large spaces we cannot simply find a distance matrix,
-        unless you have huge amounts of ram on hand.
+    A class for distance and neighbor calculations and operations on an
+        embedding space.
+    
+    We do this because in very large spaces we cannot simply find a distance
+        matrix, unless you have huge amounts of ram on hand, and any given
+        measurement may not be needed many times.
     """
 
     PARALLELIZATION_BOUND = 3000
@@ -190,7 +193,7 @@ class Distances:
     def __init__(self, embeddings, metric_str, metric_fn, print_fn,
             auto_print=True, make_distance_matrix=False,
             make_kth_neighbors=[], parallel_count=None, **metric_args):
-        # NOTE: Distance matrix calculation is not parallelized.
+        """NOTE: Distance matrix calculation is not parallelized."""
         
         self.space = embeddings
         self.metric_str = metric_str
@@ -221,14 +224,17 @@ class Distances:
         #   no others need them, since some clustering algorithms have it
         #   built-in to recompute all of this internally.
 
-    # Compute distance matrix if not already done and am supposed to:
-    def get_distance_matrix(self):       
-        # DISTANCE MATRIX CALCULATION, OR NOT:
-        #   Any metric string recognized by scipy will work, or any valid
-        #   function. However, any function, including scipy's, will be FAR
-        #   slower than putting in the string representation of a recognized
-        #   scipy function, so that scipy knows exactly what it is.
-        # NOTE: This is a condensed distance matrix. Use condensed_index.
+    def get_distance_matrix(self):
+        """
+        DISTANCE MATRIX CALCULATION, if required:
+
+        Any metric string recognized by scipy will work, or any valid
+            function. However, any function, including scipy's, will be FAR
+            slower than putting in the string representation of a recognized
+            scipy function, so that scipy knows exactly what it is.
+
+        NOTE: This is a condensed distance matrix. Use condensed_index.
+        """
 
         if self.make_distance_matrix and self.distance_matrix is None:
             try:
@@ -249,14 +255,14 @@ class Distances:
                 self.make_distance_matrix = False
         return None # If failed or if not supposed to make distance matrix
 
-    # Convert indeces to condensed distance vector index:
     def condensed_index(self, i, j):
+        """Convert indeces to condensed distance vector index"""
         if i == j: return -1 # Not here; we have to check for this one anyway.
         if i < j: i, j = j, i
         return len(self.space)*j - j*(j+1)//2 + i - 1 - j
 
-    # Fast metric that takes advantage of distance matrix if we have one:
     def metric_in_model(self, i, j):
+        """Fast metric that takes advantage of distance matrix if we have one"""
         if i == j: return 0.0
         d = self.get_distance_matrix()
         if d is not None:
@@ -264,11 +270,14 @@ class Distances:
         else:
             return self.metric(self.space[i], self.space[j], **self.metric_args)
 
-    # Returns a row of the distance matrix, or the equivalent:
     def distances_from(self, index):
-        # Won't take more than one at a time, because a request for all of them
-        #   could cause memory problems. Also then sp.squareform(sp.pdist(...))
-        #   would be more efficient than this if you need all of them anyway.
+        """
+        Returns a row of the distance matrix, or the equivalent
+        
+        Won't take more than one at a time, because a request for all of them
+            could cause memory problems. Also then sp.squareform(sp.pdist(...))
+            would be more efficient than this if you need all of them anyway.
+        """
         d = self.get_distance_matrix()
         if d is not None:
             indeces = [self.condensed_index(index, j) \
@@ -284,45 +293,56 @@ class Distances:
                 self.metric_str if self.metric_str != None else self.metric,
                 **self.metric_args).squeeze()
 
-    # Gets the kth neighbor of obj. Negatives for furthest, 0 for self, positive
-    #   for nearest. If not in_model, 0 is nearest.
-    # Takes and returns objects in index form.
-    # NOTE: Be sparing in using this on k not included from the start, as these
-    #   will be heavy calculations because they are not stored!
     def neighbor_k(self, index, k):
+        """
+        Gets the kth neighbor of obj.
+        
+        Negatives for furthest, 0 for self, positive for nearest.
+            If not in_model, 0 is nearest.
+        Takes and returns objects in index form.
+
+        NOTE: Be sparing in using this on k not included from the start,
+            as these will be heavy calculations because they are not stored!
+        """
         try:
             return self.kth_neighbors(k)[index]
         except:
             d = self.distances_from(index)
             return np.argpartition(d, k)[k]
 
-    # Gets all computed neighbors of index, in order of closeness,
-    # (zeroth is self). Will get ALL neighbors of index;
-    # NOTE: This is very slow!
     def neighbors_of(self, index):
+        """
+            Gets all computed neighbors of index, in order of closeness,
+                (zeroth is self). Will get ALL neighbors of index;
+            NOTE: This is very slow!
+        """
         d = self.distances_from(index)
         return np.argsort(d)
 
     def distances_from_arbitrary(self, vector):
-        # Takes a vector not in the model and finds its distance to every obj
-        #   in the model, taking advantage of scipy's optimizations.
-        # NOTE: results are not stored, so recomputes every time.
+        """
+        Takes a vector not in the model and finds its distance to every obj
+            in the model, taking advantage of scipy's optimizations.
+        NOTE: results are not stored, so recomputes every time.
+        """
         return sp.distance.cdist(
             np.atleast_2d(vector),
             self.space,
             self.metric_str if self.metric_str != None else self.metric,
             **self.metric_args).squeeze()
 
-    # Here 0 is closest. This is slow!
     def neighbor_k_of_arbitrary(self, vector, k):
+        """Here 0 is closest. This is slow!"""
         if k < 0: k += len(self.space) # Convert all k to positive
         d = self.distances_from_arbitrary(vector)
         return np.argpartition(d, k)[k]
             
     def neighbors_of_arbitrary(self, vector, indeces=None):
-        # Takes a vector NOT IN THE MODEL and finds its distance to every obj
-        #   in the model, returning a 1D array of indeces (not vectors!)
-        # NOTE: results are not stored, so recomputes every time.
+        """
+        Takes a vector NOT IN THE MODEL and finds its distance to every obj
+          in the model, returning a 1D array of indeces (not vectors!)
+        NOTE: results are not stored, so recomputes every time.
+        """
         #if self.metric_str != u"cosine":
         distances = self.distances_from_arbitrary(vector)
         if indeces is None:
@@ -336,20 +356,23 @@ class Distances:
         #     return distances.argsort()[::-1]
 
     def nearest_to_arbitrary(self, vector):
-        # Takes in a vector and returns the index of the nearest object in the
-        # space. If given something in the space, will return it back as index,
-        # because that is the nearest.
+        """
+        Takes in a vector and returns the index of the nearest object in the
+            space. If given something IN the space, will return the obj given,
+            (again by index,) because that is the nearest.
+        """
         if self.metric_str != u"cosine":
             return self.space[np.argmin(self.distances_from_arbitrary(vector))]
         else: # Optimization for cosine similarity:
             return self.space[np.argmax(np.dot(
                 self.space, np.array([vector]).T.squeeze()))]
 
-    # These return the kth neighbor of all objects in the space, but only if
-    #   k in self.make_kth_neighbors; otherwise it should have been put in in
-    #   the first place.
-    #   Use negative for furthest, 0 for self, positive for nearest.
     def kth_neighbors_dist(self, k):
+        """
+        Returns the kth neighbor's dist of all objects in the space.
+        Use negative for furthest, 0 for self, positive for nearest.
+        MUCH SLOWER if k not in self.make_kth_neighbors.
+        """
         if k == 0: return np.zeros(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
         assert k in self.make_kth_neighbors
@@ -361,6 +384,11 @@ class Distances:
         return self.neighbors_dist[k]
 
     def kth_neighbors(self, k):
+        """
+        Returns the indeces of all objects' kth neighbor.
+        Use negative for furthest, 0 for self, positive for nearest.
+        MUCH SLOWER if k not in self.make_kth_neighbors.
+        """
         if k == 0: return range(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
         assert k in self.make_kth_neighbors
@@ -801,9 +829,11 @@ class Analyst:
         if obj // len(self.space) == 0: return True
         return False
     #
-    # These work on objects not in the model, but this requires in_model=False,
-    #   and of course only returns the nearest object.
     def as_index(self, obj, in_model=True):
+        """
+        These work on objects not in the model, but this requires
+            in_model=False, and of course only returns the nearest object.
+        """
         if in_model:
             if isstring(obj):
                 return self.s_to_ix[obj]
@@ -831,19 +861,23 @@ class Analyst:
             return self.decode(self.nearest(obj, in_model=False))
 
 
-    # Superfast metric function IF DISTANCE MATRIX COMPUTED,
-    #   for objects within the model only.
-    # Note: generic types.
     def metric_in_model(self, obj1, obj2):
+        """
+        Superfast metric function IF DISTANCE MATRIX COMPUTED,
+            for objects within the model only.
+        Note: generic types.
+        """
         return self.D.metric_in_model(
             self.as_index(obj1, in_model=True),
             self.as_index(obj2, in_model=True))
 
-    # Gets the kth neighbor of obj. Negatives for furthest, 0 for self, positive
-    #   for nearest. If not in_model, 0 is nearest.
-    # Attempts to return the same type given, ie: index, string, or vector.
-    # Ensures neighbors will be calculated before, without being recalculated.
     def neighbor_k(self, obj, k, in_model=True):
+        """
+        Gets the kth neighbor of obj. Negatives for furthest, 0 for self,
+            positive for nearest. If not in_model, 0 is nearest.
+        Attempts to return same type given, ie: index, string, or vector.
+        Ensures nbrs will be calculated before, without being recalculated.
+        """
         if in_model:
             i = self.D.neighbor_k(self.as_index(obj), k)
             if isstring(obj):
@@ -863,16 +897,19 @@ class Analyst:
             # Note that if not in_model, we require obj to be a vector.
             return self.D.nearest_to_arbitrary(obj)
 
-    # Computes the downstream nearest neighbor, and lists the path if asked,
-    #   starting from obj's kth-nearest neighbor,
-    #   then going from one NEAREST neighbor to another until we start to repeat
-    #   (having reached a node). Thus the last two in the list make a node. If
-    #   you start from k=0, obj will be included. k=1 is same, but without obj.
-    # Note: non type-specific, and returns same type as given.
-    # Note: should be faster if path not kept.
-    # Note: probably less efficient if you use straight vectors, because of
-    #   equality checks. Maybe most efficient for indeces?
     def downstream(self, obj, start_neighbor_k=0, give_path=False):
+        """
+        Computes the downstream nearest neighbor, and lists the path if
+            asked, starting from obj's kth-nearest neighbor,
+            then going from one NEAREST neighbor to another until we start
+            to repeat (having reached a node). Thus the last two in the list
+            make a node. If you start from k=0, obj will be included.
+            k=1 is same, but without obj.
+        Note: non type-specific, and returns same type as given.
+        Note: should be faster if path not kept.
+        Note: probably less efficient if you use straight vectors,
+            because of equality checks. Maybe most efficient for indeces?
+        """
         path = None
         path=[]
         current = self.neighbor_k(obj, start_neighbor_k, in_model=True)
@@ -883,12 +920,17 @@ class Analyst:
         else: return tuple(path[-2:]) # Right one is furthest downstream.
 
 
-    # NOTE: This function does NOT force the evaluator to pre-calculate!
-    # NOTE: Since categories SHOULD be unique among evaluators,
-    #   this function will only return the first match it finds. Or None.
     def find_evaluator(self, category, force_creation=False):
-        # force_creation: whether or not to create a default evaluator for
-        #   built-ins, AND TO ADD IT to the Analyst.
+        """
+        Finds an evaluator beloning to this Analyst by its categorical name.
+
+        force_creation: whether or not to create a default evaluator for
+            built-ins, AND TO ADD IT to the Analyst.
+
+        NOTE: This function does NOT force the evaluator to pre-calculate!
+        NOTE: Since categories SHOULD be unique among evaluators,
+            this function will only return the first match it finds. Or None.
+        """
         cat = category.lower()
         for e in self.evaluators:
             if str(e.CATEGORY.lower()) == cat: return e
@@ -906,6 +948,11 @@ class Analyst:
         return None
 
     def get_clusters(self, category, force_creation=False):
+        """
+        Gets list of clusters from evaluator with given name (category)
+        
+        Returns None if not found or has not get_clusters method.
+        """
         try:
             return self.find_evaluator(
                 category, force_creation=force_creation).get_clusters()
@@ -913,11 +960,14 @@ class Analyst:
             traceback.print_exc()
             return None
 
-    # Makes Built-in Clusterizers with Default Values:
-    # Note: Can take some parameterization, such as "Nodal 10-Hubs", or "2Hubs".
-    #   "Hubs" with no number defaults to "Nodal 4-Hubs".
     @staticmethod
     def make_default_evaluator(category):
+        """
+        Makes built-in Evaluators with defaulted values
+
+        Note: Can take some parameterization, such as "Nodal 10-Hubs",
+            or "2Hubs". "Hubs" with no number defaults to "Nodal 4-Hubs".
+        """
         cat = category.lower()
         if cat == u"spatial":
             return Spatializer()
@@ -957,8 +1007,10 @@ class Analyst:
             return None
 
     def add_evaluators(self, *args):
-        # Helper function
+        """Adds new evaluators to the Analyst"""
+
         def rename_evaluator(evaluator):
+            """Helper function"""
             version = 2
             category = evaluator.CATEGORY
             while category in self.categories:
@@ -1007,10 +1059,17 @@ class Analyst:
     #--------------------------------------------------------------------------#
 
     def analysis(self, print_report=True, recalculate=[]):
-        # Won't recalculate any but those whose categories are listed.
-        # Even those it doesn't recalculate, it will still get their data and
-        #   update its own in case it has changed.
-        # Will only recalculate distances and neighbors if "all" or "All".
+        """
+        Main Analysis function of the Analyst
+
+        Preps a Distances object, then runs evaluate method on each Evaluator
+            the analyst has. Won't REevaluate any but those whose categories
+            are listed.
+        Even those it doesn't recalculate, it will still get their data and
+            update its own listings in case something has changed.
+        Will only recalculate distances and neighbors if "all" or "All"
+            in recalculate.
+        """
 
         if self.D is None or "All" in recalculate or "all" in recalculate:
             # Delayed creation of this object till now because if
@@ -1113,7 +1172,7 @@ class Analyst:
 
     def graph_hist(self, hist_key, bins=64, **kwargs):
         """
-            Creates a histogram according to key printed in report.
+        Creates a histogram according to key printed in report.
         """
         # self.graph_info[hist_key] == 
         #   ([analyst_descriptions], category, description, [datasets])
@@ -1127,12 +1186,12 @@ class Analyst:
 
     def graph_bar(self, description, categories=None, **kwargs):
         """
-            Creates a bar graph of the given stat (description) across multiple
-                Evaluators. If categories is None, will look across all for that
-                stat and only use evaluators which contain that stat;
-                otherwise will only look in ones in the given list.
-            Can take evaluator references instead of their categories.
-            **kwargs is for matplotlib.pyplot.bar
+        Creates a bar graph of the given stat (description) across multiple
+            Evaluators. If categories is None, will look across all for that
+            stat and only use evaluators which contain that stat;
+            otherwise will only look in ones in the given list.
+        Can take evaluator references instead of their categories.
+        **kwargs is for matplotlib.pyplot.bar
         """
         if categories is None:
             cats = [e.CATEGORY for e in self.evaluators \
@@ -1158,12 +1217,12 @@ class Analyst:
     def graph_bar_multi(self, descriptions, categories=None,
             group_by_stat=False, **kwargs):
         """
-            Creates a multi- bar graph comparing the given stats (descriptions)
-                across multiple evaluators.
-                If categories is None, will use every evaluator containing the
-                FIRST description in its stat_dict.
-            Can take evaluator references instead of their categories.
-            **kwargs is for matplotlib.pyplot.bar
+        Creates a multi- bar graph comparing the given stats (descriptions)
+            across multiple evaluators.
+            If categories is None, will use every evaluator containing the
+            FIRST description in its stat_dict.
+        Can take evaluator references instead of their categories.
+        **kwargs is for matplotlib.pyplot.bar
         """
         if categories is None:
             cats = [e.CATEGORY for e in self.evaluators \
@@ -1207,16 +1266,17 @@ class Analyst:
     def graph_evaluators(self, description, eval_array,
             xticks=None, legend=None, xlabel=None, transpose=None, **kwargs):
         """
-            Compares evaluators from multiple groups against each other,
-                on a single stat (description), by creating a multi- bar graph.
-            eval_array: a list of lists or 2d array of evaluators or
-                their categories, or a mix.
-                Each ROW in the input array corresponds to a group of bars!
-            xticks: labels along the x axis.
-            legend: labels for each bar in a given group, shown in map legend.
-            transpose: should we transpose eval_array for you? None will try
-                to match shape of xticks and legend.
-            **kwargs: for matplotlib.pyplot.bar
+        Compares evaluators from multiple groups against each other,
+            on a single stat (description), by creating a multi- bar graph.
+
+        eval_array: a list of lists or 2d array of evaluators or
+            their categories, or a mix.
+            Each ROW in the input array corresponds to a group of bars!
+        xticks: labels along the x axis.
+        legend: labels for each bar in a given group, shown in map legend.
+        transpose: should we transpose eval_array for you? None will try
+            to match shape of xticks and legend.
+        **kwargs: for matplotlib.pyplot.bar
         """
         cats = [[c if isstring(c) else c.CATEGORY for c in row] \
             for row in eval_array]
@@ -1251,9 +1311,10 @@ class Analyst:
     @staticmethod
     def graph_comparison(ana_list, category, description, **kwargs):
         """
-            Creates a bar graph for a given stat across multiple Analysts.
-            category: can be string or reference to an evaluator.
-            **kwargs is for matplotlib.pyplot.bar
+        Creates a bar graph for a given stat across multiple Analysts.
+
+        category: can be string or reference to an evaluator.
+        **kwargs is for matplotlib.pyplot.bar
         """
         cat = category if isstring(category) else category.CATEGORY
 
@@ -1275,16 +1336,16 @@ class Analyst:
     def graph_comparison_multi(ana_list, cat_desc_pairs, group_by_stat=True,
             **kwargs):
         """
-            Description:
-                Creates a multi-bar graph showing stats side-by-side for
-                multiple Analysts.
-            Inputs:
-                ana_list: a list of analysts.
-                group_by_stat: True means bars will be grouped by stat,
-                    False means bars will be grouped by Analyst.
-                cat_desc_pairs: list of tuples, each of the form
-                    ("Category", "Description").
-                **kwargs: extra arguments to pass into matplotlib.pyplot.bar
+        Creates a multi-bar graph showing stats side-by-side for
+            multiple Analysts.
+
+        Inputs:
+            ana_list: a list of analysts.
+            group_by_stat: True means bars will be grouped by stat,
+                False means bars will be grouped by Analyst.
+            cat_desc_pairs: list of tuples, each of the form
+                ("Category", "Description").
+            **kwargs: extra arguments to pass into matplotlib.pyplot.bar
         """
         categories, descriptions = zip(*cat_desc_pairs)
         # dicts = [[a.get_category_stats(c) for c in categories] \
@@ -1340,6 +1401,7 @@ class Analyst:
 
     @staticmethod
     def _formatit(data, width=10, parentheses=False, start_at=0):
+        """Helper function for printing a piece of data in a report"""
         #if parentheses: w = max(9, width)
         #else: w = max(7, width)
         w = max(9, width)
@@ -1381,30 +1443,34 @@ class Analyst:
     @staticmethod
     def compare(ana_list, w=10, comparators=[u"default"], report_path=None,
             categories=None):
-        # Lists side by side the values for each analyst in the list,
-        #   as well as a column for each comparator, run on that stat.
-        # w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
-        #   Total width will be: (6 + (w + 1)*(an + comp) + len(description))
-        # comparator:
-        #   empty list: no comparison columns
-        #   callable (Takes list of available values; does NOT need to handle
-        #       strings or None), or a built-in:
-        #   "all": all builtins
-        #   "default:" includes range, curiosity, and odd_one_out
-        #   "std": standard deviation across the stat
-        #   "avg" or "average": average across the stat
-        #   "max" or "maximum": maximum value
-        #   "min" or "minimum": minimum value
-        #   "rng" or "range": max value minus min value
-        #   "weighted_diff": accentuates numbers far from zero
-        #   "curiosity": accentuates differences and uniformity
-        #   "odd_one_out": spikes when one value differs largely from others
-        # ana_list: a list of analysts. Kinda thought that was clear... :)
-        # report_path: file path to save report to.
-        # categories: list of category names, if want to limit what prints.
-        # Returns: an ordered stat_dict keyed to tuples (Category, Description),
-        #   and a grapher object with multi-histogram information from TODO !!!!!!!!!!!!!!!!!!!!!!!!!!
-        #   the comparison.
+        """
+        Lists side by side the values for each analyst in the list,
+            as well as a column for each comparator, run on that stat.
+
+        w: Numbers will have space for w-2 digits, (w-2 because of . and - ).
+            Total width will be: (6 + (w + 1)*(an + comp) + len(description))
+        comparator:
+            empty list: no comparison columns
+            callable (Takes list of available values; does NOT need to handle
+                strings or None), or a built-in:
+            "all": all builtins
+            "default:" includes range, curiosity, and odd_one_out
+            "std": standard deviation across the stat
+            "avg" or "average": average across the stat
+            "max" or "maximum": maximum value
+            "min" or "minimum": minimum value
+            "rng" or "range": max value minus min value
+            "weighted_diff": accentuates numbers far from zero
+            "curiosity": accentuates differences and uniformity
+            "odd_one_out": spikes when one value differs largely from others
+        ana_list: a list of analysts. Kinda thought that was clear... :)
+        report_path: file path to save report to.
+        categories: list of category names, if want to limit what prints.
+
+        Returns: an ordered stat_dict keyed to tuples (Category, Description),
+            and a grapher object with multi-histogram information from TODO !!!!!!!!!!!!!!!!!!!!!!!!!!
+            the comparison.
+        """
         assert len(ana_list) > 0
         ana_list[0]._print(u"Bridging Universes",
             u"Building Comparison & Report")
@@ -1563,6 +1629,7 @@ class Analyst:
     #--------------------------------------------------------------------------#
 
     def _add_info(self, var, category, description, star=False):
+        """Helper function"""
         # Description and category must be strings.
         #variable = None
         #i = None
@@ -1635,10 +1702,13 @@ class Analyst:
         if not auto_print: return stat_dict #, grapher TODO.
 
     def get_category_stats(self, category, stat_dict=None):
-        # Retrieve a dict containing only stats from desired category, such that
-        #   new_d["Description"] == value
-        # Works on multi-analyst stat_dicts as well.
-        # Case in-sensitive.
+        """
+        Retrieve a dict containing only stats from desired category, such that
+            new_d["Description"] == value
+
+        Works on multi-analyst stat_dicts as well.
+        Case in-sensitive.
+        """
         d = self.print_report(auto_print=False, categories=[category]) \
             if stat_dict == None else stat_dict
         #d's keys are tuples, (category, description), and vals are stats.
@@ -1647,9 +1717,8 @@ class Analyst:
             if k[0].lower() == category.lower(): new_d[k[1]] = d[k]
         return new_d
 
-    # Get a single stat
-    #   Case in-sensitive.
     def get_stat(self, category, description):
+        """Get a single stat; not case sensitive"""
         try:
             desc = description.lower()
             cat = category.lower()
@@ -1661,10 +1730,14 @@ class Analyst:
         return None
 
     def save(self, file_name=None):
-        # NOTE: An Analyst with a space of one million 100D vectors and no
-        #   evaluators will pickle to around 7GB because of the quick encoders/
-        #   decoders. Most Evaluators will not add much more, though higher-D
-        #   vectors will take up more hard drive space.
+        """
+        Saves self to dill file.
+
+        NOTE: An Analyst with a space of one million 100D vectors and no
+            evaluators will pickle to around 7GB because of the quick encoders/
+            decoders. Most Evaluators will not add much more, though higher-D
+            vectors will take up more hard drive space.
+        """
         try:
             f_name = self.file_name if file_name is None else file_name
             if f_name is None:
