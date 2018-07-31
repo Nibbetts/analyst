@@ -2,7 +2,6 @@ from tqdm import tqdm
 import numpy as np
 import scipy.spatial as sp
 import ray
-import psutil
 
 from ..clustertypes.node import Node
 from .clusterizer import Clusterizer

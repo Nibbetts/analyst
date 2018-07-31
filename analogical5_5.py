@@ -24,14 +24,16 @@ if __name__ == "__main__":
     #import tkinter
     #from tkinter import messagebox
     import ray
+    import scipy.cluster.vq as vq
+    import sklearn.decomposition as sd
 
 
 
     MAX_LINES = 200000
-    metric = "euclidean"
+    metric = "cosine"
 
     printing = True
-    ray.init(); printing = False
+    #ray.init(); printing = False
 
     def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'rt').readlines()
@@ -66,14 +68,32 @@ if __name__ == "__main__":
         "14_plural_verbs",
     ]
 
+    def pca_whiten(X):
+        Xp = sd.PCA().fit_transform(X)
+        return np.array([vq.whiten(column) for column in Xp.T]).T
+
     def get_e():
-        return [an.evaluators.analogizer.Analogizer(category=p,
-            analogies_path="/mnt/pccfs/backed_up/nathan/Projects/"
-                "analogy_corpora_uncased/analogy_subcorp" + p) \
-                for p in path_ends] + \
-            [an.evaluators.analogizer_combiner.AnalogizerCombiner()]
-            #[an.evaluators.analogizer.Analogizer(category=??,
-            #    )] + \
+        analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
+            "analogy_corpora_uncased/analogy_subcorp"
+        e_analogy = [an.evaluators.analogizer.Analogizer(
+            category="Linear Offset " + p,
+            analogies_path=analogies_path + p) \
+            for p in path_ends]
+        e_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
+            category="Avg Canonical " + p,
+            analogies_path=analogies_path + p) \
+            for p in path_ends]
+        e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
+            category="Ext Canonical " + p,                                                          
+            analogies_path=analogies_path + p) \
+            for p in path_ends]
+        e_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
+                category="Combined Avg Canonical", analogizers=e_avg),
+            an.evaluators.analogizer_combiner.AnalogizerCombiner(
+                category="Combined Ext Canonical", analogizers=e_ext),
+            an.evaluators.analogizer_combiner.AnalogizerCombiner(
+                category="Combined Linear Offset", analogizers=e_analogy)]
+        return e_analogy + e_avg + e_ext + e_comb
 
     def get_strings():
         with open("embeddings/fasttext.en.py2.pkl", 'rb') as f:
@@ -95,7 +115,7 @@ if __name__ == "__main__":
         print("Success at saving Fasttext: "
             + str(an.Analyst.save(an_fnc,
                 "saved_analyses/an" + str(MAX_LINES) + \
-                "_fasttext_analogies5_euclidean")))
+                "_fasttext_analogies5_" + metric)))
 
     @ray.remote
     def numberbatch(str_f, data_ft):
@@ -114,7 +134,7 @@ if __name__ == "__main__":
             evaluators=get_e())
         print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
             "saved_analyses/an" + str(MAX_LINES) + \
-            "_numberbatch_analogies5_euclidean")))
+            "_numberbatch_analogies5_" + metric)))
 
     @ray.remote
     def googlenews(str_f, data_ft):
@@ -133,7 +153,7 @@ if __name__ == "__main__":
         print("Success at saving GoogleNews: " +
             str(an.Analyst.save(an_w,
                 "saved_analyses/an" + str(MAX_LINES) +
-                "_googlenews_analogies5_euclidean")))
+                "_googlenews_analogies5_" + metric)))
 
     @ray.remote
     def glove(str_f, data_ft):
@@ -144,10 +164,10 @@ if __name__ == "__main__":
             "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
         #embed_g = [normalize(v) for v in embed_g]
         an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
-            auto_print=printing, desc="GloVe Normalized",
+            auto_print=printing, desc="GloVe",
             evaluators=get_e())
-        print("Success at saving GloVe Normalized: " + str(an.Analyst.save(an_g,
-            "saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_euclidean")))
+        print("Success at saving GloVe: " + str(an.Analyst.save(an_g,
+            "saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_" + metric)))
 
     @ray.remote
     def use(str_f, data_ft):
@@ -167,35 +187,58 @@ if __name__ == "__main__":
         print("Success at saving Universal Sentence Encoder: " +
             str(an.Analyst.save(
                 an_u, "saved_analyses/an" + str(MAX_LINES) +
-                "_USE_analogies5_euclidean")))
+                "_USE_analogies5_" + metric)))
+
+    #@ray.remote
+    def white_use(str_f, data_ft):
+        # Universal Sentence Encoder:
+        #   embeddings must be found by hand from things to encode.
+        #   normalized.
+        #   512 dimensions.
+        module_url = "https://tfhub.dev/google/universal-sentence-encoder/1"
+        embed = hub.Module(module_url)
+        tf.logging.set_verbosity(tf.logging.ERROR)
+        with tf.Session() as sess:
+            sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
+            embed_u = sess.run(embed(str_f))
+        embed_u = pca_whiten(embed_u)
+        an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
+            auto_print=printing, desc="PCA Whitened USE",
+            evaluators=get_e())
+        print("Success at saving PCA Whitened USE: " +
+            str(an.Analyst.save(
+                an_u, "saved_analyses/an" + str(MAX_LINES) +
+                "_pcawhiteUSE_analogies5_" + metric)))
     
     functions = [
-        fasttext,
-        numberbatch,
-        googlenews,
-        glove,
-        use,
+        #fasttext,
+        #numberbatch,
+        #googlenews,
+        #glove,
+        #use,
+        white_use,
     ]
 
     data_ft, str_f = get_strings()
-    # for f in functions:
-    #     f(str_f)
+    for f in functions:
+        f(str_f, data_ft)
 
-    remotes = [f.remote(str_f, data_ft) for f in functions]
+    #remotes = [f.remote(str_f, data_ft) for f in functions]
 
-    complete = ray.get(remotes)
+    #complete = ray.get(remotes)
 
-    an_fnc = an.load("saved_analyses/an" + str(MAX_LINES) + "_fasttext_analogies5_euclidean")
-    an_nb  = an.load("saved_analyses/an" + str(MAX_LINES) + "_numberbatch_analogies5_euclidean")
-    an_w   = an.load("saved_analyses/an" + str(MAX_LINES) + "_googlenews_analogies5_euclidean")
-    an_g   = an.load("saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_euclidean")
-    an_u   = an.load("saved_analyses/an" + str(MAX_LINES) + "_USE_analogies5_euclidean")
+    an_fnc = an.load("saved_analyses/an" + str(MAX_LINES) + "_fasttext_analogies5_" + metric)
+    an_nb  = an.load("saved_analyses/an" + str(MAX_LINES) + "_numberbatch_analogies5_" + metric)
+    an_w   = an.load("saved_analyses/an" + str(MAX_LINES) + "_googlenews_analogies5_" + metric)
+    an_g   = an.load("saved_analyses/an" + str(MAX_LINES) + "_glove_analogies5_" + metric)
+    an_u   = an.load("saved_analyses/an" + str(MAX_LINES) + "_USE_analogies5_" + metric)
+    an_wu  = an.load("saved_analyses/an" + str(MAX_LINES) + "_whiteUSE_analogies5_" + metric)
 
-    ana_list = [an_fnc, an_nb, an_w, an_g, an_u]
+    ana_list = [an_fnc, an_nb, an_w, an_g, an_u, an_wu]
 
     # for a in ana_list:
     #     a.analysis(True)
-    an.Analyst.compare(ana_list)
+    an.Analyst.compare(ana_list, report_path="saved_analyses/analogies6_comparison_report.txt")
 
     #an.Analyst.graph_comparison([an_w, an_fnc, an_g, an_nb, an_u], "Nodes", "Count")
     #an.Analyst.graph_multi([an_w, an_fnc, an_g, an_nb, an_u], [("Nodes", "Count"), ("Nuclei", "Count"), ("Nodal 4-Hubs", "Count")], group_by_stat=False)

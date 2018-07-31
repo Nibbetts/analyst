@@ -36,8 +36,8 @@ The objects encoded in the space must be some sort of strings, or the internal c
 - **loner:** an object which has been rejected when forming clusters, making it a cluster unto itself, of sorts.
 - **hub:** an obj that is the nearest neigbor of three or more other objects.
 - **nodal factor:** ratio of words belonging to nodes; a measure of the scale or impact of relationships in the space
-- **alignment factor:** normalize mean of vectors from a to b in nodes, then measure average absolute value of cosine similarity of each to that. Think magnetic moments - how lined-up nodes are in the space.
-- **hierarchical factor:** ratio of nodes belonging to supernodes; a further measure of relationships in the space.
+- **alignment factor:** normalize mean of vectors from a to b in nodes, then measure average absolute value of cosine similarity of each to that. Think magnetic moments - how lined-up nodes are in the space. //DID THIS CALCULATION METHOD CHANGE??
+- **hierarchical factor:** ratio of nodes belonging to supernodes; a further measure of relationships in the space. //REDUB SEPARATION/CLEAVAGE FACTOR?
 - **island factor:** ratio of objects belonging to supernodes; another measure of relationships in the space.
 - **nucleus:** grouping of relatively nearby objects. Starting with nodes and all obj whose nearest are one of those, then finding average dist to center, then combining all clusters whose central nodes are closer than one of their averages.
 - **chain:** different clustering where each cluster has a sole node and recursively finds all whose nearest's nearest's etc. nearest is a member of that node.

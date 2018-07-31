@@ -1,6 +1,5 @@
 from tqdm import tqdm
 import ray
-import psutil
 
 from ..clustertypes.cluster import Cluster
 from .clusterizer import Clusterizer

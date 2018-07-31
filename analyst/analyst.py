@@ -59,7 +59,9 @@ def load(f_name, print_report=False):
             # an.analysis(
             #     print_report=print_report, auto_save=False, recalculate=[])
             # return an
-            return pickle.load(file)
+            a = pickle.load(file)
+            a.file_name = name # Update file name in case it has changed
+            return a
     except:
         traceback.print_exc()
         print(u"ERROR: Unable to load Analyst object "

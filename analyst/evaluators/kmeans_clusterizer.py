@@ -50,6 +50,7 @@ class KMeansClusterizer(Clusterizer, object):
         whitened = sc.whiten(space)
         printer("'They're more like guidelines, anyway'")
         printer("Centralizing the Powers", "Finding K Centroids")
+        # Scipy has already parallelized this part! We just can't see progress.
         codebook, self.distortion = sc.kmeans(
             # Scipy KMeans computation
             whitened,

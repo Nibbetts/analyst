@@ -38,9 +38,12 @@ class Node:
 
     def __eq__(self, r_node):
         # Works on lists and tuples, as well, if only 2 elements.
-        if len(r_node) != 2: return False
-        return ((self.a == r_node[0] and self.b == r_node[1]) or
-                (self.b == r_node[1] and self.a == r_node[0]))
+        try:
+            if len(r_node) != 2: return False
+            return ((self.a == r_node[0] and self.b == r_node[1]) or
+                    (self.b == r_node[1] and self.a == r_node[0]))
+        except:
+            return False
 
     def __getitem__(self, index):
         if index == 0: return self.a

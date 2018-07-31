@@ -13,10 +13,10 @@ if __name__ == "__main__":
     import os.path
 
 
-    MAX_LINES = 1000
+    MAX_LINES = 100000
 
-    def normalize(vec):
-        return vec/np.linalg.norm(vec)
+    #def normalize(vec):
+    #    return vec/np.linalg.norm(vec)
 
     metric = "euclidean"
     #metric = an.angle
