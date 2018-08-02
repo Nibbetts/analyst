@@ -55,8 +55,11 @@ class ExtCanonicalAnalogizer(AvgCanonicalAnalogizer, object):
 
         if self.canonical is not None:
             self.canonical /= np.linalg.norm(self.canonical) # Normalize,
-            self.canonical *= np.mean([ # And re-lengthen to average length
+            desired_length = np.mean([ # And re-lengthen to average length
                 np.linalg.norm(v) for v in self.canonical_vectors])
+            #desired_length = 1.0 + (desired_length - 1.0)*2.0
+            desired_length = 2.0 * desired_length - 1.0
+            self.canonical *= desired_length
 
         # self.stats_dict["Canonical Length"] = np.linalg.norm(self.canonical)
         # self.stats_dict["Canonical Components"] = len(self.canonical_vectors)

@@ -4,20 +4,23 @@ Toolset for studying high-dimensional embedding spaces.
 
 ## Dependencies
 
+Each of these should be accessible through the pip package manager:
+
 numpy: numerical computing  
 scipy: for its distance metrics  
 matplotlib: plotting and graphing  
 tqdm: progress bars  
 dill: pickling and loading, allows for unusual data members
-tkinter? (sudo apt-get install python3-tk)
 future: needed if trying to use python2
+ray: for parallelization
 
-Each of these should be accessible through the pip package manager:
+Example:
 ```bash
-sudo pip install name_of_package
+sudo pip3 install name_of_package
 ```
 
-matplotlib may require python-tk, installed through the OS, not through pip.
+matplotlib may require python-tk, installed through the OS, not through pip:
+tkinter? (sudo apt-get install python3-tk)
 
 ## Usage
 

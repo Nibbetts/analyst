@@ -1,0 +1,12 @@
+numpy
+scipy
+matplotlib
+tqdm
+dill
+future
+ray
+sklearn
+sentencepiece
+gensim
+#tensorflow
+tensorflow_hub

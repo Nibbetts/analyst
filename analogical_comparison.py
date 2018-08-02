@@ -15,7 +15,6 @@ if __name__ == "__main__":
     import numpy as np
     import scipy.spatial as sp
     from tqdm import tqdm
-    import pickle as pkl
     import os.path
     import gensim
     import tensorflow as tf
@@ -145,6 +144,16 @@ if __name__ == "__main__":
         return e_analogy + er_analogy + e_avg + er_avg + \
             e_ext + er_ext + e_comb + er_comb
 
+    # def get_e_longer():
+        # analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
+        #     "analogy_corpora_uncased/analogy_subcorp"
+        # e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
+        #     category="Long Ext Canonical " + p,                                                          
+        #     analogies_path=analogies_path + p) \
+        #     for p in path_ends]
+        # return e_ext + [an.evaluators.analogizer_combiner.AnalogizerCombiner(
+        #     category="Combined Long Ext Canonical", analogizers=e_ext)]
+
     # def get_e_freq():
         # analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
         #     "analogy_corpora_uncased/analogy_subcorp"
@@ -157,7 +166,8 @@ if __name__ == "__main__":
         # return e_freq + e_comb
 
     def get_strings():
-        with open("embeddings/fasttext.en.py2.pkl", 'rb') as f:
+        with open("/home/nate/Projects/analyst_project/"
+                "embeddings/fasttext.en.py2.pkl", 'rb') as f:
             data_ft = pkl.load(f)
             str_f = data_ft['tokens'][:MAX_LINES]
             return data_ft, list(map(str, str_f))
@@ -195,6 +205,7 @@ if __name__ == "__main__":
             an_nb.save()
         else:
             str_nb, embed_nb = read_text_table(
+                "/home/nate/Projects/analyst_project/"
                 "embeddings/numberbatch-en-17.06.txt", firstline=True)
             common_nb = [w for w in str_f if w in str_nb]
             indeces_nb = [str_nb.index(w) for w in common_nb]
@@ -218,6 +229,7 @@ if __name__ == "__main__":
             an_w.save()
         else:
             model_w = gensim.models.KeyedVectors.load_word2vec_format(
+                "/home/nate/Projects/analyst_project/"
                 'embeddings/GoogleNews-vectors-negative300.bin', binary=True)
             #common_w = list(filter(lambda w: w in model_w.vocab.keys() \
             #    or bytes(w) in model_w.vocab.keys(), str_f))
@@ -241,6 +253,7 @@ if __name__ == "__main__":
             an_g.save()
         else:
             str_g, embed_g = read_text_table(
+                "/home/nate/Projects/analyst_project/"
                 "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
             #embed_g = [normalize(v) for v in embed_g]
             an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
