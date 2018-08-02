@@ -63,7 +63,7 @@ def load(f_name, print_report=False):
             a.file_name = name # Update file name in case it has changed
             return a
     except:
-        traceback.print_exc()
+        # traceback.print_exc()
         print(u"ERROR: Unable to load Analyst object "
             u"from file: '{}'".format(name))
         return None
@@ -687,9 +687,9 @@ class Analyst:
 
         self.auto_print = auto_print
         print(u"")
-        self._print(u"Asking the Grand Question",
-            u"What is the Purpose of this Embedding?")
         self.description = str(desc)
+        self._print(u"Asking the Grand Question",
+            u"What are the secrets of {}?".format(self.description))
 
         # Set the file_name for this analyst:
         self.auto_save = auto_save
@@ -697,7 +697,8 @@ class Analyst:
         if file_name is not None:
             self.file_name = file_name
         else:
-            self.file_name = _file_extension(self.description)
+            self.file_name = _file_extension(
+                self.description.lower().replace(" ", "_"))
             if not self.over_write:
                 i = 0
                 name_only = self.file_name
@@ -803,7 +804,7 @@ class Analyst:
         self.categories = []
         self.evaluators = []
         self.category_lists = []
-        self.add_evaluators(*evaluators)
+        self.add_evaluators(evaluators, allow_duplicates=False)
         
         self.make_distance_matrix = make_distance_matrix
         self.make_kth_neighbors = make_kth_neighbors
@@ -945,7 +946,7 @@ class Analyst:
                 return e
         if force_creation: 
             e = Analyst.make_default_evaluator(str(category))
-            self.add_evaluators(e)
+            self.add_evaluators(e, allow_duplicates=False)
             return e
         return None
 
@@ -1008,52 +1009,54 @@ class Analyst:
                 + category + u"'! SKIPPING IT.")
             return None
 
-    def add_evaluators(self, *args):
+    def add_evaluators(self, evaluator_list, allow_duplicates=False):
         """Adds new evaluators to the Analyst"""
 
+        # Helper function:
         def rename_evaluator(evaluator):
             """Helper function"""
             version = 2
             category = evaluator.CATEGORY
             while category in self.categories:
                 category = evaluator.CATEGORY + u" (" + str(version) + u")"
+                version += 1
             evaluator.CATEGORY = category
 
-        warning = u"WARNING: Evaluator category '{}' already exists! {} it."
+        # Helper function:
+        def add(evaluator):
+            warning = u"WARNING: Evaluator category '{}' already exists! {} it."
+
+            if evaluator is not None:
+                exists = evaluator.CATEGORY in self.categories
+                if exists:
+                    self._print(warning.format(evaluator.CATEGORY, u"RENAMING" \
+                        if allow_duplicates else u"SKIPPING"))
+                    if allow_duplicates:
+                        rename_evaluator(evaluator)
+                if not exists or allow_duplicates:
+                    self.categories.append(evaluator.CATEGORY)
+                    self.evaluators.append(evaluator)
 
         # Add evaluators and categories
-        for e in args:
+        for e in evaluator_list:
             if isstring(e): # If keyword
                 if str(e.lower()) == u"all": # If keyword 'All'
                     for cat in Analyst.BUILT_IN_CATEGORIES:
                         evaluator = Analyst.make_default_evaluator(cat)
-                        if evaluator != None:
-                            if evaluator.CATEGORY not in self.categories:
-                                self.categories.append(evaluator.CATEGORY)
-                                self.evaluators.append(evaluator)
-                            else:
-                                self._print(warning.format(
-                                    evaluator.CATEGORY, u"SKIPPING"))
+                        add(evaluator)
                 else: # If keyword matching a built-in
                     evaluator = Analyst.make_default_evaluator(e)
-                    if evaluator != None:
-                        if evaluator.CATEGORY in self.categories:
-                            self._print(warning.format(
-                                evaluator.CATEGORY, u"RENAMING"))
-                            rename_evaluator(evaluator)
-                        self.categories.append(evaluator.CATEGORY)
-                        self.evaluators.append(evaluator)
+                    add(evaluator)
             else: # If actual evaluator object
-                if e != None:
-                    if e.CATEGORY in self.categories:
-                        self._print(warning.format(e.CATEGORY, u"RENAMING"))
-                        rename_evaluator(e)
-                    self.categories.append(e.CATEGORY)
-                    self.evaluators.append(e)
+                add(e)
 
         # Modify category_lists to match categories
         diff = len(self.categories) - len(self.category_lists)
         self.category_lists += np.empty(shape=(diff,0)).tolist()
+
+    # TODO
+    def remove_evaluators(self, categories):
+        raise NotImplementedError()
 
 
     #--------------------------------------------------------------------------#
@@ -1168,6 +1171,103 @@ class Analyst:
     # SPECIFICS INSPECTION:
 
     #TODO!
+
+    @staticmethod
+    def correlate(ana_list, category, description, search_categories=None,
+            finite_only=True):
+        """
+        Given one stat, find and sort correllation with others.
+
+        Intended to show, given multiple analysts and a stat which is indicative
+            of success, which other stats have similar distribution.
+            While "correllation does not imply causation", it can spawn new
+            hypotheses to test for in case of causation.
+        High negative correlation may be just as important as high positive.
+
+        INPUTS:
+            ana_list: list of Analysts
+            category: evaluator name in which to find stat we want to compare
+            description: stat name we want to compare
+            search_categories: which categories (Evaluators) to compare against.
+                If left blank (None), will use all.
+            finite_only: if True, we don't print rows whose R value (correlation
+                coefficient) is infinite or nan, under the assumption that they
+                appear because that row's numbers are all the same.
+        RETURNS:
+            list of tuples, each of the form (label, R), where label is
+            "Category: Description" and R is the correlation coefficient.
+
+        NOTE: Treats Nones as zeros, to allow correlation computation to work
+            despite missing values in some Analysts.
+        """
+        # Collect all data, sifting for things that are actually numbers:
+        data = []
+
+        def valid_add(analyst_i, cat, desc, val):
+            label = cat + ": " + desc
+            if "histogram key" not in desc.lower() and not isstring(val):
+                try:
+                    _ = len(val)
+                except:
+                    if val is not None:
+                        try:
+                            _ = val / 1.0
+                            assert np.isfinite(val)
+                            data[i][label] = val
+                        except:
+                            pass
+                    else:
+                        data[i][label] = 0
+
+        for i, a in enumerate(ana_list):
+            data.append({})
+            for j, c in enumerate(a.category_lists):
+                if search_categories is None or \
+                        a.categories[j] in search_categories:
+                    for t in c:
+                        valid_add(i, a.categories[j], t[0], t[1])
+                if search_categories is not None and \
+                        a.categories[j] == category and \
+                        a.categories[j] not in search_categories:
+                    for t in c:
+                        if t[0].lower() == description.lower():
+                            valid_add(i, a.categories[j], t[0], t[1])
+
+        # Collect all keys:
+        keys = set()
+        for d in data:
+            for k in d:
+                keys.add(k)
+        keys = list(keys)
+        # Combine data into lists representing a stat across all analysts:
+        variables = []
+        for i, k in enumerate(keys):
+            variables.append(np.array([data[j][k] if k in data[j] else 0.0 \
+                for j in range(len(ana_list))]))
+        # Compute the Correllation Coefficient Matrix:
+        R = np.corrcoef(variables)
+        # Find the right one:
+        lower_keys = [k.lower() for k in keys]
+        ours = category.lower() + ": " + description.lower()
+        ix = lower_keys.index(ours)
+        corr = R[ix]
+        # Sort by correllation:
+        order = np.argsort(corr)[::-1]
+        vals = corr[order]
+        labels = np.array(keys)[order]
+        assert len(vals) == len(labels)
+
+        # Print and return results:
+        print("")
+        print(("Correlation of {} across: " + "\n   {}"*len(ana_list)).format(
+            (category + ", " + description).upper(),
+            *[a.description.upper() for a in ana_list]))
+        print(Analyst._formatit("R") + "  CATEGORY: DESCRIPTION")
+        for i, v in enumerate(vals):
+            if np.isfinite(v) or finite_only is False:
+                print(Analyst._formatit(v) + "  " + labels[i])
+
+        return zip(labels, vals)
 
 
     # GRAPHING:

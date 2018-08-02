@@ -23,12 +23,6 @@ compare space to deliberately clustered space
 - study connectivity of the space? No, would be a bunch of diagonals?
 
 
-- build frequency-preferring analogy, which will prefer words in nearest several with similar frequency.
-Not just prefer most frequent, but pattern to be like others, or fit in missing space. bfreq-afreq+cfreq=dfreq,
-except since more variety as less common, take log of index and compare those.
-multiply distance of each response by abs(ln[1]-ln[0]+ln[2] - ln[guess])
-
-
 GROUP OF THINGS #1: (analogical/moving around in space)
 - explain how distance and direction work when moving around in an n-1 dimensional unit hyperspherical manifold
 - explain analogical reasoning applied to conversational flow, and how we can use this as a ranker (nancy thinks I may have a different enough focus that this won't be too much the same as Will's part of their presentation, which may also get published as part of a paper)
@@ -56,7 +50,49 @@ GROUP OF THINGS #3: (The Analyst API)
 
 
 
-
 - put eigen ratio of first vec to second magnitudes in extremity, as scale invariant version of extremity span
-- try whitening universal sentence space for words and rerun analogies - mahalanobis? or PCA? inverse eigenvector matrix?
+
+X try whitening universal sentence space for words and rerun analogies - mahalanobis? or PCA? inverse eigenvector matrix?
+
 - build function to calculate correlation coefficients with all other data points (multiple analysts) compared to one
+
+/ cosine has about 1-1.5% increase in score over euclidean on non-normalized fasttext. Normalized untested - should be same?
+
+/ fasttext 100000 norms as we go to less and less commmon words:
+print([np.mean([norm(v) for v in a.space[:n]]) for n in [10,100,1000,10000,100000]])
+[2.623559989269061, 3.131932804961788, 3.916582141138464, 4.4398021030132, 5.098279914909666]
+print([np.mean([norm(v) for v in a.space[n-1:n]]) for n in [10,100,1000,10000,100000][1:]])
+[2.961103023921611, 4.607342127144154, 4.4346086172493395, 5.103549039766891]
+print([np.mean([norm(v) for v in a.space[n-1:n]]) for n in [10000, 20000, 30000, 40000, 50000, 60000,70000,80000,90000,100000][1:]])
+[5.003156573043517, 5.604515489689208, 4.3875085518918535, 4.7673240355556485, 5.119548738458037, 5.88719328915229, 4.375562846926491, 6.29570927494953, 5.103549039766891]
+
+X build frequency-preferring analogy, which will prefer words in nearest several with similar frequency.
+Not just prefer most frequent, but pattern to be like others, or fit in missing space. bfreq-afreq+cfreq=dfreq,
+except since more variety as less common, take log of index and compare those.
+multiply distance of each response by abs(ln[1]-ln[0]+ln[2] - ln[guess])
+
+
+
+- put words in sentences and try analogies again! Like, I spoke with the man, I spoke with the king, etc.
+I spoke with a man. He told me a story about a king. (This is parallelism)
+"man is to" "king" "as woman is to" "queen"
+- what other rhetorical devices than parallelism can it do?
+Allusion - a reference to an event, literary work or person - I can’t do that because I am not Superman.
+Amplification - repeats a word or expression for emphasis - Love, real love, takes time.
+Analogy - compares two different things that have some similar characteristics - He is flaky as a snowstorm.
+Anaphora - repeats a word or phrase in successive phrases - "If you prick us, do we not bleed? If you tickle us, do we not laugh?” (Merchant of Venice, Shakespeare)
+Antiphrasis - uses a word with an opposite meaning - The Chihuahua was named Goliath.
+Antithesis - makes a connection between two things - “That's one small step for a man, one giant leap for mankind.” (Neil Armstrong)
+Epizeuxis - repeats one word for emphasis - The amusement park was fun, fun, fun.
+Hyperbole - an exaggeration - I have done this a thousand times.
+Litotes - makes an understatement by denying the opposite of a word that may have been used - The terms of the contract are not disagreeable to me.
+Metanoia - corrects or qualifies a statement - You are the most beautiful woman in this town, nay the entire world. 
+Metaphor - compares two things by stating one is the other - The eyes are the windows of the soul.
+Metonymy - a metaphor where something being compared is referred to by something closely associated with it - The knights are loyal to the crown.
+Onomatopoeia - words that imitate the sound they describe - plunk, whiz, pop
+Oxymoron - a two word paradox - near miss, seriously funny
+Parallelism - uses words or phrases with a similar structure - I went to the store, parked the car and bought a pizza.
+Simile - compares one object to another - He smokes like a chimney.
+- train universal sentence decoder
+- train sentence follower, that takes three vectors and produces next.
+

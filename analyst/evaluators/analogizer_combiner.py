@@ -85,7 +85,8 @@ class AnalogizerCombiner(Evaluator, object):
                     self.analogizers if a.lengths is not None and \
                     len(a.lengths) != 0])
             except ValueError as e:
-                traceback.print_exc()
+                # traceback.print_exc()
+                print("WARNING: Failed to combine; no data in Analogizers.")
                 correct = []
 
             self.stats_dict["Analogy Count"] = len(correct)
@@ -108,6 +109,8 @@ class AnalogizerCombiner(Evaluator, object):
                         self.analogizers[np.argmin(self.score_list)].CATEGORY
                     self._compute_list_stats(
                         self.score_list, "Category Score", self.stats_dict)
+                    self.stats_dict.pop("Category Score Avg")
+                    #   Duplicate of Accuracy Per Category.
 
                 # Distance from point found to answer point
                 self._compute_list_stats(self.distances,
