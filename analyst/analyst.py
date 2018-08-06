@@ -217,11 +217,13 @@ class Distances:
         self.neighbors = None
         self.neighbors_dist = None
         self.parallel_count = parallel_count
-        self.parallel_count = max(psutil.cpu_count() - self.parallel_count, 1)
         if self.parallel_count == None:
             self.parallel_count = psutil.cpu_count()
             if len(self.space) <= Distances.PARALLELIZATION_BOUND:
                 self.parallel_count = 1
+        if self.parallel_count <= 0:
+            self.parallel_count = max(
+                psutil.cpu_count() - self.parallel_count, 1)
 
         # NOTE: The Distances class conveniently delays computation of distance
         #   matrix and all the requested neighbors until they are requested
