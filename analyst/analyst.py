@@ -9,6 +9,8 @@ from io import open
 import numpy as np
 import scipy.spatial as sp
 import scipy.special as ss
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 #import cPickle as pickle
@@ -215,6 +217,7 @@ class Distances:
         self.neighbors = None
         self.neighbors_dist = None
         self.parallel_count = parallel_count
+        self.parallel_count = max(psutil.cpu_count() - self.parallel_count, 1)
         if self.parallel_count == None:
             self.parallel_count = psutil.cpu_count()
             if len(self.space) <= Distances.PARALLELIZATION_BOUND:
@@ -678,6 +681,7 @@ class Analyst:
                 time as by use of multiple tasks on each. Likewise a smaller
                 number will not constrain itself to n specific CPUS, but will
                 shuffle that many jobs between all those available.
+                0 will use all. < 0 uses that many less than all.
             auto_save -- whether or not to save automatically after computing.
             file_name -- name of file to use. If blank, will base it on desc.
             over_write -- whether or not to overwrite existing file of same name

@@ -16,6 +16,8 @@ if __name__ == "__main__":
     import scipy.spatial as sp
     from tqdm import tqdm
     import os.path
+    import sys
+    import pickle as pkl
     import gensim
     import tensorflow as tf
     import tensorflow_hub as hub
@@ -29,14 +31,14 @@ if __name__ == "__main__":
 
 
 
-    MAX_LINES = 10000
+    MAX_LINES = 200000
     metric = "cosine"
 
     printing = True
     # ray.init(); printing = False
 
     def read_text_table(path, firstline=True, limit_lines=None):
-        lines = open(path, 'rt').readlines()
+        lines = open(path, 'r', errors='ignore').readlines()
         if firstline:
             numvecs, dim = map(int, lines[0].split(" "))
         else:
@@ -61,7 +63,8 @@ if __name__ == "__main__":
         "largeUSE",
     ]
 
-    fnames = ["saved_analyses/an" + str(MAX_LINES) + "_" + p + \
+    fnames = ["/mnt/pccfs/backed_up/nathan/Projects/"
+        "saved_analyses/an" + str(MAX_LINES) + "_" + p + \
         "_analogies" for p in fname_parts]
 
     path_ends = [
@@ -121,7 +124,8 @@ if __name__ == "__main__":
             an.evaluators.analogizer_combiner.AnalogizerCombiner(
                 category="Combined Linear Offset", analogizers=e_analogy)]
 
-        analogies_path="/home/nate/Projects/BYU-Analogical-Reasoning-Dataset/text_untagged/"
+        analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
+            "byu_analogical_reasoning_untagged/"
         er_analogy = [an.evaluators.analogizer.Analogizer(
             category="Linear Offset " + p,
             analogies_path=analogies_path + p + ".txt") \
@@ -141,7 +145,7 @@ if __name__ == "__main__":
             an.evaluators.analogizer_combiner.AnalogizerCombiner(
                 category="Combined Lin Ofst Reasoning", analogizers=er_analogy)]
         
-        return e_analogy + er_analogy + e_avg + er_avg + \
+        return ["All"] + e_analogy + er_analogy + e_avg + er_avg + \
             e_ext + er_ext + e_comb + er_comb
 
     # def get_e_longer():
@@ -166,8 +170,8 @@ if __name__ == "__main__":
         # return e_freq + e_comb
 
     def get_strings():
-        with open("/home/nate/Projects/analyst_project/"
-                "embeddings/fasttext.en.py2.pkl", 'rb') as f:
+        with open("/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "fasttext.en.py2.pkl", 'rb') as f:
             data_ft = pkl.load(f)
             str_f = data_ft['tokens'][:MAX_LINES]
             return data_ft, list(map(str, str_f))
@@ -205,8 +209,8 @@ if __name__ == "__main__":
             an_nb.save()
         else:
             str_nb, embed_nb = read_text_table(
-                "/home/nate/Projects/analyst_project/"
-                "embeddings/numberbatch-en-17.06.txt", firstline=True)
+                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "numberbatch-en-17.06.txt", firstline=True)
             common_nb = [w for w in str_f if w in str_nb]
             indeces_nb = [str_nb.index(w) for w in common_nb]
             #embed_nb = np.array([embed_nb[i] for i in indeces_nb])
@@ -229,8 +233,8 @@ if __name__ == "__main__":
             an_w.save()
         else:
             model_w = gensim.models.KeyedVectors.load_word2vec_format(
-                "/home/nate/Projects/analyst_project/"
-                'embeddings/GoogleNews-vectors-negative300.bin', binary=True)
+                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "GoogleNews-vectors-negative300.bin", binary=True)
             #common_w = list(filter(lambda w: w in model_w.vocab.keys() \
             #    or bytes(w) in model_w.vocab.keys(), str_f))
             common_w = [w for w in str_f if w in model_w.vocab.keys()]
@@ -253,8 +257,8 @@ if __name__ == "__main__":
             an_g.save()
         else:
             str_g, embed_g = read_text_table(
-                "/home/nate/Projects/analyst_project/"
-                "embeddings/glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
+                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
             #embed_g = [normalize(v) for v in embed_g]
             an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
                 auto_print=printing, desc="GloVe",
@@ -360,7 +364,7 @@ if __name__ == "__main__":
                 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
                 embed_u = sess.run(embed(str_f))
             an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
-                auto_print=printing, desc="USE Large",
+                auto_print=printing, desc="USE Large", parallel_count=-2,
                 evaluators=get_e())
             print("Success at saving USE Large: " +
                 str(an.Analyst.save(an_u, fnames[6])))
@@ -375,23 +379,27 @@ if __name__ == "__main__":
         use_large,
     ]
 
+    to_run = [int(a) for a in sys.argv[1:]] \
+        if len(sys.argv) > 1 else range(len(functions))
     data_ft, str_f = get_strings()
-    for f in functions:
-        f(str_f, data_ft)
+    for i in to_run:
+        functions[i](str_f, data_ft) # 0-6 indicate which analyst
 
     # remotes = [f.remote(str_f, data_ft) for f in functions]
 
     # complete = ray.get(remotes)
 
-    ana_list = [an.load(n) for n in fnames]
-    ana_list = [a for a in ana_list if a is not None]
+    # ana_list = [an.load(n) for n in fnames]
+    # ana_list = [a for a in ana_list if a is not None]
 
     # for a in ana_list:
     #     a.analysis(True)
 
-    an.Analyst.correlate(ana_list,
-        "Combined Linear Offset", "Accuracy Per Category",
-        search_categories=["Combined Avg Canonical"])
+    # an.Analyst.correlate(ana_list,
+    #     "Combined Linear Offset", "Accuracy Per Category",
+    #     search_categories=[c for c in ana_list[0].categories if (
+    #         "Canonical" not in c and "Offset" not in c and "Reasoning" not in c
+    #     )])
 
     # an.Analyst.compare(ana_list)
 

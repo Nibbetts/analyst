@@ -12,3 +12,5 @@ embeddings/*.h5
 *__pycache__*
 #experiments
 *utterance_*.txt
+.dockerignore
+.Dockerfile
