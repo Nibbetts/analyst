@@ -52,6 +52,17 @@ class Cluster:
             id: only for convenience in indexing clusters when printed or
                 grouped externally.
             name: only for convenience in identifying clusters externally.
+            subcluster_category: if composed of other clusters, or by nature
+                contains others we should know about or are building off of,
+                that sub-category name should go here, to be able to reference
+                that evaluator.
+            subcluster_ids: list of cluster ids so this cluster's specific
+                subclusters can be found from the clusterizer they belong to.
+            quiet_stats_override: iterable containing stats to withold from
+                being list-documented in the analyst report. Has no effect on
+                which stats are printed when we print the cluster itself.
+                NOT commonly used, except to withold extraneous information -
+                best to use QUIET_STATS with additions.
             metric_args: additional arguments to the metric function.
                 Use like **kwargs is used.
 

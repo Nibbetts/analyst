@@ -10,3 +10,4 @@ sentencepiece
 gensim
 #tensorflow
 tensorflow_hub
+#sense2vec#==1.0.0a0

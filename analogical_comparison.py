@@ -18,16 +18,18 @@ if __name__ == "__main__":
     import os.path
     import sys
     import pickle as pkl
+    import ray
+    import math
+
     import gensim
     import tensorflow as tf
     import tensorflow_hub as hub
-
-    #import tkinter
-    #from tkinter import messagebox
-    import ray
-    import scipy.cluster.vq as vq
     import sklearn.decomposition as sd
     import sentencepiece as spm
+    
+    # import scipy.cluster.vq as vq
+    # import tkinter
+    # from tkinter import messagebox
 
 
 
@@ -58,14 +60,14 @@ if __name__ == "__main__":
         "numberbatch",
         "googlenews",
         "glove",
+        "sense2vec",
         "USE",
         "liteUSE",
         "largeUSE",
     ]
 
     fnames = ["/mnt/pccfs/backed_up/nathan/Projects/"
-        "saved_analyses/an" + str(MAX_LINES) + "_" + p + \
-        "_analogies" for p in fname_parts]
+        "saved_analyses/an" + str(MAX_LINES) + "_" + p for p in fname_parts]
 
     path_ends = [
         "1_capitals_countries",
@@ -176,6 +178,7 @@ if __name__ == "__main__":
             str_f = data_ft['tokens'][:MAX_LINES]
             return data_ft, list(map(str, str_f))
 
+
     # @ray.remote
     def fasttext(str_f, data_ft):
         # Fasttext:
@@ -192,9 +195,8 @@ if __name__ == "__main__":
             #embed_fn = np.array([normalize(v) for v in embed_f])
             an_fnc = an.Analyst(embeddings=embed_f, strings=str_f,
                 auto_print=printing, metric=metric, desc="Fasttext",
-                evaluators=get_e())# + get_e_freq())
-            print("Success at saving Fasttext: "
-                + str(an.Analyst.save(an_fnc, fnames[0])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[0],
+                over_write=True)# + get_e_freq())
 
     # @ray.remote
     def numberbatch(str_f, data_ft):
@@ -217,9 +219,8 @@ if __name__ == "__main__":
             embed_nb = embed_nb[indeces_nb]
             an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
                 auto_print=printing, desc="ConceptNet Numberbatch",
-                evaluators=get_e())
-            print("Success at saving Numberbatch: " + str(an.Analyst.save(an_nb,
-                fnames[1])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[1],
+                over_write=True)
 
     # @ray.remote
     def googlenews(str_f, data_ft):
@@ -241,9 +242,8 @@ if __name__ == "__main__":
             embed_w = [model_w.get_vector(w) for w in common_w]
             an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
                 auto_print=printing, desc="GoogleNews",
-                evaluators=get_e())
-            print("Success at saving GoogleNews: " +
-                str(an.Analyst.save(an_w, fnames[2])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[2],
+                over_write=True)
 
     # @ray.remote
     def glove(str_f, data_ft):
@@ -262,8 +262,49 @@ if __name__ == "__main__":
             #embed_g = [normalize(v) for v in embed_g]
             an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
                 auto_print=printing, desc="GloVe",
-                evaluators=get_e())
-            print("Success at saving GloVe: " + str(an.Analyst.save(an_g, fnames[3])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[3],
+                over_write=True)
+
+    # @ray.remote
+    def sense_2_vec(str_f, data_ft):
+        # Sense2Vec:
+        #   originally from reddit, then through sense2vec, I modify sense2vec
+        #   by doing a weighted average of all the parts of speech of each word
+        #   I seek, since they are often close in the space.
+        #   NOT normalized.
+        #   128 dimensions.
+        import sense2vec
+
+        a = an.load(fnames[4])
+        if a is not None:
+            a.add_evaluators(get_e())
+            a.analysis(print_report=False)
+            a.save()
+        else:
+            s2v = sense2vec.load('/mnt/pccfs/not_backed_up/nathan/'
+                'analyst_embeddings/reddit_vectors-1.1.0/')
+            strings = []
+            vectors = []
+            endings = ['|ADJ', '|ADP', '|ADV', '|AUX', '|CONJ', '|DET', '|INTJ',
+                '|NOUN', '|NUM', '|PART', '|PRON', '|PROPN', '|PUNCT', '|SCONJ',
+                '|SYM', '|VERB', '|X']
+            for s in str_f:
+                senses = []
+                freq_sum = 0
+                for e in endings:
+                    try:
+                        t = s2v[s+e]
+                        senses.append(t[1]*t[0])
+                        freq_sum += t[0]
+                    except:
+                        pass
+                if len(senses) > 0:
+                    strings.append(s)
+                    vectors.append(np.sum(senses, axis=0)/freq_sum)
+            a = an.Analyst(embeddings=np.array(vectors), strings=strings,
+                metric=metric, auto_print=printing, desc="Sense2Vec",
+                parallel_count=-2, evaluators=get_e(), auto_save=2,
+                file_name=fnames[4], over_write=True)
 
     # @ray.remote
     def use(str_f, data_ft):
@@ -271,7 +312,7 @@ if __name__ == "__main__":
         #   embeddings must be found by hand from things to encode.
         #   normalized.
         #   512 dimensions.
-        an_u = an.load(fnames[4])
+        an_u = an.load(fnames[5])
         if an_u is not None:
             an_u.add_evaluators(get_e())
             an_u.analysis(print_report=False)
@@ -280,14 +321,17 @@ if __name__ == "__main__":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2"
             embed = hub.Module(module_url)
             tf.logging.set_verbosity(tf.logging.ERROR)
+            batches = [str_f[b:b+10000] for b in range(0, len(str_f), 10000)]
+            embeddings = []
             with tf.Session() as sess:
                 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                embed_u = sess.run(embed(str_f))
-            an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
+                for b in batches:
+                    embeddings.append(sess.run(embed(b)))
+            embeddings = np.vstack(embeddings)
+            an_u = an.Analyst(embeddings=embeddings, strings=str_f, metric=metric,
                 auto_print=printing, desc="Universal Sentence Encoder",
-                evaluators=get_e())
-            print("Success at saving Universal Sentence Encoder: " +
-                str(an.Analyst.save(an_u, fnames[4])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[5],
+                over_write=True)
 
     # @ray.remote
     def use_lite(str_f, data_ft):
@@ -295,7 +339,7 @@ if __name__ == "__main__":
         #   embeddings must be found by hand from things to encode.
         #   normalized.
         #   512 dimensions.
-        an_u = an.load(fnames[5])
+        an_u = an.load(fnames[6])
         if an_u is not None:
             an_u.add_evaluators(get_e())
             an_u.analysis(print_report=False)
@@ -322,28 +366,30 @@ if __name__ == "__main__":
                 sp.Load(spm_path)
 
                 input_placeholder = tf.sparse_placeholder(tf.int64, shape=[None, None])
-                embeddings = module(
+                embedder = module(
                     inputs=dict(
                         values=input_placeholder.values,
                         indices=input_placeholder.indices,
                         dense_shape=input_placeholder.dense_shape))
 
-                values, indices, dense_shape = process_to_IDs_in_sparse_format(sp, str_f)
-
                 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                message_embeddings = sess.run(
-                    embeddings,
-                    feed_dict={input_placeholder.values: values,
-                            input_placeholder.indices: indices,
-                            input_placeholder.dense_shape: dense_shape})
+
+                batches = [str_f[b:b+10000] for b in range(0, len(str_f), 10000)]
+                embeddings = []
+                for b in batches:
+                    values, indices, dense_shape = process_to_IDs_in_sparse_format(sp, b)
+                    embeddings.append(sess.run(
+                        embedder,
+                        feed_dict={input_placeholder.values: values,
+                                input_placeholder.indices: indices,
+                                input_placeholder.dense_shape: dense_shape}))
+                embeddings=np.vstack(embeddings)
 
                 an_u = an.Analyst(
-                    embeddings=message_embeddings, strings=str_f, metric=metric,
+                    embeddings=embeddings, strings=str_f, metric=metric,
                     auto_print=printing, desc="USE Lite",
-                    evaluators=get_e())
-
-                print("Success at saving USE Lite: " +
-                    str(an.Analyst.save(an_u, fnames[5])))
+                    evaluators=get_e(), auto_save=2, file_name=fnames[6],
+                    over_write=True)
 
     # @ray.remote
     def use_large(str_f, data_ft):
@@ -351,7 +397,7 @@ if __name__ == "__main__":
         #   embeddings must be found by hand from things to encode.
         #   normalized.
         #   512 dimensions.
-        an_u = an.load(fnames[6])
+        an_u = an.load(fnames[7])
         if an_u is not None:
             an_u.add_evaluators(get_e())
             an_u.analysis(print_report=False)
@@ -360,20 +406,25 @@ if __name__ == "__main__":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder-large/3"
             embed = hub.Module(module_url)
             tf.logging.set_verbosity(tf.logging.ERROR)
+            batches = [str_f[b:b+10000] for b in range(0, len(str_f), 10000)]
+            embeddings = []
             with tf.Session() as sess:
                 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                embed_u = sess.run(embed(str_f))
-            an_u = an.Analyst(embeddings=embed_u, strings=str_f, metric=metric,
+                for b in batches:
+                    embeddings.append(sess.run(embed(b)))
+            embeddings = np.vstack(embeddings)
+            an_u = an.Analyst(embeddings=embeddings, strings=str_f, metric=metric,
                 auto_print=printing, desc="USE Large", parallel_count=-2,
-                evaluators=get_e())
-            print("Success at saving USE Large: " +
-                str(an.Analyst.save(an_u, fnames[6])))
+                evaluators=get_e(), auto_save=2, file_name=fnames[7],
+                over_write=True)
+        
     
     functions = [
         fasttext,
         numberbatch,
         googlenews,
         glove,
+        sense_2_vec,
         use,
         use_lite,
         use_large,

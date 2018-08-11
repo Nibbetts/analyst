@@ -11,7 +11,8 @@ class KMeansClusterizer(Clusterizer, object):
     Simple KMeans Clusterizer.
     Unfortunately, while we can take advantage of numpy speedups, in doing so we
         cannot take advantage of the things the Analyst may have already done,
-        such as nearest neighbors or distances.
+        such as nearest neighbors or distances. Scipy has, though, parallelized
+        this particular algorithm already, though we can't see our progress.
     """
 
     def __init__(self, category="KMeans", starred=None, k_or_guess=None,
@@ -27,6 +28,11 @@ class KMeansClusterizer(Clusterizer, object):
         # self.starred = []
         # self.calculated = False
         self.k_or_guess = k_or_guess
+        #   Alternatively to specifying k, you can pass in a k by n array, an
+        #   array of centroid vectors of length k - this essentially would
+        #   cluster the space according you your specifications. Additionally,
+        #   you can pass in a list of strings or indeces, and we will convert
+        #   them for you.
         self.iter_limit = iter_limit
         self.thresh = thresh
         self.check_finite = check_finite
@@ -41,14 +47,22 @@ class KMeansClusterizer(Clusterizer, object):
         # POST: By the time this function finishes, self.vector_groups must be
         #   filled in, as a vector of vectors of vectors,
         #   but self.clusters doesn't need to be filled in yet.
-        printer = kwargs["printer_fn"]
+        printer   = kwargs["printer_fn"]
+        as_vector = kwargs["as_vector_fn"]
+
         if self.k_or_guess is None:
             self.k_or_guess = round(len(space)**0.5)
+        else:
+            try:
+                self.k_or_guess = np.array([
+                    as_vector(o) for o in self.k_or_guess])
+            except:
+                pass
 
         # This may take some time...
         printer("Glossing Over the Rules", "Whitening the Data for KMeans")
         whitened = sc.whiten(space)
-        printer("'They're more like guidelines, anyway'")
+        printer("\t'They're more like guidelines, anyway'")
         printer("Centralizing the Powers", "Finding K Centroids")
         # Scipy has already parallelized this part! We just can't see progress.
         codebook, self.distortion = sc.kmeans(

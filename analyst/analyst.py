@@ -27,6 +27,7 @@ from copy import copy, deepcopy
 # Own files:
 from .evaluators import *
 from .simulation import *
+# from .clustertypes import * # Included in .evaluators?
 #import evaluators
 #from test_set_2d import TestSet2D
 
@@ -57,12 +58,14 @@ def load(f_name, print_report=False):
     try:
         with open(name, 'rb') as file:
             # an = pickle.load(file)
-            #an._deserialize(metric, encoder, decoder, cluster_algorithms, analogy_algorithms)
+            #an._deserialize(metric, encoder, decoder,
+            #   cluster_algorithms, analogy_algorithms)
             # an.analysis(
             #     print_report=print_report, auto_save=False, recalculate=[])
             # return an
             a = pickle.load(file)
             a.file_name = name # Update file name in case it has changed
+            a._print(u"LOADED: {}".format(a.description))
             return a
     except:
         # traceback.print_exc()
@@ -218,10 +221,11 @@ class Distances:
         self.neighbors_dist = None
         self.parallel_count = parallel_count
         if self.parallel_count == None:
-            self.parallel_count = psutil.cpu_count()
             if len(self.space) <= Distances.PARALLELIZATION_BOUND:
                 self.parallel_count = 1
-        if self.parallel_count <= 0:
+            else:
+                self.parallel_count = psutil.cpu_count()
+        elif self.parallel_count <= 0:
             self.parallel_count = max(
                 psutil.cpu_count() - self.parallel_count, 1)
 
@@ -410,8 +414,8 @@ class Distances:
                 u"Allocating Space for Neighbor Matrices")
             for kth in self.make_kth_neighbors: # Allocate empty arrays
                 self.neighbors[kth] = np.empty(len(self.space), dtype=np.uint64)
-                self.neighbors_dist[kth] = \
-                    np.empty(len(self.space), dtype=np.float64)
+                self.neighbors_dist[kth] = np.empty(len(self.space),
+                    dtype=np.float64)
 
             if -1 in self.make_kth_neighbors: # Print stuff
                 self._print(u"Misconstruing Relations")
@@ -449,8 +453,8 @@ class Distances:
                             **metric_args).squeeze()
                     ordering = np.argpartition(distances, make_kth)
 
-                    neighbors = np.empty(len(make_kth))
-                    neighbors_dist = np.empty(len(make_kth))
+                    neighbors = np.empty(len(make_kth), dtype=np.unit64)
+                    neighbors_dist = np.empty(len(make_kth), dtype=np.float64)
 
                     for j, kth in enumerate(make_kth):
                         neighbors[j] = ordering[kth]
@@ -630,32 +634,7 @@ class Analyst:
                 and returning a scalar. This allows for custom distance metrics.
             WARNING: custom metrics are orders or magnitude slower than
                 scipy's built-ins!
-            evaluators -- FILL IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # cluster_algorithms -- list of tuples (callable, "Description").
-            #     Each callable must take an array-like list of vectors and return
-            #     a list of array-like lists of vectors, each representing a
-            #     cluster. They do not have to partition or even cover the space;
-            #     ie, the can contain duplicates and do not have to contain all.
-            #     If the left entry is None or is not callable, will expect a
-            #     recognized tag in the right instead of a label, indicating to
-            #     use a built-in function.
-            #     Recognized tags:
-            #         "Spatial" -- basic analysis of the space - must occur even
-            #             if not included, but not including it will cause it not
-            #             to display results.
-            #         "Extremities" -- also generally include.
-            #         "Nodes" -- also generally include. Many built-in clustering
-            #             algorithms will cause these to be computed anyway.
-            #         "Hubs"
-            #         "Supernodes"
-            #         "Nuclei"
-            #         "Chains"
-            #         "NNNCC" -- basic built-in experimental clustering algorithm
-            #         "LNNNCC" -- advanced, or strong version of the above
-            #         "Anti-clusters"
-            #         "All" -- will automatically include all of the above.
-            #     NOTE: As this variable contains functions, it will be altered
-            #         to no longer contain functions when an Analyst is pickled.
+            evaluators -- FILL IN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TODO
             auto_print -- whether to print reports automatically after analyses.
             desc -- optional short description/title for this analyst instance.
             evaluate -- whether or not to run the analysis right away.
@@ -685,6 +664,9 @@ class Analyst:
                 shuffle that many jobs between all those available.
                 0 will use all. < 0 uses that many less than all.
             auto_save -- whether or not to save automatically after computing.
+                If set to 2 instead of True or False, will save after every
+                non-analogizer evaluator is evaluated. If set to 3, will save
+                after every evaluator.
             file_name -- name of file to use. If blank, will base it on desc.
             over_write -- whether or not to overwrite existing file of same name
                 when saving. Note we will overwrite our own, but not others.
@@ -695,7 +677,7 @@ class Analyst:
         print(u"")
         self.description = str(desc)
         self._print(u"Asking the Grand Question",
-            u"What are the secrets of {}?".format(self.description))
+            u"STARTING: {}".format(self.description))
 
         # Set the file_name for this analyst:
         self.auto_save = auto_save
@@ -758,7 +740,7 @@ class Analyst:
                 self.space = np.array([encoder(w) for w in
                     tqdm(strings, disable=not self.auto_print)])
                 # TODO: use np.vectorize?
-        else: self.space = embeddings
+        else: self.space = np.array(embeddings)
         #
         # Find strings:
         if strings is None:
@@ -824,6 +806,8 @@ class Analyst:
 
 
     def _decode(self, vec):
+        # Declared in case needed, but is not the decoder in every case -
+        #   hence this one is not for users' use.
         return self.vec_to_s[str(vec.tolist())]
 
     # Generic type converters & tools for inputs and outputs:
@@ -1060,9 +1044,22 @@ class Analyst:
         diff = len(self.categories) - len(self.category_lists)
         self.category_lists += np.empty(shape=(diff,0)).tolist()
 
-    # TODO
     def remove_evaluators(self, categories):
-        raise NotImplementedError()
+        """
+        Removes evaluators from the Analyst.
+        
+        categories: a list of categories; names, not references, of Evaluators.
+        """
+        for cat in categories:
+            cat = cat.lower()
+            index = None
+            for i, c in enumerate(self.categories):
+                if cat == c.lower():
+                    index = i
+                    break
+            self.categories.pop(index)
+            self.evaluators.pop(index)
+            self.category_lists.pop(index)
 
 
     #--------------------------------------------------------------------------#
@@ -1079,8 +1076,17 @@ class Analyst:
         Even those it doesn't recalculate, it will still get their data and
             update its own listings in case something has changed.
         Will only recalculate distances and neighbors if "all" or "All"
-            in recalculate.
+            in recalculate. Otherwise, manually set self.D to None, and it will
+            recalculate it for you. Useful if neighbor indeces corrupted (from
+            not having enough space, such as may occur in a docker container
+            running a space upwards of 100000 vectors???) TODO.
         """
+
+        self._print(u"Looking Closer", u"Analyzing {}".format(self.description))
+
+        if self.auto_save and self.file_name is None:
+            print("WARNING: cannot auto-save, NO FILENAME given,"
+                " or not previously saved.")
 
         if self.D is None or "All" in recalculate or "all" in recalculate:
             # Delayed creation of this object till now because if
@@ -1101,13 +1107,19 @@ class Analyst:
 
             self.parallel_count = self.D.parallel_count
 
+            if self.auto_save and self.file_name is not None:
+                self.save() 
+
         # If want to recalculate all:
         if "All" in recalculate or "all" in recalculate:
             recalculate = [e.CATEGORY for e in self.evaluators]
 
+
         # Run the Evaluations:
         for evaluator in self.evaluators:
             try:
+                changed = not evaluator.calculated
+
                 stats_dict, starred, category = evaluator.calculate(
                     recalculate_all=evaluator.CATEGORY in recalculate,
                     #   Only does those not yet done.
@@ -1154,7 +1166,13 @@ class Analyst:
                 #category = str(category)
 
                 for (key, value) in stats_dict.items():
-                    self._add_info(value, category, key, key in starred)
+                    changed = changed | self._add_info(
+                        value, category, key, key in starred)
+                
+                if changed and self.auto_save>=2 and self.file_name is not None:
+                    if self.auto_save == 3 or not isinstance(
+                            evaluator, Analogizer):
+                        self.save()
 
             except:
                 traceback.print_exc()
@@ -1162,21 +1180,75 @@ class Analyst:
                     #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
 
-        # For convenience, we print the report before taking time to save;
-        #   this behavior is protected from losing data with a try block in the
-        #   print_report function:
+        if changed and self.auto_save==1 and self.file_name is not None:
+            self.save()
+
         if print_report: self.print_report()
-        
-        if self.auto_save:
-            if self.file_name != None:
-                self.save()
-            else: print("CANNOT AUTO-SAVE WITHOUT HAVING BEEN SAVED AT LEAST "
-                "ONCE; NO FILENAME.")
+
+    def evaluated(self):
+        """
+        Gets an OrderedDict keyed to categories whose values are booleans,
+            for whether that category has successfully evaluated.
+
+        Mainly for error checking.
+        """
+        success = OrderedDict()
+        for e in self.evaluators:
+            success[e.CATEGORY] = e.calculated
+        return success
 
 
     # SPECIFICS INSPECTION:
 
-    #TODO!
+    def inspect_cluster(self, objects):
+        """
+        Creates and returns a cluster made from the given objects.
+
+        NOTE: The returned Cluster object is not stored by the analyst,
+            but is simply for your inspection.
+        
+        objects: list containing strings, vectors, or indeces, or a mix.
+        """
+        
+        objs = [self.as_string(o) for o in objects]
+        vecs = [self.as_vector(o) for o in objects]
+        c = Cluster("Inspection", self.encode, self.metric, objs,
+            nearest=self.nearest, vectors=vecs, auto=True, **self.metric_args)
+        return c
+
+    def cluster_by(self, new_category, objects):
+        """
+        Performs KMeans choosing objects as centroids.
+
+        Creates a new KMeans evaluator with name new_category, adds it to the
+            analyst so you can find it by find_evaluator, prints its results,
+            and returns that evaluator's clusters.
+        WARNING: Forces an analysis to occur!
+
+        PARAMETERS:
+        new_category: name of new evaluator, and to find it by thereafter.
+            If already exists, will modify the name and not overwrite.
+        objects: list of objects, strings, indeces, vectors, or mix.
+    
+        RETURNS:
+        List of Cluster objects made from given objects as their centers.
+        Order may not be the same? TODO!
+        """
+
+        self.add_evaluators(
+            [KMeansClusterizer(
+                category=new_category,
+                k_or_guess=objects)],
+            allow_duplicates=True)
+        category = self.evaluators[-1].CATEGORY
+        self.analysis(print_report=False)
+        self.print_report(categories=[category])
+        e = self.find_evaluator(category)
+        if e.calculated:
+            return e.get_clusters()
+        else:
+            pass
+            #TODO! REMOVE evaluator!
 
     @staticmethod
     def correlate(ana_list, category, description, search_categories=None,
@@ -1741,6 +1813,7 @@ class Analyst:
         # Description and category must be strings.
         #variable = None
         #i = None
+        changed = False
         if u"Histogram Key" in description:
             data = ([self.description], category, description, [var])
             try:
@@ -1748,6 +1821,7 @@ class Analyst:
             except:
                 variable = len(self.graph_info)
                 self.graph_info.append(data)
+                changed = True
         else: variable = var
         try:
             i = self.categories.index(category)
@@ -1755,14 +1829,19 @@ class Analyst:
             i = len(self.categories)
             self.categories.append(category)
             self.category_lists.append([])
+            changed = True
         found = False
         for entry in self.category_lists[i]: # Replace if it exists:
             if entry[0] == description:
+                if entry[1] is not variable or entry[2] is not star:
+                    changed = True
                 entry = (description, variable, star)
                 found = True
                 break # NOTE: will only replace the first. So don't duplicate.
         if not found: # Add it if it doesn't exist:
             self.category_lists[i].append((description, variable, star))
+            changed = True
+        return changed
 
     def _print(self, string=u"", report=None):
         if self.auto_print:
@@ -1851,13 +1930,16 @@ class Analyst:
             if f_name is None:
                 f_name = self.description
             #obj._serialize()
-            self._print(u"Snapshotting the Universe", u"Saving the Analyst")
+            self._print(u"Snapshotting the Universe",
+                u"Saving " + self.description)
             with open(_file_extension(f_name), 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             self.file_name = f_name
+            self._print(u"SUCCEEDED at saving to: {}".format(self.file_name))
             return True
         except:
             traceback.print_exc()
+            self._print(u"FAILED to save to: {}".format(self.file_name))
             return False
 
 

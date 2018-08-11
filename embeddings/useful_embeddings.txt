@@ -3,3 +3,4 @@ glove.6B.300d.txt
 GoogleNews-vectors-negative300.bin
 numberbatch-en-17.06.txt
 #and the universal sentence encoder, 512 dimensions
+#spacy's reddit_vectors-1.1.0 used for sense2vec
