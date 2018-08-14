@@ -453,7 +453,7 @@ class Distances:
                             **metric_args).squeeze()
                     ordering = np.argpartition(distances, make_kth)
 
-                    neighbors = np.empty(len(make_kth), dtype=np.unit64)
+                    neighbors = np.empty(len(make_kth), dtype=np.uint64)
                     neighbors_dist = np.empty(len(make_kth), dtype=np.float64)
 
                     for j, kth in enumerate(make_kth):

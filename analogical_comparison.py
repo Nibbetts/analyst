@@ -13,23 +13,10 @@ if __name__ == "__main__":
     import analyst as an
     #from ...scholar.scholar import scholar as sch
     import numpy as np
-    import scipy.spatial as sp
+    # import scipy.spatial as sp
     from tqdm import tqdm
-    import os.path
     import sys
-    import pickle as pkl
     import ray
-    import math
-
-    import gensim
-    import tensorflow as tf
-    import tensorflow_hub as hub
-    import sklearn.decomposition as sd
-    import sentencepiece as spm
-    
-    # import scipy.cluster.vq as vq
-    # import tkinter
-    # from tkinter import messagebox
 
 
 
@@ -38,7 +25,7 @@ if __name__ == "__main__":
 
     printing = True
     # ray.init(); printing = False
-    cpus = 1
+    cpus = 10
 
     def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'r', errors='ignore').readlines()
@@ -102,6 +89,9 @@ if __name__ == "__main__":
     ]
 
     # def pca_whiten(X):
+    #     import sklearn.decomposition as sd
+    #     import scipy.cluster.vq as vq
+    #     
     #     Xp = sd.PCA().fit_transform(X)
     #     return np.array([vq.whiten(column) for column in Xp.T]).T
 
@@ -173,6 +163,8 @@ if __name__ == "__main__":
         # return e_freq + e_comb
 
     def get_strings():
+        import pickle as pkl
+
         with open("/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
                 "fasttext.en.py2.pkl", 'rb') as f:
             data_ft = pkl.load(f)
@@ -234,6 +226,8 @@ if __name__ == "__main__":
             an_w.analysis(print_report=False)
             an_w.save()
         else:
+            import gensim
+
             model_w = gensim.models.KeyedVectors.load_word2vec_format(
                 "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
                 "GoogleNews-vectors-negative300.bin", binary=True)
@@ -282,6 +276,8 @@ if __name__ == "__main__":
             a.analysis(print_report=False)
             a.save()
         else:
+            import sentencepiece as spm
+
             s2v = sense2vec.load('/mnt/pccfs/not_backed_up/nathan/'
                 'analyst_embeddings/reddit_vectors-1.1.0/')
             strings = []
@@ -319,6 +315,9 @@ if __name__ == "__main__":
             an_u.analysis(print_report=False)
             an_u.save()
         else:
+            import tensorflow as tf
+            import tensorflow_hub as hub
+
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2"
             embed = hub.Module(module_url)
             tf.logging.set_verbosity(tf.logging.ERROR)
@@ -346,6 +345,9 @@ if __name__ == "__main__":
             an_u.analysis(print_report=False)
             an_u.save()
         else:
+            import tensorflow as tf
+            import tensorflow_hub as hub
+
             def process_to_IDs_in_sparse_format(sp, sentences):
                 # An utility method that processes sentences with the sentence piece processor
                 # 'sp' and returns the results in tf.SparseTensor-similar format:
@@ -404,6 +406,9 @@ if __name__ == "__main__":
             an_u.analysis(print_report=False)
             an_u.save()
         else:
+            import tensorflow as tf
+            import tensorflow_hub as hub
+
             module_url = "https://tfhub.dev/google/universal-sentence-encoder-large/3"
             embed = hub.Module(module_url)
             tf.logging.set_verbosity(tf.logging.ERROR)
