@@ -96,3 +96,21 @@ Simile - compares one object to another - He smokes like a chimney.
 - train universal sentence decoder
 - train sentence follower, that takes three vectors and produces next.
 
+
+
+======================================================================
+
+- correlate (commonality_of_word/how_many_point_to_word) with accuracy?
+- want more supernodes because less clustered and more hierarchical
+- Being "clustered" means things that are closer to each other than to other things, in general. This creates a local density maximum; at least one node, probably a hub => less nodes than if small-structure units were even smaller. (Even randomness produces more nodes than this, probably)
+- Being unclustered is more like random, not long downstream, not pointing long term to somethign else in the space.
+
+Counterargument:
+- we can often think of things which don't necessarily make us think of the thign we first thought of.
+However:
+- there is a difference between things which are associated, and things which are synonymns. I propose that synonymns should be much more closely clustered, but associated things should not be, or should have more hierarchical structure, not smooth gradient structure. (More supernodes, smaller downstream length, more nodes). If we want synonyms, perhaps we could change our training method, but unsure how. However, associatedness (if not too dependent on) may be strengthened by removing properties unique to synonyms - like not placing new words in the average of their contexts, in case something else is found in same context, but is not necessarily associated?
+- For synonyms, distinct clusters makes sense (shirt, polo shirt, t-shirt, but not dress, though associated). But for analogies, it does not. Lemon would be in a group of yellow things, but does that mean it should not also be in a group of sour things, and a group of fruits? No. Groups intersect, overlap, flow smoothly. No general density gradient to create clusters, but rather more pebbly space with some hierarchicality of much smaller groups with others.
+- Nearest neighbor structure (small scale structure) should be more, smaller trees.
+-    associatedness            : analogies : hierarchicality/small structure
+  :: similar context&same spot : synonyms  : smooth gradient structure
+- watermelon : green :: firetruck : red   shows that clusters don't make sense for analogies, because three obvious clusters. Clusters are more useful when stemming from specific centers, and/or based in nearest neighbors, so you can study specific relationships - not for general.

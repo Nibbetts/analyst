@@ -38,6 +38,7 @@ if __name__ == "__main__":
 
     printing = True
     # ray.init(); printing = False
+    cpus = 1
 
     def read_text_table(path, firstline=True, limit_lines=None):
         lines = open(path, 'r', errors='ignore').readlines()
@@ -196,7 +197,7 @@ if __name__ == "__main__":
             an_fnc = an.Analyst(embeddings=embed_f, strings=str_f,
                 auto_print=printing, metric=metric, desc="Fasttext",
                 evaluators=get_e(), auto_save=2, file_name=fnames[0],
-                over_write=True)# + get_e_freq())
+                over_write=True, parallel_count=cpus)# + get_e_freq())
 
     # @ray.remote
     def numberbatch(str_f, data_ft):
@@ -217,10 +218,10 @@ if __name__ == "__main__":
             indeces_nb = [str_nb.index(w) for w in common_nb]
             #embed_nb = np.array([embed_nb[i] for i in indeces_nb])
             embed_nb = embed_nb[indeces_nb]
-            an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb, metric=metric,
-                auto_print=printing, desc="ConceptNet Numberbatch",
-                evaluators=get_e(), auto_save=2, file_name=fnames[1],
-                over_write=True)
+            an_nb = an.Analyst(embeddings=embed_nb, strings=common_nb,
+                metric=metric, auto_print=printing, parallel_count=cpus,
+                desc="ConceptNet Numberbatch", evaluators=get_e(), auto_save=2,
+                file_name=fnames[1], over_write=True)
 
     # @ray.remote
     def googlenews(str_f, data_ft):
@@ -241,7 +242,7 @@ if __name__ == "__main__":
             common_w = [w for w in str_f if w in model_w.vocab.keys()]
             embed_w = [model_w.get_vector(w) for w in common_w]
             an_w = an.Analyst(embeddings=embed_w, strings=common_w, metric=metric,
-                auto_print=printing, desc="GoogleNews",
+                auto_print=printing, desc="GoogleNews", parallel_count=cpus,
                 evaluators=get_e(), auto_save=2, file_name=fnames[2],
                 over_write=True)
 
@@ -261,7 +262,7 @@ if __name__ == "__main__":
                 "glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
             #embed_g = [normalize(v) for v in embed_g]
             an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
-                auto_print=printing, desc="GloVe",
+                auto_print=printing, desc="GloVe", parallel_count=cpus,
                 evaluators=get_e(), auto_save=2, file_name=fnames[3],
                 over_write=True)
 
@@ -303,7 +304,7 @@ if __name__ == "__main__":
                     vectors.append(np.sum(senses, axis=0)/freq_sum)
             a = an.Analyst(embeddings=np.array(vectors), strings=strings,
                 metric=metric, auto_print=printing, desc="Sense2Vec",
-                parallel_count=-2, evaluators=get_e(), auto_save=2,
+                parallel_count=cpus, evaluators=get_e(), auto_save=2,
                 file_name=fnames[4], over_write=True)
 
     # @ray.remote
@@ -331,7 +332,7 @@ if __name__ == "__main__":
             an_u = an.Analyst(embeddings=embeddings, strings=str_f, metric=metric,
                 auto_print=printing, desc="Universal Sentence Encoder",
                 evaluators=get_e(), auto_save=2, file_name=fnames[5],
-                over_write=True)
+                over_write=True, parallel_count=cpus)
 
     # @ray.remote
     def use_lite(str_f, data_ft):
@@ -387,7 +388,7 @@ if __name__ == "__main__":
 
                 an_u = an.Analyst(
                     embeddings=embeddings, strings=str_f, metric=metric,
-                    auto_print=printing, desc="USE Lite",
+                    auto_print=printing, desc="USE Lite", parallel_count=cpus,
                     evaluators=get_e(), auto_save=2, file_name=fnames[6],
                     over_write=True)
 
@@ -414,7 +415,7 @@ if __name__ == "__main__":
                     embeddings.append(sess.run(embed(b)))
             embeddings = np.vstack(embeddings)
             an_u = an.Analyst(embeddings=embeddings, strings=str_f, metric=metric,
-                auto_print=printing, desc="USE Large", parallel_count=-2,
+                auto_print=printing, desc="USE Large", parallel_count=cpus,
                 evaluators=get_e(), auto_save=2, file_name=fnames[7],
                 over_write=True)
         

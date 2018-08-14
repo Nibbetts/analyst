@@ -382,7 +382,7 @@ class Distances:
         """
         Returns the kth neighbor's dist of all objects in the space.
         Use negative for furthest, 0 for self, positive for nearest.
-        MUCH SLOWER if k not in self.make_kth_neighbors.
+        MUCH SLOWER if k not in self.make_kth_neighbors. TODO! WON'T DO NEW ONES!
         """
         if k == 0: return np.zeros(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
@@ -398,7 +398,7 @@ class Distances:
         """
         Returns the indeces of all objects' kth neighbor.
         Use negative for furthest, 0 for self, positive for nearest.
-        MUCH SLOWER if k not in self.make_kth_neighbors.
+        MUCH SLOWER if k not in self.make_kth_neighbors. TODO! WON'T DO NEW ONES!
         """
         if k == 0: return range(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
@@ -1061,6 +1061,19 @@ class Analyst:
             self.evaluators.pop(index)
             self.category_lists.pop(index)
 
+    def set_parallel_count(self, parallel_count=None):
+        self.parallel_count = parallel_count
+        if self.D is not None:
+            if self.parallel_count == None:
+                if len(self.space) <= self.D.PARALLELIZATION_BOUND:
+                    self.parallel_count = 1
+                else:
+                    self.parallel_count = psutil.cpu_count()
+            elif self.parallel_count <= 0:
+                self.parallel_count = max(
+                    psutil.cpu_count() - self.parallel_count, 1)
+            self.D.parallel_count = self.parallel_count
+
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
@@ -1076,10 +1089,11 @@ class Analyst:
         Even those it doesn't recalculate, it will still get their data and
             update its own listings in case something has changed.
         Will only recalculate distances and neighbors if "all" or "All"
-            in recalculate. Otherwise, manually set self.D to None, and it will
-            recalculate it for you. Useful if neighbor indeces corrupted (from
-            not having enough space, such as may occur in a docker container
-            running a space upwards of 100000 vectors???) TODO.
+            in recalculate. Otherwise, manually set self.D to None and it will
+            recalculate it for you. Useful if neighbor indeces corrupted
+            (from not having enough space, such as may occur in a docker
+            container or parallelization shared object store when running a
+            space upwards of 100000 vectors???) TODO.
         """
 
         self._print(u"Looking Closer", u"Analyzing {}".format(self.description))
@@ -1107,8 +1121,9 @@ class Analyst:
 
             self.parallel_count = self.D.parallel_count
 
-            if self.auto_save and self.file_name is not None:
-                self.save() 
+            # if self.auto_save and self.file_name is not None:
+            #     self.save() # D hasn't actually calculated yet,
+            #                 #     so no point in saving.
 
         # If want to recalculate all:
         if "All" in recalculate or "all" in recalculate:
@@ -1157,6 +1172,9 @@ class Analyst:
                     make_dist_matrix=self.make_distance_matrix,
                 )
 
+                if not evaluator.calculated:
+                    changed = False # No need to save if it broke.
+
                 # The below compatibilities should be unnecessary because both
                 #   keys and starred come from same source, thus same version.
                 #   Also, they're just going to be printed later, so no others
@@ -1185,7 +1203,7 @@ class Analyst:
 
         if print_report: self.print_report()
 
-    def evaluated(self):
+    def evaluated(self, auto_print=False):
         """
         Gets an OrderedDict keyed to categories whose values are booleans,
             for whether that category has successfully evaluated.
@@ -1193,9 +1211,17 @@ class Analyst:
         Mainly for error checking.
         """
         success = OrderedDict()
+        if auto_print: print("\n", self.description.upper(), sep='')
         for e in self.evaluators:
             success[e.CATEGORY] = e.calculated
+            if auto_print: print(e.calculated, "<--", e.CATEGORY)
         return success
+
+    def all_evaluated(self):
+        """
+        Returns boolean, whether or not all Evaluators have successfully run.
+        """
+        return np.all(list(self.evaluated().values()))
 
 
     # SPECIFICS INSPECTION:
