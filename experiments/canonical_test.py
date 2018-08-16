@@ -11,7 +11,7 @@ import word2vec
 # MAX_LINES = 200000
 metric = "cosine"
 printing = True
-model = word2vec.load("/home/nate/Projects/scholar/" \
+model = word2vec.load("/mnt/pccfs/backed_up/nate/Projects/scholar/" \
     "postagged_wikipedia_for_word2vec.bin")
 
 path_ends = [
@@ -46,7 +46,7 @@ names_2 = [
 ]
 
 def get_e():
-    analogies_path="/mnt/pccfs/backed_up/nathan/Projects/analogy_corpora_postagged/analogy_subcorp"
+    analogies_path="/mnt/pccfs/backed_up/nate/Projects/corpora/analogy_corpora_postagged/analogy_subcorp"
     e_analogy = [an.evaluators.analogizer.Analogizer(
         category="Linear Offset " + p,
         analogies_path=analogies_path + p) \
@@ -68,7 +68,7 @@ def get_e():
     return e_analogy + e_avg + e_ext + e_comb
 
 def get_er():
-    analogies_path="/home/nate/Projects/BYU-Analogical-Reasoning-Dataset/text/"
+    analogies_path="/home/nate/Projects/corpora/BYU-Analogical-Reasoning-Dataset/text/"
     er_analogy = [an.evaluators.analogizer.Analogizer(
         category="Linear Offset " + p,
         analogies_path=analogies_path + p + ".txt") \

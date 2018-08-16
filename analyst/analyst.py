@@ -1172,16 +1172,9 @@ class Analyst:
                     make_dist_matrix=self.make_distance_matrix,
                 )
 
-                if not evaluator.calculated:
-                    changed = False # No need to save if it broke.
-
-                # The below compatibilities should be unnecessary because both
-                #   keys and starred come from same source, thus same version.
-                #   Also, they're just going to be printed later, so no others
-                #   need it either.
-                #starred = map(str, starred)
-                #key = str(key)
-                #category = str(category)
+                if evaluator.calculated and evaluator.CATEGORY in recalculate:
+                    changed = True
+                    # No need to save if it broke or wasn't recalculated.
 
                 for (key, value) in stats_dict.items():
                     changed = changed | self._add_info(
@@ -1190,7 +1183,7 @@ class Analyst:
                 if changed and self.auto_save>=2 and self.file_name is not None:
                     if self.auto_save == 3 or not isinstance(
                             evaluator, Analogizer):
-                        self.save()
+                        if self.save(): changed = False
 
             except:
                 traceback.print_exc()
@@ -1198,7 +1191,7 @@ class Analyst:
                     #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
 
-        if changed and self.auto_save==1 and self.file_name is not None:
+        if changed and self.auto_save >= 1 and self.file_name is not None:
             self.save()
 
         if print_report: self.print_report()
@@ -1951,20 +1944,31 @@ class Analyst:
             decoders. Most Evaluators will not add much more, though higher-D
             vectors will take up more hard drive space.
         """
+        # TODO: Build in save functionality to create one backup
+        #   we always replace, so if we break in saving we don't
+        #   lose everything.
         try:
             f_name = self.file_name if file_name is None else file_name
             if f_name is None:
                 f_name = self.description
+            f_backup = f_name + ".BACKUP"
             #obj._serialize()
             self._print(u"Snapshotting the Universe",
                 u"Saving " + self.description)
+            if os.path.isfile(f_name):
+                os.rename(f_name, f_backup)
             with open(_file_extension(f_name), 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             self.file_name = f_name
+            os.remove(f_backup)
             self._print(u"SUCCEEDED at saving to: {}".format(self.file_name))
             return True
         except:
             traceback.print_exc()
+            if os.path.isfile(f_backup):
+                if os.path.isfile(f_name):
+                    os.remove(f_name)
+                os.rename(f_backup, f_name)
             self._print(u"FAILED to save to: {}".format(self.file_name))
             return False
 

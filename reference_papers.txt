@@ -1,0 +1,7 @@
+https://arxiv.org/pdf/1804.09692.pdf
+page 2, upper left:
+- optimize hyperparameters of training to improve nodal factor/ decrease gradient?
+page 2, mid left:
+- second-order versus first-order properties
+page 2, right:
+- stability of word ('s neighbors across multiple spaces)

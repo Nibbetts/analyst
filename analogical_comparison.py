@@ -52,9 +52,10 @@ if __name__ == "__main__":
         "USE",
         "liteUSE",
         "largeUSE",
+        "DEPS",
     ]
 
-    fnames = ["/mnt/pccfs/backed_up/nathan/Projects/"
+    fnames = ["/mnt/pccfs/backed_up/nate/Projects/analyst_project/"
         "saved_analyses/an" + str(MAX_LINES) + "_" + p for p in fname_parts]
 
     path_ends = [
@@ -96,8 +97,8 @@ if __name__ == "__main__":
     #     return np.array([vq.whiten(column) for column in Xp.T]).T
 
     def get_e():
-        analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
-            "analogy_corpora_uncased/analogy_subcorp"
+        analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+            "corpora/analogy_corpora_uncased/analogy_subcorp"
         e_analogy = [an.evaluators.analogizer.Analogizer(
             category="Linear Offset " + p,
             analogies_path=analogies_path + p) \
@@ -117,8 +118,8 @@ if __name__ == "__main__":
             an.evaluators.analogizer_combiner.AnalogizerCombiner(
                 category="Combined Linear Offset", analogizers=e_analogy)]
 
-        analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
-            "byu_analogical_reasoning_untagged/"
+        analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+            "corpora/byu_analogical_reasoning_untagged/"
         er_analogy = [an.evaluators.analogizer.Analogizer(
             category="Linear Offset " + p,
             analogies_path=analogies_path + p + ".txt") \
@@ -142,8 +143,8 @@ if __name__ == "__main__":
             e_ext + er_ext + e_comb + er_comb
 
     # def get_e_longer():
-        # analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
-        #     "analogy_corpora_uncased/analogy_subcorp"
+        # analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+        #     "corpora/analogy_corpora_uncased/analogy_subcorp"
         # e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
         #     category="Long Ext Canonical " + p,                                                          
         #     analogies_path=analogies_path + p) \
@@ -152,8 +153,8 @@ if __name__ == "__main__":
         #     category="Combined Long Ext Canonical", analogizers=e_ext)]
 
     # def get_e_freq():
-        # analogies_path="/mnt/pccfs/backed_up/nathan/Projects/" \
-        #     "analogy_corpora_uncased/analogy_subcorp"
+        # analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+        #     "corpora/analogy_corpora_uncased/analogy_subcorp"
         # e_freq = [an.evaluators.frequency_analogizer.FrequencyAnalogizer(
         #     category="Frequency " + p,
         #     analogies_path=analogies_path + p) \
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     def get_strings():
         import pickle as pkl
 
-        with open("/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+        with open("/mnt/pccfs/not_backed_up/nate/analyst_embeddings/"
                 "fasttext.en.py2.pkl", 'rb') as f:
             data_ft = pkl.load(f)
             str_f = data_ft['tokens'][:MAX_LINES]
@@ -204,7 +205,7 @@ if __name__ == "__main__":
             an_nb.save()
         else:
             str_nb, embed_nb = read_text_table(
-                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "/mnt/pccfs/not_backed_up/nate/analyst_embeddings/"
                 "numberbatch-en-17.06.txt", firstline=True)
             common_nb = [w for w in str_f if w in str_nb]
             indeces_nb = [str_nb.index(w) for w in common_nb]
@@ -229,7 +230,7 @@ if __name__ == "__main__":
             import gensim
 
             model_w = gensim.models.KeyedVectors.load_word2vec_format(
-                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "/mnt/pccfs/not_backed_up/nate/analyst_embeddings/"
                 "GoogleNews-vectors-negative300.bin", binary=True)
             #common_w = list(filter(lambda w: w in model_w.vocab.keys() \
             #    or bytes(w) in model_w.vocab.keys(), str_f))
@@ -252,7 +253,7 @@ if __name__ == "__main__":
             an_g.save()
         else:
             str_g, embed_g = read_text_table(
-                "/mnt/pccfs/not_backed_up/nathan/analyst_embeddings/"
+                "/mnt/pccfs/not_backed_up/nate/analyst_embeddings/"
                 "glove.6B.300d.txt", firstline=False, limit_lines=MAX_LINES)
             #embed_g = [normalize(v) for v in embed_g]
             an_g = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
@@ -268,7 +269,6 @@ if __name__ == "__main__":
         #   I seek, since they are often close in the space.
         #   NOT normalized.
         #   128 dimensions.
-        import sense2vec
 
         a = an.load(fnames[4])
         if a is not None:
@@ -276,9 +276,9 @@ if __name__ == "__main__":
             a.analysis(print_report=False)
             a.save()
         else:
-            import sentencepiece as spm
-
-            s2v = sense2vec.load('/mnt/pccfs/not_backed_up/nathan/'
+            import sense2vec
+            
+            s2v = sense2vec.load('/mnt/pccfs/not_backed_up/nate/'
                 'analyst_embeddings/reddit_vectors-1.1.0/')
             strings = []
             vectors = []
@@ -347,6 +347,7 @@ if __name__ == "__main__":
         else:
             import tensorflow as tf
             import tensorflow_hub as hub
+            import sentencepiece as spm
 
             def process_to_IDs_in_sparse_format(sp, sentences):
                 # An utility method that processes sentences with the sentence piece processor
@@ -423,7 +424,27 @@ if __name__ == "__main__":
                 auto_print=printing, desc="USE Large", parallel_count=cpus,
                 evaluators=get_e(), auto_save=2, file_name=fnames[7],
                 over_write=True)
-        
+    
+    # @ray.remote
+    def deps(str_f, data_ft):
+        # Dependency-Based Word Embeddings:
+        #   ordered by frequency, I think.
+        #   normalization UNTESTED - TODO
+        a = an.load(fnames[8])
+        if a is not None:
+            a.add_evaluators(get_e())
+            a.analysis(print_report=False)
+            a.save()
+        else:
+            str_g, embed_g = read_text_table(
+                "/mnt/pccfs/not_backed_up/nate/analyst_embeddings/"
+                "dependency_based_word_embeddings/deps.words",
+                firstline=False, limit_lines=MAX_LINES)
+            #embed_g = [normalize(v) for v in embed_g]
+            a = an.Analyst(embeddings=embed_g, strings=str_g, metric=metric,
+                auto_print=printing, desc="DEPS", parallel_count=cpus,
+                evaluators=get_e(), auto_save=2, file_name=fnames[8],
+                over_write=True)
     
     functions = [
         fasttext,
@@ -434,6 +455,7 @@ if __name__ == "__main__":
         use,
         use_lite,
         use_large,
+        deps,
     ]
 
     to_run = [int(a) for a in sys.argv[1:]] \

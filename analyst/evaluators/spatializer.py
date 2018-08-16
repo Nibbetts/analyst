@@ -55,6 +55,7 @@ class Spatializer(Evaluator, object):
         # POST: self.stats_dict, self.starred filled in.
         encoder           = kwargs["encoder_fn"]
         metric            = kwargs["metric_fn"]
+        metric_in_model   = kwargs["metric_in_model_fn"]
         metric_str        = kwargs["metric_str"]
         nearest           = kwargs["generic_nearest_fn"]
         printer           = kwargs["printer_fn"]
@@ -115,13 +116,6 @@ class Spatializer(Evaluator, object):
             dispersion = self.stats_dict.pop("Centroid Dist Avg")
             self.stats_dict["Dispersion - Centroid Dist Avg"] = dispersion
 
-            # Downstream Path Length stats:
-            printer("Building a Caste-System", "Downstream Stats")
-            downstreamness = [len(downstream(o, give_path=True)) for o in \
-                tqdm(objects, disable=not auto_print)]
-            self._compute_list_stats(
-                downstreamness, "Downstream Length", self.stats_dict)
-
             # kth-Neighbors Distance Info:
             for n in neighbors_to_stat:
                 if n == 1:  # Added here because this is an OrderedDict
@@ -144,6 +138,39 @@ class Spatializer(Evaluator, object):
                 self.stats_dict["Repulsion - Nearest Dist Avg"] = repulsion
             if broadness is not None:
                 self.stats_dict["Broadness - Furthest Dist Max"] = broadness
+
+            # Downstream Path Length stats:
+            printer("Building a Caste-System", "Downstream Stats")
+            downstreamness = []
+            downstream_dist = []
+            downstream_gradients = []
+            for o in tqdm(objects, disable=not auto_print):
+                path = downstream(o, give_path=True)
+                downstreamness.append(len(path) - 2)
+                # -2 because the last two make the node we come to, so that
+                #   we get 0 if we are part of the node.
+                downstream_dist.append(sum([
+                        metric_in_model(path[i], path[i+1]) / repulsion \
+                        for i in range(len(path)-2)])
+                    if len(path) > 2 else 0.0)
+                # This one is the actual distances added up to get there,
+                #   divided by repulsion to generalize it across spaces.
+                downstream_gradients.append(
+                        (metric_in_model(path[0], path[1]) /
+                        metric_in_model(path[-1], path[-2])) - 1 \
+                    if downstreamness[-1] != 0 and len(path) >= 2 else 0.0)
+                # This one is in some sense the slope of the gradient of
+                #   expansion of space in the local region;
+                #   it is a ratio of dist to nearest and node's width, -1 to
+                #   make it so zero means no change in density as we go out.
+
+            self._compute_list_stats(
+                downstreamness, "Downstream Count", self.stats_dict)
+            self._compute_list_stats(
+                downstream_dist, "Downstream Distance", self.stats_dict)
+            self._compute_list_stats(
+                downstream_gradients, "Downstream Density Gradient",
+                self.stats_dict)
 
             # Add stars to things we think are important or more interesting:
             printer("Counting the Lightyears", "Adding Stars")
