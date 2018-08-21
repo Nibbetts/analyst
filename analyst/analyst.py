@@ -23,6 +23,7 @@ from collections import OrderedDict
 import ray
 import psutil
 from copy import copy, deepcopy
+from PIL import Image
 
 # Own files:
 from .evaluators import *
@@ -43,13 +44,13 @@ def isstring(obj):
 
 def _file_extension(f_name):
     '''Appends missing file extension, or keeps original.'''
-    return str(f_name) if u"." in str(f_name) else f_name + u".dill"
+    return str(f_name) if u"." in str(f_name) else f_name + u".analyst"
 
 def save(analyst, file_name=None):
     '''Function for saving Analyst objects only.'''
     return analyst.save(file_name)
 
-def load(f_name, print_report=False):
+def load(f_name, print_report=False, verbosity=0):
     '''Function for loading Analyst objects only.
         NOTE: Since we save with highest protocol, you will not be able
         to load an Analyst into python 2 if saved from python 3.
@@ -65,24 +66,24 @@ def load(f_name, print_report=False):
             # return an
             a = pickle.load(file)
             a.file_name = name # Update file name in case it has changed
-            a._print(u"LOADED: {}".format(a.description))
+            if verbosity >= 0: a._print(u"LOADED: {}".format(a.description))
             return a
     except:
-        # traceback.print_exc()
-        print(u"ERROR: Unable to load Analyst object "
+        if verbosity == 1: traceback.print_exc()
+        if verbosity >= 0: print(u"ERROR: Unable to load Analyst object "
             u"from file: '{}'".format(name))
         return None
 
-def unsave(file_name):
-    '''Remove an existing dill file.
-        Will add file extension '.dill' if none given.
-        Careful, this is irreversible and works on any file!'''
-    f_name = _file_extension(file_name)
-    try:
-        os.remove(f_name)
-        return True
-    except:
-        return False
+# def unsave(file_name):
+#     '''Remove an existing dill file.
+#         Will add file extension '.dill' if none given.
+#         Careful, this is irreversible and works on any file!'''
+#     f_name = _file_extension(file_name)
+#     try:
+#         os.remove(f_name)
+#         return True
+#     except:
+#         return False
 
 # TODO! Now that this is implemented, need to refactor code to use it!
 class UncasedOrderedDict(OrderedDict):
@@ -234,6 +235,9 @@ class Distances:
         #   for the first time, in case there are no default evaluators and
         #   no others need them, since some clustering algorithms have it
         #   built-in to recompute all of this internally.
+        self.changed = False
+        #   For external tracking convenience. Will never after set this to
+        #   False by itself.
 
     def get_distance_matrix(self):
         """
@@ -255,6 +259,7 @@ class Distances:
                     self.space,
                     self.metric_str if self.metric_str != None else self.metric,
                     **self.metric_args)
+                self.changed = True
                 return self.distance_matrix
                 # Note that our distance matrix is actually a condensed one, or
                 #   a distance vector, so we have to use some special indexing.
@@ -398,7 +403,7 @@ class Distances:
         """
         Returns the indeces of all objects' kth neighbor.
         Use negative for furthest, 0 for self, positive for nearest.
-        MUCH SLOWER if k not in self.make_kth_neighbors. TODO! WON'T DO NEW ONES!
+        MUCH SLOWER if k not in self.make_kth_neighbors. TODO! WON'T DO NEW ONES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         """
         if k == 0: return range(len(self.space)) # pointless
         if k < 0: k += len(self.space) # Convert all k to positive
@@ -512,6 +517,8 @@ class Distances:
                     for kth in self.make_kth_neighbors:
                         self.neighbors[kth][i] = ordering[kth]
                         self.neighbors_dist[kth][i] = d[ordering[kth]]
+
+            self.changed = True
 
         return self.neighbors[k]
 
@@ -681,27 +688,10 @@ class Analyst:
 
         # Set the file_name for this analyst:
         self.auto_save = auto_save
+        self.changed = True
         self.over_write = over_write
-        if file_name is not None:
-            self.file_name = file_name
-        else:
-            self.file_name = _file_extension(
-                self.description.lower().replace(" ", "_"))
-            if not self.over_write:
-                i = 0
-                name_only = self.file_name
-                number = u""
-                ext = u""
-                for i, c in enumerate(self.file_name):
-                    if c == u'.':
-                        name_only = self.file_name[:i]
-                        ext = self.file_name[i+1:]
-                        break
-                j = 1
-                while(os.path.isfile(name_only + number + u'.' + ext)):
-                    number = u'(' + str(j) + u')'
-                    j += 1
-                self.file_name = name_only + number + u'.' + ext
+        self.file_name = self._auto_file_name() if file_name is None \
+            else file_name
         
         # Find and store a callable version of the given metric:
         self._print(u"Laying the Laws of Physics", u"Setting the Metric")
@@ -999,8 +989,18 @@ class Analyst:
                 + category + u"'! SKIPPING IT.")
             return None
 
+
+    # FUNCTIONS THAT MODIFY THE ANALYST:
+
     def add_evaluators(self, evaluator_list, allow_duplicates=False):
-        """Adds new evaluators to the Analyst"""
+        """
+        Adds new evaluators to the Analyst.
+
+        Does not auto-save.
+        
+        Returns boolean: whether or not analyst was changed.
+        """
+        changed = False
 
         # Helper function:
         def rename_evaluator(evaluator):
@@ -1023,9 +1023,11 @@ class Analyst:
                         if allow_duplicates else u"SKIPPING"))
                     if allow_duplicates:
                         rename_evaluator(evaluator)
+                        changed = True
                 if not exists or allow_duplicates:
                     self.categories.append(evaluator.CATEGORY)
                     self.evaluators.append(evaluator)
+                    changed = True
 
         # Add evaluators and categories
         for e in evaluator_list:
@@ -1043,13 +1045,23 @@ class Analyst:
         # Modify category_lists to match categories
         diff = len(self.categories) - len(self.category_lists)
         self.category_lists += np.empty(shape=(diff,0)).tolist()
+        if diff > 0: changed = True # Shouldn't be needed, but just in case.
+
+        self.changed = self.changed | changed
+        return changed
 
     def remove_evaluators(self, categories):
         """
         Removes evaluators from the Analyst.
+
+        Does not auto-save.
         
         categories: a list of categories; names, not references, of Evaluators.
+
+        Returns boolean: whether or not the analyst changed.
         """
+        changed = False
+
         for cat in categories:
             cat = cat.lower()
             index = None
@@ -1057,11 +1069,22 @@ class Analyst:
                 if cat == c.lower():
                     index = i
                     break
-            self.categories.pop(index)
-            self.evaluators.pop(index)
-            self.category_lists.pop(index)
+            if index is not None:
+                self.categories.pop(index)
+                self.evaluators.pop(index)
+                self.category_lists.pop(index)
+                changed = True
+        
+        self.changed = self.changed | changed
+        return changed
 
     def set_parallel_count(self, parallel_count=None):
+        """
+        Allows you to change the desired number of cpu cores used.
+        
+        Returns boolean: whether or not the analyst changed.
+        """
+        old_count = self.parallel_count
         self.parallel_count = parallel_count
         if self.D is not None:
             if self.parallel_count == None:
@@ -1073,6 +1096,10 @@ class Analyst:
                 self.parallel_count = max(
                     psutil.cpu_count() - self.parallel_count, 1)
             self.D.parallel_count = self.parallel_count
+        
+        changed = old_count is not self.parallel_count
+        self.changed = self.changed | changed
+        return changed
 
 
     #--------------------------------------------------------------------------#
@@ -1090,17 +1117,11 @@ class Analyst:
             update its own listings in case something has changed.
         Will only recalculate distances and neighbors if "all" or "All"
             in recalculate. Otherwise, manually set self.D to None and it will
-            recalculate it for you. Useful if neighbor indeces corrupted
-            (from not having enough space, such as may occur in a docker
-            container or parallelization shared object store when running a
-            space upwards of 100000 vectors???) TODO.
+            recalculate it for you. Useful if neighbor indeces are corrupted
+            for some reason (Like failing ram - that drove me nuts!)
         """
 
         self._print(u"Looking Closer", u"Analyzing {}".format(self.description))
-
-        if self.auto_save and self.file_name is None:
-            print("WARNING: cannot auto-save, NO FILENAME given,"
-                " or not previously saved.")
 
         if self.D is None or "All" in recalculate or "all" in recalculate:
             # Delayed creation of this object till now because if
@@ -1120,21 +1141,20 @@ class Analyst:
                 **self.metric_args)
 
             self.parallel_count = self.D.parallel_count
-
-            # if self.auto_save and self.file_name is not None:
-            #     self.save() # D hasn't actually calculated yet,
-            #                 #     so no point in saving.
+            self.changed = True
 
         # If want to recalculate all:
         if "All" in recalculate or "all" in recalculate:
             recalculate = [e.CATEGORY for e in self.evaluators]
 
+        changed = False # Using this one for big changes, and self.changed for
+        #   little changes that won't be worth saving frequently
 
         # Run the Evaluations:
         for evaluator in self.evaluators:
+            
             try:
-                changed = not evaluator.calculated
-
+                precal = evaluator.calculated
                 stats_dict, starred, category = evaluator.calculate(
                     recalculate_all=evaluator.CATEGORY in recalculate,
                     #   Only does those not yet done.
@@ -1172,18 +1192,21 @@ class Analyst:
                     make_dist_matrix=self.make_distance_matrix,
                 )
 
-                if evaluator.calculated and evaluator.CATEGORY in recalculate:
-                    changed = True
-                    # No need to save if it broke or wasn't recalculated.
+                # No need to save if it broke or wasn't force-recalculated:
+                if precal:
+                    if evaluator.calculated:
+                        if evaluator.CATEGORY in recalculate:
+                            changed = True
+                    else:
+                        changed = True
+                elif evaluator.calculated:
+                        changed = True
 
                 for (key, value) in stats_dict.items():
-                    changed = changed | self._add_info(
-                        value, category, key, key in starred)
-                
-                if changed and self.auto_save>=2 and self.file_name is not None:
-                    if self.auto_save == 3 or not isinstance(
-                            evaluator, Analogizer):
-                        if self.save(): changed = False
+                    self._add_info(value, category, key, key in starred)
+                    # Keeps track of these little changes in self.changed
+                    #   for us. Since not intensive to calculate, not worth
+                    #   an extra save before the next computation.
 
             except:
                 traceback.print_exc()
@@ -1191,8 +1214,19 @@ class Analyst:
                     #u"INHERIT FROM AN Evaluator CLASS?"
                     % evaluator.CATEGORY)
 
-        if changed and self.auto_save >= 1 and self.file_name is not None:
+            if self.D is not None and self.D.changed:
+                changed = True
+                self.changed = True
+                self.D.changed = False
+                
+            if changed and self.auto_save >= 2:
+                if self.auto_save == 3 or not isinstance(
+                        evaluator, Analogizer):
+                    if self.save(): changed = False
+
+        if (changed or self.changed) and self.auto_save >= 1:
             self.save()
+        elif changed: self.changed = True
 
         if print_report: self.print_report()
 
@@ -1369,7 +1403,7 @@ class Analyst:
 
     # GRAPHING:
 
-    def graph_hist(self, hist_key, bins=64, **kwargs):
+    def graph_hist(self, hist_key, bins=64, show=True, **kwargs):
         """
         Creates a histogram according to key printed in report.
         """
@@ -1380,10 +1414,15 @@ class Analyst:
         plt.legend(self.graph_info[hist_key][0])
         plt.xlabel(self.graph_info[hist_key][2])
         plt.ylabel("Occurrences")
-        plt.title(self.graph_info[hist_key][1])
-        plt.show()
+        title = self.graph_info[hist_key][1] + " Histogram"
+        plt.title(title)
+        name = self._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
 
-    def graph_bar(self, description, categories=None, **kwargs):
+    def graph_bar(self, description, categories=None, show=True, **kwargs):
         """
         Creates a bar graph of the given stat (description) across multiple
             Evaluators. If categories is None, will look across all for that
@@ -1409,12 +1448,18 @@ class Analyst:
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
         plt.ylabel(description)
-        plt.title(description.title() + " Comparison in " + self.description)
+        title = description.title() + " Comparison in " + self.description
+        plt.title(title)
         plt.tight_layout()
-        plt.show()
+
+        name = self._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
 
     def graph_bar_multi(self, descriptions, categories=None,
-            group_by_stat=False, **kwargs):
+            group_by_stat=False, show=True, **kwargs):
         """
         Creates a multi- bar graph comparing the given stats (descriptions)
             across multiple evaluators.
@@ -1451,19 +1496,25 @@ class Analyst:
             
         plt.ylabel("Value")
         plt.xlabel("Statistic" if group_by_stat else "Category")
-        plt.title("Comparison on Various Stats in " + self.description)
+        title = "Comparison on Various Stats in " + self.description
+        plt.title(title)
         plt.xticks(x + 0.5, ticks)
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
-        plt.legend(loc='best')
+        plt.legend(loc='best', prop={'size': 6})
         try:
             plt.tight_layout()
         except:
             print("Could not use tight_layout.")
-        plt.show()
 
-    def graph_evaluators(self, description, eval_array,
-            xticks=None, legend=None, xlabel=None, transpose=None, **kwargs):
+        name = self._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
+
+    def graph_evaluators(self, description, eval_array, xticks=None,
+            legend=None, xlabel=None, transpose=None, show=True, **kwargs):
         """
         Compares evaluators from multiple groups against each other,
             on a single stat (description), by creating a multi- bar graph.
@@ -1498,17 +1549,22 @@ class Analyst:
             
         plt.ylabel(description)
         if xlabel is not None: plt.xlabel(xlabel)
-        plt.title(
-            description + " Comparison on Evaluators in " + self.description)
+        title = description + " Comparison on Evaluators in " + self.description
+        plt.title(title)
         plt.xticks(x + 0.5, xticks)
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
-        plt.legend(loc='best')
+        plt.legend(loc='best', prop={'size': 6})
         plt.tight_layout()
-        plt.show()
+
+        name = self._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
 
     @staticmethod
-    def graph_comparison(ana_list, category, description, **kwargs):
+    def graph_comparison(ana_list, category, description, show=True, **kwargs):
         """
         Creates a bar graph for a given stat across multiple Analysts.
 
@@ -1527,13 +1583,19 @@ class Analyst:
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
         plt.ylabel(cat + ": " + description)
-        plt.title("Analyst Comparison")
+        title = "Analyst Comparison"
+        plt.title(title)
         plt.tight_layout()
-        plt.show()
+
+        name = ana_list[0]._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
 
     @staticmethod
     def graph_comparison_multi(ana_list, cat_desc_pairs, group_by_stat=True,
-            **kwargs):
+            show=True, **kwargs):
         """
         Creates a multi-bar graph showing stats side-by-side for
             multiple Analysts.
@@ -1587,13 +1649,19 @@ class Analyst:
             
         plt.ylabel("Value")
         if xlabel is not None: plt.xlabel(xlabel)
-        plt.title("Analyst Comparison on Various Stats")
+        title = "Analyst Comparison on Various Stats"
+        plt.title(title)
         plt.xticks(x + 0.5, ticks)
         plt.setp(plt.gca().get_xticklabels(), rotation=-45,
             horizontalalignment='left')
-        plt.legend(loc='best')
+        plt.legend(loc='best', prop={'size': 6})
         plt.tight_layout()
-        plt.show()
+
+        name = ana_list[0]._auto_graph_name(title)
+        plt.savefig(name, format='png')
+        plt.clf()
+        if show: Image.open(name).show()
+        return name
 
 
     # COMPARATIVE:
@@ -1833,6 +1901,7 @@ class Analyst:
         #variable = None
         #i = None
         changed = False
+
         if u"Histogram Key" in description:
             data = ([self.description], category, description, [var])
             try:
@@ -1852,14 +1921,20 @@ class Analyst:
         found = False
         for entry in self.category_lists[i]: # Replace if it exists:
             if entry[0] == description:
-                if entry[1] is not variable or entry[2] is not star:
-                    changed = True
+                try:
+                    if entry[1] != variable or entry[2] != star:
+                        changed = True
+                except:
+                    if entry[1] is not variable or entry[2] != star:
+                        changed = True
                 entry = (description, variable, star)
                 found = True
                 break # NOTE: will only replace the first. So don't duplicate.
         if not found: # Add it if it doesn't exist:
             self.category_lists[i].append((description, variable, star))
             changed = True
+
+        self.changed = self.changed | changed
         return changed
 
     def _print(self, string=u"", report=None):
@@ -1935,36 +2010,83 @@ class Analyst:
         except: pass
         return None
 
+    def _auto_file_name(self):
+        """
+        Helper Function to automatically generate a file name,
+            only over-writing if allowed.
+        """
+        file_name = _file_extension(
+            self.description.lower().replace(" ", "_"))
+        if not self.over_write:
+            i = 0
+            name_only = file_name
+            number = u""
+            ext = u""
+            for i, c in enumerate(file_name):
+                if c == u'.':
+                    name_only = file_name[:i]
+                    ext = file_name[i+1:]
+                    break
+            j = 1
+            while(os.path.isfile(name_only + number + u'.' + ext)):
+                number = u'(' + str(j) + u')'
+                j += 1
+            file_name = name_only + number + u'.' + ext
+        return file_name
+
+    def _auto_graph_name(self, name=None):
+        """
+        Helper Function to automatically generate a graph file name,
+            without allowing over-writing.
+        """
+        try:
+            folder = self.file_name[:self.file_name.rindex("/")+1]
+        except:
+            folder = ""
+        name_base = "graph" if name == None else name.lower().replace(" ", "_")
+        name_ext = ".png"
+        i = 0
+        while (os.path.isfile(
+                folder + name_base + (("_" + str(i)) \
+                if i != 0 else "") + name_ext)):
+            i += 1
+        return folder + name_base + \
+            (("_" + str(i)) if i != 0 else "") + name_ext
+
     def save(self, file_name=None):
         """
         Saves self to dill file.
 
+        Won't break old file, even if fails, because it renames it to be a
+            .BACKUP until we are done writing to the new one before removing it.
         NOTE: An Analyst with a space of one million 100D vectors and no
             evaluators will pickle to around 7GB because of the quick encoders/
             decoders. Most Evaluators will not add much more, though higher-D
             vectors will take up more hard drive space.
         """
-        # TODO: Build in save functionality to create one backup
-        #   we always replace, so if we break in saving we don't
-        #   lose everything.
+        redundant = not self.changed
         try:
             f_name = self.file_name if file_name is None else file_name
             if f_name is None:
-                f_name = self.description
+                f_name = self._auto_file_name()
+            f_name = _file_extension(f_name)
             f_backup = f_name + ".BACKUP"
             #obj._serialize()
             self._print(u"Snapshotting the Universe",
                 u"Saving " + self.description)
             if os.path.isfile(f_name):
                 os.rename(f_name, f_backup)
-            with open(_file_extension(f_name), 'wb') as f:
+            self.changed = False
+            with open(f_name, 'wb') as f:
                 pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             self.file_name = f_name
-            os.remove(f_backup)
+            if os.path.isfile(f_backup):
+                os.remove(f_backup)
             self._print(u"SUCCEEDED at saving to: {}".format(self.file_name))
             return True
         except:
             traceback.print_exc()
+            if not redundant: self.changed = True
             if os.path.isfile(f_backup):
                 if os.path.isfile(f_name):
                     os.remove(f_name)

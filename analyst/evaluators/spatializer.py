@@ -110,12 +110,13 @@ class Spatializer(Evaluator, object):
             printer("Setting Priorities", "Centroid Stats")
             self._compute_list_stats(cluster.centroid_distances,
                 "Centroid Dist", self.stats_dict)
-            self._compute_list_stats(cluster.norms, "Norms", self.stats_dict)
             
             # Then re-key one entry:
             dispersion = self.stats_dict.pop("Centroid Dist Avg")
             self.stats_dict["Dispersion - Centroid Dist Avg"] = dispersion
 
+            self._compute_list_stats(cluster.norms, "Norms", self.stats_dict)
+            
             # kth-Neighbors Distance Info:
             for n in neighbors_to_stat:
                 if n == 1:  # Added here because this is an OrderedDict
