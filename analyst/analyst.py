@@ -812,11 +812,14 @@ class Analyst:
         self.make_kth_neighbors = make_kth_neighbors
         self.D = None
         self.parallel_count = parallel_count # We'll get the right value from D.
+        self.evaluation_args = {}
 
         # Run Analyses:
         if evaluate:
             self.analysis(
                 print_report=self.auto_print, recalculate=[])
+        else:
+            self._update_evaluation_args(recalculate_all=False)
 
 
     def _decode(self, vec):
@@ -1147,18 +1150,51 @@ class Analyst:
             return val * 2 / float(len(self.space))
         elif si == "dispersion":
             if self.D.dispersion is None:
-                dispersion = None
-                for e in self.evaluators:
-                    if e.__class__ == Spatializer:
-                        dispersion = e.get_stats_dict()[
-                            "Dispersion - Centroid Dist Avg"]
-                        break
-                if dispersion is None:
-                    centr = np.mean(self.space, axis=0)
-                    dispersion = np.mean(self.D.distances_from_arbitrary(centr))
-                self.D.dispersion = dispersion
+                centr = np.mean(self.space, axis=0)
+                self.D.dispersion = np.mean(
+                    self.D.distances_from_arbitrary(centr))
                 self.changed = True
             return val / self.D.dispersion
+
+    def _update_evaluation_args(self):
+        args = {
+            # These are the kwargs:
+            "embeddings": self.space,        "draw_progress": self.auto_print,
+            "strings": self.strings,         "metric_str": self.metric_str,
+            "printer_fn": self._print,       "metric_fn": self.metric,
+            "as_string_fn": self.as_string,  "metric_args": self.metric_args,
+            "as_index_fn": self.as_index,    "encoder_fn": self.encode,
+            "as_vector_fn": self.as_vector,  "decoder_fn": self.decode,
+            "string_ix_map": self.s_to_ix,   "exists_fn": self.exists,
+            "is_string_fn": isstring,        "angle_fn": angle,
+
+            "metric_in_model_fn": self.metric_in_model,
+            "scale_invariant_fn": self.scale_invariant,
+
+            "generic_neighbor_k_fn": self.neighbor_k,
+            "generic_nearest_fn": self.nearest,
+            "kth_neighbors_ix_fn": self.D.kth_neighbors,
+            "kth_neighbors_dist_fn": self.D.kth_neighbors_dist,
+            "arbitrary_dist_fn": self.D.distances_from_arbitrary,
+            "arbitrary_neighbors_fn": self.D.neighbors_of_arbitrary,
+            "distances_from_ix_fn": self.D.distances_from,
+            "neighbors_of_ix_fn": self.D.neighbors_of,
+            "condensed_dist_matrix_fn": self.D.get_distance_matrix,
+            "condensed_ix_fn": self.D.condensed_index,
+
+            "downstream_fn": self.downstream,
+            "evaluator_list": self.evaluators,
+            "find_evaluator_fn": self.find_evaluator,
+            "get_clusters_fn": self.get_clusters,
+            "make_kth_neighbors": self.make_kth_neighbors,
+            "simulate_cluster_fn": simulate_cluster,
+            "parallel_count": self.parallel_count,
+            "make_dist_matrix": self.make_distance_matrix,
+        }
+        changed = args != self.evaluation_args
+        self.changed = changed | self.changed
+        self.evaluation_args = args
+        return changed
 
 
     #--------------------------------------------------------------------------#
@@ -1214,43 +1250,11 @@ class Analyst:
             
             try:
                 precal = evaluator.calculated
+                self._update_evaluation_args()
+                #   Only does those not yet done.
                 stats_dict, starred, category = evaluator.calculate(
                     recalculate_all=evaluator.CATEGORY in recalculate,
-                    #   Only does those not yet done.
-
-                    # NOTE: The rest are the kwargs:
-                    embeddings=self.space,        draw_progress=self.auto_print,
-                    strings=self.strings,         metric_str=self.metric_str,
-                    printer_fn=self._print,       metric_fn=self.metric,
-                    as_string_fn=self.as_string,  metric_args=self.metric_args,
-                    as_index_fn=self.as_index,    encoder_fn=self.encode,
-                    as_vector_fn=self.as_vector,  decoder_fn=self.decode,
-                    string_ix_map=self.s_to_ix,   exists_fn=self.exists,
-                    is_string_fn=isstring,        angle_fn=angle,
-
-                    metric_in_model_fn=self.metric_in_model,
-                    scale_invariant_fn=self.scale_invariant,
-
-                    generic_neighbor_k_fn=self.neighbor_k,
-                    generic_nearest_fn=self.nearest,
-                    kth_neighbors_ix_fn=self.D.kth_neighbors,
-                    kth_neighbors_dist_fn=self.D.kth_neighbors_dist,
-                    arbitrary_dist_fn=self.D.distances_from_arbitrary,
-                    arbitrary_neighbors_fn=self.D.neighbors_of_arbitrary,
-                    distances_from_ix_fn=self.D.distances_from,
-                    neighbors_of_ix_fn=self.D.neighbors_of,
-                    condensed_dist_matrix_fn=self.D.get_distance_matrix,
-                    condensed_ix_fn=self.D.condensed_index,
-
-                    downstream_fn=self.downstream,
-                    evaluator_list=self.evaluators,
-                    find_evaluator_fn=self.find_evaluator,
-                    get_clusters_fn=self.get_clusters,
-                    make_kth_neighbors=self.make_kth_neighbors,
-                    simulate_cluster_fn=simulate_cluster,
-                    parallel_count=self.parallel_count,
-                    make_dist_matrix=self.make_distance_matrix,
-                )
+                    **self.evaluation_args)
 
                 # No need to save if it broke or wasn't force-recalculated:
                 if precal:

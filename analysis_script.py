@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
 
 
-    MAX_LINES = 5000#400000
+    MAX_LINES = 400000
     metric = "cosine"
 
     printing = True

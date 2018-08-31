@@ -203,10 +203,10 @@ class Evaluator:
     # These allow the retrieval of information without having to worry
     #   about whether or not it has been filled in.
     #   No getter needed for CATEGORY since it should never change.
-    def get_stats_dict(self, **kwargs):
+    def get_stats_dict(self, recalculate_all=False, **kwargs):
         self.calculate(recalculate_all=False, **kwargs)
         return self.stats_dict
 
-    def get_starred(self, **kwargs):
+    def get_starred(self, recalculate_all=False, **kwargs):
         self.calculate(recalculate_all=False, **kwargs)
         return self.starred

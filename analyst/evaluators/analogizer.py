@@ -61,6 +61,8 @@ class Analogizer(Evaluator, object):
         self.score = None
         self.distances = None
         self.lengths = None
+        self.ratios = None
+        self.overall = None
         self.dropped = []
         #   dropped will keep track of unusable analogies from input corpus.
         # self.CATEGORY = category        # See parent.

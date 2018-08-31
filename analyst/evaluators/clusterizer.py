@@ -125,7 +125,7 @@ class Clusterizer(Evaluator, object):
         # PRE: self.clusters must be filled in.
         # POST: self.stats_dict will contain whatever you want reported,
         #   and self.starred likewise.
-        scaler         = kwargs["scale_invariance_fn"]
+        scaler = kwargs["scale_invariant_fn"]
 
         self.stats_dict["Count"] = len(self.clusters)
         

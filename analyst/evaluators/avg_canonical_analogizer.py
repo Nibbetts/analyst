@@ -59,6 +59,10 @@ class AvgCanonicalAnalogizer(Analogizer, object):
 
         if self.canonical is not None:
             self.stats_dict["Canonical Length"] = np.linalg.norm(self.canonical)
+            self.stats_dict["SI Canonical Length"] = \
+                kwargs["scale_invariant_fn"](
+                    self.stats_dict["Canonical Length"],
+                    si="dispersion")
             self.add_star("Canonical Length")
         self.stats_dict["Canonical Components"] = len(self.canonical_vectors)
 
