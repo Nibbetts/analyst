@@ -51,6 +51,7 @@ class NodeClusterizer(Clusterizer, object):
                 # PARALLELIZED:
 
                 print("")
+                #ray.init(ignore_reinit_error=True) # TODO - update ray version upon next release
                 try: ray.init()
                 except: pass
 
@@ -101,22 +102,22 @@ class NodeClusterizer(Clusterizer, object):
     # Overriding (because nodes only have two vectors, need different stats)
     def compute_stats(self, **kwargs):
         printer = kwargs["printer_fn"]
-        space = kwargs["embeddings"]
+        scaler  = kwargs["scale_invariant_fn"]
 
-        self.add_generic_node_stats()
+        self.add_generic_node_stats(**kwargs)
 
         if len(self.clusters) > 0:
             # Nodal Factor
             printer("Comparing the Cosmos", "Calculating Nodal Factor")
-            self.stats_dict["Nodal Factor"] = (
-                len(self.clusters)*2.0/float(len(space)))
-            self.add_star("Nodal Factor")
+            self.stats_dict["PI Nodal Factor"] = scaler(
+                len(self.clusters), si="nodal")
+            self.add_star("PI Nodal Factor")
             #   I tend to think this is important.
 
             # Alignment Factor
             printer("Musing over Magnetic Moments",
                 "Calculating Alignment Factor")
-            self.stats_dict["Alignment Factor"] = np.mean([
+            self.stats_dict["SI Alignment Factor"] = np.mean([
                 n.alignment for n in self.clusters])
             # avg_align = np.mean(
             #     [n.alignment_vec for n in self.clusters], axis=0)
@@ -133,18 +134,21 @@ class NodeClusterizer(Clusterizer, object):
             # # self.add_star("Alignment Factor")
             # #   I tend to think this is important.
 
+        self.add_star("SI Span Min")
+        self.add_star("SI Span Max")
         self.add_star("Span Min")
         self.add_star("Span Max")
 
     # No problem adding functions, as well. This one useful for Node inheriters.
-    def add_generic_node_stats(self):
+    def add_generic_node_stats(self, **kwargs):
+
         # Node Count
         self.stats_dict["Count"] = len(self.clusters)
 
         if len(self.clusters) > 0:
             # Span Stats
             self._compute_list_stats([n.distance for n in self.clusters],
-                "Span", self.stats_dict)
+                "Span", self.stats_dict, si="dispersion", **kwargs)
 
     # These exist to allow getting of node-specific information with the
     #   assurance that it has been filled in.

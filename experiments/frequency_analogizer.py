@@ -22,8 +22,7 @@ class FrequencyAnalogizer(Analogizer, object):
 
     def __init__(self, category="Frequency Matching Analogies", n=3, alpha=0.3,
             starred=None, analogies_path=None, analogies=None,
-            analogy_vectors=None, analogy_sep=WORD_ANALOGY_SEP,
-            item_sep=WORD_ITEM_SEP):
+            analogy_vectors=None, analogy_sep=WORD_ANALOGY_SEP):
         super(FrequencyAnalogizer, self).__init__(
             category=category, starred=starred, analogies_path=analogies_path,
             analogies=analogies, analogy_vectors=analogy_vectors,

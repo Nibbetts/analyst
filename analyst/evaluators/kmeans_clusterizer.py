@@ -103,7 +103,8 @@ class KMeansClusterizer(Clusterizer, object):
                 np.mean(self.distortion_groups[i])
         # Add overall distortion stats:
         self._compute_list_stats(
-            self.distortion_list, "Spatial Distortion", self.stats_dict)
+            self.distortion_list, "Spatial Distortion", self.stats_dict,
+            si="dispersion", **kwargs)
 
         super(KMeansClusterizer, self).compute_stats(**kwargs)
         # Count has been redubbed K:
@@ -115,4 +116,7 @@ class KMeansClusterizer(Clusterizer, object):
         self.add_star("Spatial Distortion Avg")
         self.add_star("Cluster Distortion Avg")
         self.add_star("Cluster Distortion Range")
+        self.add_star("SI Spatial Distortion Avg")
+        self.add_star("SI Cluster Distortion Avg")
+        self.add_star("SI Cluster Distortion Range")
         self.add_star("K")

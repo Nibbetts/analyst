@@ -13,7 +13,6 @@ class NucleusClusterizer(Clusterizer, object):
         self.hub_category = hub_category
 
     def compute_clusters(self, space, show_progress=True, **kwargs):
-        metric           = kwargs["metric_fn"]
         evaluator_getter = kwargs["find_evaluator_fn"]
         printer          = kwargs["printer_fn"]
         #metric_args      = kwargs["metric_args"]
@@ -85,9 +84,13 @@ class NucleusClusterizer(Clusterizer, object):
             c.calculate()
 
         self.add_star("Population Standard Dev")
+        self.add_star("Population Ratio Standard Dev")
         self.add_star("Dispersion Avg")
         self.add_star("Dispersion Range")
         self.add_star("Repulsion Avg")
+        self.add_star("SI Dispersion Avg")
+        self.add_star("SI Dispersion Range")
+        self.add_star("SI Repulsion Avg")
         self.add_star("Count")
 
     # Even though we have already filled in self.clusters, we needn't override

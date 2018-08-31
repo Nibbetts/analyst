@@ -87,16 +87,19 @@ class Analogizer(Evaluator, object):
         # This particular implementation is a simple scoring, counting the
         #   number of correct results and dividing by number of analogies,
         #   Though we will also give some distance stats.
+        # TODO! Modify to contain Scale-Invariant Stats!!
 
         assert len(kwargs["embeddings"]) >= 4
 
-        show_progress = kwargs["draw_progress"]
-        printer       = kwargs["printer_fn"]
-        metric        = kwargs["metric_fn"]
-        parallels     = kwargs["parallel_count"]
+        show_progress  = kwargs["draw_progress"]
+        printer        = kwargs["printer_fn"]
+        metric         = kwargs["metric_fn"]
+        parallels      = kwargs["parallel_count"]
+        find_evaluator = kwargs["find_evaluator_fn"]
 
         self.stats_dict["Analogy Count"] = len(self.analogies)
         self.stats_dict["Dropped Count"] = len(self.dropped)
+        self.stats_dict["Total Count"] = len(self.analogies) + len(self.dropped)
 
         printer("Philosophizing about Relations", "Scoring Analogies")
         if len(self.analogies) > 0:
@@ -110,6 +113,7 @@ class Analogizer(Evaluator, object):
                 }
 
                 print("")
+                #ray.init(ignore_reinit_error=True) # TODO - update ray version upon next release
                 try: ray.init()
                 except: pass
 
@@ -146,35 +150,67 @@ class Analogizer(Evaluator, object):
 
             self.correct = np.array(answers) == [a[-1] for a in self.analogies]
             self.score = np.sum(self.correct) / float(len(self.analogies))
+            self.overall = np.sum(self.correct) / \
+                float(self.stats_dict["Total Count"])
 
             self.stats_dict["Accuracy"] = self.score
+            self.stats_dict["Total Accuracy"] = self.overall
 
             # Distance from point found to answer point
             self.distances = np.array([metric(group[-1], answer_vectors[i]) \
                 for i, group in enumerate(self.analogy_vectors)]) # TODO: Do these need to be arrays? Can we avoid conversion?
             
             self._compute_list_stats(self.distances,
-                "Dist All from Answer", self.stats_dict)
+                "Dist All from Answer", self.stats_dict, si="dispersion",
+                **kwargs)
             self._compute_list_stats(self.distances[np.nonzero(self.correct)],
-                "Dist for Correct", self.stats_dict)
+                "Dist for Correct", self.stats_dict, si="dispersion", **kwargs)
             self._compute_list_stats(
                 self.distances[np.nonzero(1 - self.correct)],
-                "Dist for Incorrect", self.stats_dict)
+                "Dist for Incorrect", self.stats_dict, si="dispersion",
+                **kwargs)
 
             # Distance from c to d; the length of the analogy vector
             self.lengths = np.array([metric(group[-2], answer_vectors[i]) \
                 for i, group in enumerate(self.analogy_vectors)])
 
             self._compute_list_stats(self.lengths,
-                "Analogy Length", self.stats_dict)
+                "Analogy Length", self.stats_dict, si="dispersion", **kwargs)
             self._compute_list_stats(self.lengths[np.nonzero(self.correct)],
-                "Length Correct", self.stats_dict)
+                "Length Correct", self.stats_dict, si="dispersion", **kwargs)
             self._compute_list_stats(self.lengths[np.nonzero(1 - self.correct)],
-                "Length Incorrect", self.stats_dict)
+                "Length Incorrect", self.stats_dict, si="dispersion", **kwargs)
+
+            # Ratios of how far off we were compared to how far we went
+            self.ratios = self.distances / self.lengths
+
+            self._compute_list_stats(self.ratios,
+                "Dist Ratio All from Answer", self.stats_dict)
+            self._compute_list_stats(self.ratios[np.nonzero(self.correct)],
+                "Dist Ratio for Correct", self.stats_dict)
+            self._compute_list_stats(
+                self.ratios[np.nonzero(1 - self.correct)],
+                "Dist Ratio for Incorrect", self.stats_dict)
+
+            # # Add Scale Invariant Stats:
+            # spatializer = find_evaluator(
+            #     self.spatializer_category, force_creation=False)
+            # if spatializer is not None:
+            #     dispersion = spatializer.get_stats_dict(**kwargs)[
+            #         "Dispersion - Centroid Dist Avg"]
+            #     for key, value in self.stats_dict.items():
+            #         if ("Avg" in key or "Max" in key or "Min" in key
+            #                 or "Range" in key or "Std" in key)\
+            #                 and "Ratio" not in key:
+            #             # The last 2 are already invariant.
+            #             self.stats_dict["SI " + key] = value / dispersion
 
             self.add_star("Accuracy")
-            self.add_star("Dist for Correct Avg")
-            self.add_star("Dist for Incorrect Avg")
+            self.add_star("Total Accuracy")
+            self.add_star("SI Dist for Correct Avg")
+            self.add_star("SI Dist for Incorrect Avg")
+            self.add_star("Dist Ratio for Correct Avg")
+            self.add_star("Dist Ratio for Incorrect Avg")
 
     # OVERRIDEABLE
     def analogy(self, string_a, string_b, string_c, *args, **kwargs):

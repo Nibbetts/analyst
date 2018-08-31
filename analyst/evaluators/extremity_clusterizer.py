@@ -45,20 +45,22 @@ class ExtremityClusterizer(NodeClusterizer, object):
         space   = kwargs["embeddings"]
         printer = kwargs["printer_fn"]
 
-        self.add_generic_node_stats()
+        self.add_generic_node_stats(**kwargs)
 
         if len(self.clusters) > 0:
             # Nodal Factor
             printer("Placating the Extremists", "Calculating Extremity Factor")
-            self.stats_dict["Extremity Factor"] = (
+            self.stats_dict["SI Extremity Factor"] = (
                 len(self.clusters)*2.0/float(len(space)))
-            self.add_star("Extremity Factor")
+            self.add_star("SI Extremity Factor")
             #   I tend to think this is important.
 
         # We can add stars to things we think are important:
         self.add_star("Count")
+        self.add_star("SI Span Min")
+        self.add_star("SI Span Max")
         self.add_star("Span Min")
         self.add_star("Span Max")
-        self.add_star("Extremity Factor")
+        self.add_star("SI Extremity Factor")
         # NOTE: These could also have been added by initializing the object with
-        #   starred=["Count","Span Min","Span Max","Extremity Factor"]
+        #   starred=["Count","SI Span Min","SI Span Max","SI Extremity Factor"]

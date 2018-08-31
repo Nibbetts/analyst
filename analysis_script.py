@@ -21,11 +21,11 @@ if __name__ == "__main__":
 
 
 
-    MAX_LINES = 400000
+    MAX_LINES = 5000#400000
     metric = "cosine"
 
     printing = True
-    # ray.init(); printing = False
+    # ray.init(ignore_reinit_error=True); printing = False
     cpus = 10
 
     def read_text_table(path, firstline=True, limit_lines=None):
@@ -450,7 +450,7 @@ if __name__ == "__main__":
             common = [w for w in allowed_str if w in strings]
             indeces = [strings.index(w) for w in common]
             embed_g = embed_g[indeces]
-            a = an.Analyst(embeddings=embed_g, strings=strings, metric=metric,
+            a = an.Analyst(embeddings=embed_g, strings=common, metric=metric,
                 auto_print=printing, desc="DEPS", parallel_count=cpus,
                 evaluators=get_e(), auto_save=2, file_name=fnames[8],
                 over_write=True)

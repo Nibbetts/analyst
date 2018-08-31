@@ -1,3 +1,24 @@
+"""
+ANALYST PACKAGE:
+    Installation: sudo pip3 install .... TODO!
+
+    Usage: import analyst as an
+           a = an.Analyst( ... ) # Automatically computes unless told otherwise.
+
+MODULE:
+    analyst
+
+DESCRIPTION:
+    TODO: Copyright info here.
+    TODO: Liscence info here.
+
+    TODO: Python API for analyzing and comparing vector embedding spaces.
+
+TOOLS:
+    TODO!
+"""
+
+
 # Compatibility for python 2 and 3:
 from __future__ import print_function
 from __future__ import absolute_import
@@ -216,6 +237,7 @@ class Distances:
                        #    objects not in the space.
         # Note the default is to not assume the user needs neighbors at all,
         #   but the Analyst overrides this, giving [-1, 1, 2]. See Analyst.
+        self.dispersion = None # Used in creating scale-invariant stats later.
 
         self.distance_matrix = None
         self.neighbors = None
@@ -433,7 +455,8 @@ class Distances:
                 # PARALLELIZATION TO FILL IN NEIGHBORS:
 
                 print("")
-                try: ray.init() #TODO: reduce odd printing in each ray.init() by checking in globals(), and test UI to make sure later inits are broken or not...
+                #ray.init(ignore_reinit_error=True) # TODO - update ray version upon next release
+                try: ray.init()
                 except: pass
 
                 @ray.remote
@@ -608,6 +631,7 @@ class Analyst:
 
     BUILT_IN_CATEGORIES = [
         u"Spatial",
+        #u"Scale Invariant Spatial",
         u"KMeans",
         u"Nodes",
         u"Extremities",
@@ -954,6 +978,8 @@ class Analyst:
         cat = category.lower()
         if cat == u"spatial":
             return Spatializer()
+        # elif cat == u"scale invariant spatial":
+        #     return ScaleInvariantSpatializer()
         elif cat == u"nodes":
             return NodeClusterizer()
         elif cat == u"extremities":
@@ -1101,6 +1127,39 @@ class Analyst:
         self.changed = self.changed | changed
         return changed
 
+    def scale_invariant(self, val, si):
+        """
+        Returns a scale-invariant version of val, scaled by:
+            population   if si=='population', for overall population, or
+            population/2 if si=='nodal',      for node members to population, or
+            dispersion   if si=='dispersion', for overall spatial scale,
+
+        Note: Uses first instance of Spatializer if can for finding dispersion,
+            otherwise if none are to be made it will find it itself.
+        Note: If you really want to use a non-standard spatial scaling, then set
+            self.D.dispersion to whatever you like before calling the analysis
+            function. Thus finding a value there, it will use it instead of
+            finding it itself or asking the first Spatializer instance.
+        """
+        if si == "population":
+            return val / float(len(self.space))
+        elif si == "nodal":
+            return val * 2 / float(len(self.space))
+        elif si == "dispersion":
+            if self.D.dispersion is None:
+                dispersion = None
+                for e in self.evaluators:
+                    if e.__class__ == Spatializer:
+                        dispersion = e.get_stats_dict()[
+                            "Dispersion - Centroid Dist Avg"]
+                        break
+                if dispersion is None:
+                    centr = np.mean(self.space, axis=0)
+                    dispersion = np.mean(self.D.distances_from_arbitrary(centr))
+                self.D.dispersion = dispersion
+                self.changed = True
+            return val / self.D.dispersion
+
 
     #--------------------------------------------------------------------------#
     # General Analyses:                                                        #
@@ -1170,6 +1229,7 @@ class Analyst:
                     is_string_fn=isstring,        angle_fn=angle,
 
                     metric_in_model_fn=self.metric_in_model,
+                    scale_invariant_fn=self.scale_invariant,
 
                     generic_neighbor_k_fn=self.neighbor_k,
                     generic_nearest_fn=self.nearest,

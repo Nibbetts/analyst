@@ -73,22 +73,23 @@ class SupernodeClusterizer(NodeClusterizer, object):
         space = kwargs["embeddings"]
 
         printer("Measuring their Magnitude", "Calculating Supernode Span")
-        self.add_generic_node_stats()
+        self.add_generic_node_stats(**kwargs)
 
         if len(self.clusters) > 0:
             self.stats_dict["Node Category"] = self.NODE_CATEGORY
 
             # Island Factor
             printer("Minding the Macrocosm", "Calculating Island Factor")
-            self.stats_dict["Island Factor"] = (
+            self.stats_dict["PI Island Factor"] = (
                 len(self.clusters)*4.0/float(len(space)))
-            self.add_star("Island Factor")
+            self.add_star("PI Island Factor")
 
             # Hierarchical Factor
             printer("Deliberating over Dominions",
                 "Calculating Hierarchical Factor")
-            self.stats_dict["Hierarchical Factor"] = (
+            self.stats_dict["PI Hierarchical Factor"] = (
                 len(self.clusters)*2.0/float(len(self.nodes)))
-            self.add_star("Hierarchical Factor")
+            self.add_star("PI Hierarchical Factor")
         
-        self.add_star("Span Min")
+        self.add_star("PI Span Min")
+        self.add_star("PI Span Max")

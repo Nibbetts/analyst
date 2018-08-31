@@ -99,8 +99,9 @@ class Evaluator:
         #   exists_fn                 : callable, check any of three exists.
         #   is_string_fn              : callable, True if is str or bytes.
         #   angle_fn                  : callable, angle metric.
-        #
+
         #   metric_in_model_fn        : getter, fast metric for in-model.
+        #   scale_invariant_fn        : callable, scale val by pop. or dispers.
         
         #   generic_nearest_fn        : getter, nearest, keeps same type.
         #   generic_neighbor_k_fn     : getter, kth neighbor, keeps same type.
@@ -154,11 +155,15 @@ class Evaluator:
 
 
     @staticmethod
-    def _compute_list_stats(vals, attribute, dictionary=None):
+    def _compute_list_stats(vals, attribute, dictionary=None,
+            si=None, **kwargs):
         # Used for a single stat across multiple clusters or test sets.
         # vals: array-like containing the given attribute for each cluster.
         # attribute: name string, ie. "Dispersion".
         # dictionary: optional dictionary to add to instead of making a new one.
+        # si: type of scale invariance to add extra stats for:
+        #   None, "population", or "dispersion"
+        # kwargs: see calculate function. Needed for scale_invariant_fn, only.
 
         stats = {} if dictionary == None else dictionary
         
@@ -171,6 +176,24 @@ class Evaluator:
             stats[attribute + " Range"        ] = val_max-val_min
             stats[attribute + " Standard Dev" ] = np.std(vals)
             stats[attribute + " Histogram Key"] = vals
+
+            # Scale and Population Invariant Stats:
+            if si == "population" or si == "nodal":
+                tag = "PI "
+            elif si == "dispersion":
+                tag = "SI "
+            if si is not None:
+                scaler = kwargs["scale_invariant_fn"]
+                stats[tag + attribute + " Avg"] = \
+                    scaler(stats[attribute + " Avg"], si)
+                stats[tag + attribute + " Min"] = \
+                    scaler(stats[attribute + " Min"], si)
+                stats[tag + attribute + " Max"] = \
+                    scaler(stats[attribute + " Max"], si)
+                stats[tag + attribute + " Range"] = \
+                    scaler(stats[attribute + " Range"], si)
+                stats[tag + attribute + " Standard Dev"] = \
+                    scaler(stats[attribute + " Standard Dev"], si)
         else:
             stats[attribute + " Stats"] = None
 

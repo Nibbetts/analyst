@@ -50,6 +50,7 @@ class HubClusterizer(Clusterizer, object):
             # PARALLELIZATION:
 
             print("")
+            #ray.init(ignore_reinit_error=True) # TODO - update ray version upon next release
             try: ray.init()
             except: pass
 
@@ -116,9 +117,13 @@ class HubClusterizer(Clusterizer, object):
         super(HubClusterizer, self).compute_stats(**kwargs)
 
         self.add_star("Population Standard Dev")
+        self.add_star("Population Ratio Standard Dev")
         self.add_star("Dispersion Avg")
         self.add_star("Dispersion Range")
         self.add_star("Repulsion Avg")
+        self.add_star("SI Dispersion Avg")
+        self.add_star("SI Dispersion Range")
+        self.add_star("SI Repulsion Avg")
         self.add_star("Count")
 
         # TODO:

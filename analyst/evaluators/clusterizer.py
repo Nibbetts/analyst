@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import numpy as np
 
 from ..clustertypes.cluster import Cluster
 from .evaluator import Evaluator
@@ -124,6 +125,8 @@ class Clusterizer(Evaluator, object):
         # PRE: self.clusters must be filled in.
         # POST: self.stats_dict will contain whatever you want reported,
         #   and self.starred likewise.
+        scaler         = kwargs["scale_invariance_fn"]
+
         self.stats_dict["Count"] = len(self.clusters)
         
         if len(self.clusters) > 0:
@@ -134,10 +137,31 @@ class Clusterizer(Evaluator, object):
                 self.clusters[0].quiet_stats_override
             for key in self.clusters[0].stats_dict.keys():
                 if key not in skip:
-                    try: self._compute_list_stats(
-                        [c.stats_dict[key] for c in self.clusters],
-                        key, self.stats_dict)
-                    except: pass
+                    try:
+                        l = [c.stats_dict[key] for c in self.clusters]
+                        self._compute_list_stats(
+                            l, key, self.stats_dict, si=(
+                                "dispersion" if ("Avg" in key or "Max" in key
+                                    or "Min" in key or "Range" in key
+                                    or "Std" in key or "Norm" in key
+                                    or "Dispersion" in key or "Dist" in key
+                                    or "Standard Dev" in key or "Skew" in key
+                                    or "Repulsion" in key) else None
+                            ), **kwargs)
+                        if "Node Count" in key:
+                            l = np.array(l)
+                            nodality = l * 2.0 / np.array(
+                                [c.stats_dict["Population"] \
+                                for c in self.clusters])
+                            self._compute_list_stats(nodality, "PI Nodality",
+                                self.stats_dict)
+                        if "Population" in key:
+                            l = np.array(l)
+                            pop_ratio = [scaler(i, si="population") for i in l]
+                            self._compute_list_stats(pop_ratio,
+                                "PI Population Ratio", self.stats_dict)
+                    except:
+                        pass
 
 
     # The Analyst will call this function, which pulls it all together.
