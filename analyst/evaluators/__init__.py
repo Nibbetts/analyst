@@ -15,6 +15,8 @@ from .inclusive_analogizer import *
 from .avg_canonical_analogizer import *
 from .ext_canonical_analogizer import *
 from .analogizer_combiner import *
+from .corpus_combiner import *
+from .population_analogizer import *
 from .kmeans_clusterizer import *
 
 # from .frequency_analogizer import *

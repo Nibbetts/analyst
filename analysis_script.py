@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
 
 
-    MAX_LINES = 400000
+    MAX_LINES = 5000
     metric = "cosine"
 
     printing = True
@@ -98,51 +98,83 @@ if __name__ == "__main__":
     #     Xp = sd.PCA().fit_transform(X)
     #     return np.array([vq.whiten(column) for column in Xp.T]).T
 
-    def get_e():
-        analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
-            "corpora/analogy_corpora_uncased/analogy_subcorp"
-        e_analogy = [an.evaluators.analogizer.Analogizer(
-            category="Linear Offset " + p,
-            analogies_path=analogies_path + p) \
-            for p in path_ends]
-        e_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
-            category="Avg Canonical " + p,
-            analogies_path=analogies_path + p) \
-            for p in path_ends]
-        e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
-            category="Ext Canonical " + p,                                                          
-            analogies_path=analogies_path + p) \
-            for p in path_ends]
-        e_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Avg Canonical", analogizers=e_avg),
-            an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Ext Canonical", analogizers=e_ext),
-            an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Linear Offset", analogizers=e_analogy)]
+    # def get_e():
+    #     analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+    #         "corpora/analogy_corpora_uncased/analogy_subcorp"
+    #     e_analogy = [an.evaluators.analogizer.Analogizer(
+    #         category="Linear Offset " + p,
+    #         analogies_path=analogies_path + p) \
+    #         for p in path_ends]
+    #     e_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
+    #         category="Avg Canonical " + p,
+    #         analogies_path=analogies_path + p) \
+    #         for p in path_ends]
+    #     e_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
+    #         category="Ext Canonical " + p,                                                          
+    #         analogies_path=analogies_path + p) \
+    #         for p in path_ends]
+    #     e_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Avg Canonical", analogizers=e_avg),
+    #         an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Ext Canonical", analogizers=e_ext),
+    #         an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Linear Offset", analogizers=e_analogy)]
 
-        analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
-            "corpora/byu_analogical_reasoning_untagged/"
-        er_analogy = [an.evaluators.analogizer.Analogizer(
-            category="Linear Offset " + p,
-            analogies_path=analogies_path + p + ".txt") \
-            for p in names_2]
-        er_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
-            category="Avg Canonical " + p,
-            analogies_path=analogies_path + p + ".txt") \
-            for p in names_2]
-        er_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
-            category="Ext Canonical " + p,                                                          
-            analogies_path=analogies_path + p + ".txt") \
-            for p in names_2]
-        er_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Avg Can Reasoning", analogizers=er_avg),
-            an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Ext Can Reasoning", analogizers=er_ext),
-            an.evaluators.analogizer_combiner.AnalogizerCombiner(
-                category="Combined Lin Ofst Reasoning", analogizers=er_analogy)]
+    #     analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \
+    #         "corpora/byu_analogical_reasoning_untagged/"
+    #     er_analogy = [an.evaluators.analogizer.Analogizer(
+    #         category="Linear Offset " + p,
+    #         analogies_path=analogies_path + p + ".txt") \
+    #         for p in names_2]
+    #     er_avg = [an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer(
+    #         category="Avg Canonical " + p,
+    #         analogies_path=analogies_path + p + ".txt") \
+    #         for p in names_2]
+    #     er_ext = [an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer(                              
+    #         category="Ext Canonical " + p,                                                          
+    #         analogies_path=analogies_path + p + ".txt") \
+    #         for p in names_2]
+    #     er_comb = [an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Avg Can Reasoning", analogizers=er_avg),
+    #         an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Ext Can Reasoning", analogizers=er_ext),
+    #         an.evaluators.analogizer_combiner.AnalogizerCombiner(
+    #             category="Combined Lin Ofst Reasoning", analogizers=er_analogy)]
         
-        return ["All"] + e_analogy + er_analogy + e_avg + er_avg + \
-            e_ext + er_ext + e_comb + er_comb
+    #     return ["All"] + e_analogy + er_analogy + e_avg + er_avg + \
+    #         e_ext + er_ext + e_comb + er_comb
+
+    def get_e():
+        analogies_paths = ["/mnt/pccfs/backed_up/nate/Projects/" \
+            "corpora/analogy_corpora_uncased/analogy_subcorp" + p \
+            for p in path_ends]
+        reasoning_paths = ["/mnt/pccfs/backed_up/nate/Projects/" \
+            "corpora/byu_analogical_reasoning_untagged/" + p + ".txt" \
+            for p in names_2]
+
+        combos = [
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                analogies_paths, category="Combined Avg Canonical",
+                analogizer_class=an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer),
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                analogies_paths, category="Combined Ext Canonical",
+                analogizer_class=an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer),
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                analogies_paths, category="Combined Linear Offset"),
+
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                reasoning_paths, category="Combined Avg Can Reasoning",
+                analogizer_class=an.evaluators.avg_canonical_analogizer.AvgCanonicalAnalogizer),
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                reasoning_paths, category="Combined Ext Can Reasoning",
+                analogizer_class=an.evaluators.ext_canonical_analogizer.ExtCanonicalAnalogizer),
+            an.evaluators.corpus_combiner.CorpusCombiner(
+                reasoning_paths, category="Combined Lin Ofst Reasoning"),
+        ]
+        poppers = [an.evaluators.population_analogizer.PopulationAnalogizer(
+            c, category="Pop " + c.CATEGORY) for c in combos]
+
+        return ["All"] + combos + poppers
 
     # def get_e_longer():
         # analogies_path="/mnt/pccfs/backed_up/nate/Projects/" \

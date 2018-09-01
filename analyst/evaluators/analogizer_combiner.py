@@ -1,7 +1,5 @@
-from abc import abstractmethod
-from tqdm import tqdm
 import numpy as np
-import traceback
+from copy import copy
 
 from .evaluator import Evaluator
 from .analogizer import Analogizer
@@ -21,7 +19,7 @@ class AnalogizerCombiner(Evaluator, object):
         #   or references to the analogizers themselves.
         super(AnalogizerCombiner, self).__init__(
             category=category, starred=starred)
-        self.analogizer_categories = analogizers
+        self.analogizer_categories = copy(analogizers)
         self.analogizers = None
         self.score = None
         self.distances = None

@@ -55,6 +55,8 @@ from .evaluators.inclusive_analogizer import *
 from .evaluators.avg_canonical_analogizer import *
 from .evaluators.ext_canonical_analogizer import *
 from .evaluators.analogizer_combiner import *
+from .evaluators.corpus_combiner import *
+from .evaluators.population_analogizer import *
 from .evaluators.nucleus_clusterizer import *
 from .evaluators.spatializer import *
 #from .evaluators.ncc_clusterizer import *

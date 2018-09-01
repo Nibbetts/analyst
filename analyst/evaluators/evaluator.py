@@ -175,7 +175,6 @@ class Evaluator:
             stats[attribute + " Max"          ] = val_max
             stats[attribute + " Range"        ] = val_max-val_min
             stats[attribute + " Standard Dev" ] = np.std(vals)
-            stats[attribute + " Histogram Key"] = vals
 
             # Scale and Population Invariant Stats:
             if si == "population" or si == "nodal":
@@ -194,6 +193,9 @@ class Evaluator:
                     scaler(stats[attribute + " Range"], si)
                 stats[tag + attribute + " Standard Dev"] = \
                     scaler(stats[attribute + " Standard Dev"], si)
+
+            stats[attribute + " Histogram Key"] = vals
+            
         else:
             stats[attribute + " Stats"] = None
 
@@ -204,9 +206,9 @@ class Evaluator:
     #   about whether or not it has been filled in.
     #   No getter needed for CATEGORY since it should never change.
     def get_stats_dict(self, recalculate_all=False, **kwargs):
-        self.calculate(recalculate_all=False, **kwargs)
+        self.calculate(recalculate_all=recalculate_all, **kwargs)
         return self.stats_dict
 
     def get_starred(self, recalculate_all=False, **kwargs):
-        self.calculate(recalculate_all=False, **kwargs)
+        self.calculate(recalculate_all=recalculate_all, **kwargs)
         return self.starred
